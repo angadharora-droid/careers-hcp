@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  /* Centre Point Nagpur design system (centrepointnagpur.com) */
+  --color-cream: #f8ede2; /* page background */
+  --color-beige: #f0dfcd; /* panels, inputs, alt sections, table headers */
+  --color-beige-deep: #efddc9;
+  --color-berry: #a80564; /* PRIMARY accent — buttons, links, active nav */
+  --color-berry-dark: #7e044e; /* hover */
+  --color-berry-soft: #f7e2ef; /* berry tint backgrounds (selected rows, chips) */
+  --color-ink: #000000; /* headings / nav */
+  --color-body: #393939; /* body text */
+  --color-muted: #6b6257; /* warm gray — AA contrast on cream/beige for small labels */
+  --color-line: #e6d9c8; /* warm hairline borders */
+  --color-card: #ffffff;
+  --color-footer: #191919; /* near-black footer */
+  --color-brand-green: #2e7d4f;
+  --color-brand-red: #b3261e;
+  --color-brand-amber: #b8860b;
+  --color-brand-blue: #2c5f8a;
+
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-label: "Marcellus", Georgia, serif;
+  --font-sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-button: "Jost", "Inter", sans-serif;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Global keyboard focus style — every interactive element. */
+:focus-visible {
+  outline: 2px solid var(--color-berry);
+  outline-offset: 2px;
+}
+
+/* Entrance micro-animations (transform/opacity only). */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise-in {
+  animation: rise-in 200ms ease-out both;
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.dialog-in {
+  animation: dialog-in 200ms ease-out both;
+}
+
+/* Skeleton loading blocks — cream/beige pulse matching the layout. */
+.skeleton {
+  background: var(--color-beige);
+  animation: skeleton-pulse 1.4s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* Anchor rows keep a real (visually hidden) radio input;
+   surface its keyboard focus on the whole row. */
+.anchor-row:has(input:focus-visible) {
+  outline: 2px solid var(--color-berry);
+  outline-offset: 2px;
+}
+
+/* Reduced motion: effectively disable all animation/transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  html {
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  /* Centre Point Nagpur design system (centrepointnagpur.com) */
+  --color-cream: #f8ede2;        /* page background */
+  --color-beige: #f0dfcd;        /* panels, inputs, alt sections, table headers */
+  --color-beige-deep: #efddc9;
+  --color-berry: #a80564;        /* PRIMARY accent — buttons, links, active nav */
+  --color-berry-dark: #7e044e;   /* hover */
+  --color-berry-soft: #f7e2ef;   /* berry tint backgrounds (selected rows, chips) */
+  --color-ink: #000000;          /* headings / nav */
+  --color-body: #393939;         /* body text */
+  --color-muted: #6b6257;        /* warm gray — AA contrast on cream/beige */
+  --color-line: #e6d9c8;         /* warm hairline borders */
+  --color-card: #ffffff;
+  --color-footer: #191919;       /* near-black footer */
+  --color-brand-green: #2e7d4f;
+  --color-brand-red: #b3261e;
+  --color-brand-amber: #b8860b;
+  --color-brand-blue: #2c5f8a;
+
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-label: "Marcellus", Georgia, serif;
+  --font-sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-button: "Jost", "Inter", sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-cream text-body text-[13px] leading-[1.5] antialiased font-sans;
+  }
+
+  /* Keyboard focus — berry ring on every interactive element */
+  :focus-visible {
+    outline: 2px solid var(--color-berry);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@keyframes cp-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cp-pop  { from { opacity: 0; transform: translateY(6px) scale(0.985); } to { opacity: 1; transform: none; } }
+
+@layer components {
+  .anim-fade { animation: cp-fade 200ms ease-out; }
+  .anim-pop  { animation: cp-pop 200ms ease-out; }
+
+  /* Cards — quiet, editorial, generous padding, small radii */
+  .card { @apply bg-card border border-line rounded-md p-5 md:p-6 mb-5; }
+  .card-h { @apply font-display text-[19px] font-semibold text-ink border-b border-line pb-2.5 mb-4 flex flex-wrap items-center justify-between gap-2 leading-tight; }
+  .card-h .r { @apply font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted; }
+
+  /* Forms */
+  .lbl { @apply block font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted mt-3 mb-1; }
+  .inp { @apply w-full px-3 py-2 bg-beige/40 border border-line rounded-sm text-[16px] sm:text-[13px] min-h-11 sm:min-h-[38px] text-body transition-colors duration-150 focus:outline-none focus:border-berry; }
+  .inp-err { @apply border-brand-red; }
+  .hint { @apply text-[11px] text-muted mt-1; }
+  .field-err { @apply text-brand-red text-xs mt-1; }
+
+  /* Buttons — Jost, uppercase, letterspaced, small radius, press feedback */
+  .btn { @apply inline-flex items-center justify-center gap-1.5 font-button text-xs font-medium uppercase tracking-[2px] bg-berry text-white border border-transparent px-6 py-2.5 min-h-11 sm:min-h-10 rounded-sm cursor-pointer transition-[background-color,border-color,color,transform] duration-150 ease-out hover:bg-berry-dark active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 whitespace-nowrap; }
+  .btn-ghost { @apply bg-transparent text-ink border-ink hover:bg-transparent hover:text-berry hover:border-berry; }
+  .btn-green { @apply bg-brand-green hover:bg-brand-green/85 text-white; }
+  .btn-red { @apply bg-brand-red hover:bg-brand-red/85 text-white; }
+  .btn-sm { @apply px-3 py-1.5 text-[11px] tracking-[1.5px] min-h-11 sm:min-h-10; }
+  .icon-btn { @apply inline-flex items-center justify-center w-10 h-10 shrink-0 rounded-sm text-body border border-transparent cursor-pointer transition-colors duration-150 hover:text-berry hover:border-line active:scale-[0.96]; }
+
+  /* Tables — sticky header, hover tint, tabular numerals */
+  .tbl { @apply w-full border-collapse text-xs; }
+  .tbl th { @apply bg-beige text-left px-2.5 py-2 font-button font-medium border border-line text-muted text-[11px] uppercase tracking-[1.5px] whitespace-nowrap sticky top-0 z-[1]; box-shadow: inset 0 -1px 0 var(--color-line); }
+  .tbl td { @apply px-2.5 py-2 border border-line align-top; }
+  .tbl tbody tr:nth-child(even) td { @apply bg-cream/50; }
+  .tbl tbody tr:hover td { @apply bg-beige/40; }
+  .num { @apply tabular-nums text-right; }
+  .tbl-scroll { @apply overflow-auto max-h-[65vh]; }
+  /* 3px red left edge for rows past their SLA */
+  .row-alert td:first-child { border-left: 3px solid var(--color-brand-red); }
+
+  /* Inline occupancy bar (filled/total) — berry fill on beige track, no chart lib */
+  .occ-track { @apply h-1.5 w-full max-w-[120px] bg-beige rounded-full overflow-hidden; }
+  .occ-fill { @apply h-full bg-berry rounded-full; }
+
+  /* Skeleton shimmer blocks */
+  .skel { @apply bg-beige/60 rounded-sm animate-pulse; }
+
+  /* Misc brand pieces */
+  .pcn { @apply font-mono font-bold text-berry text-xs; }
+  .mini { @apply text-[11px] text-muted; }
+  .infobar { @apply bg-beige/60 border-l-[3px] border-l-berry px-3.5 py-2.5 text-xs text-body mb-4 rounded-r-sm; }
+  .panel-box { @apply bg-cream/40 border border-line rounded-sm p-3 mt-2.5; }
+  .panel-box-h { @apply font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted mb-2; }
+  .placeholder-warn { @apply flex items-start gap-2 bg-beige/60 border border-dashed border-brand-amber rounded-sm px-3 py-2 text-[11.5px] text-brand-amber my-2; }
+  .gate { @apply flex items-start gap-2 bg-brand-red/8 border border-brand-red/50 rounded-sm px-3 py-2 text-[11.5px] text-brand-red mt-2; }
+  .gate-ok { @apply bg-brand-green/8 border-brand-green/50 text-brand-green; }
+  .scoresum { @apply bg-berry-soft/60 border border-berry/40 rounded-sm px-3.5 py-2.5 text-[12.5px] text-body mt-2; }
+}

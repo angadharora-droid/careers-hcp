@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPH Recruitment & Position Control — Centre Point Amravati</title>
+<style>
+  :root{--maroon:#6f0e13;--gold:#f1c53e;--ink:#1f2024;--muted:#6b6e76;--line:#e3e4e8;--bg:#f6f6f4;--card:#fff;--green:#2e7d4f;--red:#b3261e;--amber:#b8860b;--blue:#2c5f8a}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  header{background:var(--maroon);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header .brand{display:flex;align-items:center;gap:12px}
+  header .logo{width:34px;height:34px;border-radius:6px;background:var(--gold);color:var(--maroon);font-weight:800;display:flex;align-items:center;justify-content:center}
+  header h1{font-size:16px;font-weight:700}
+  header .sub{font-size:11px;opacity:.85}
+  .tabs{display:flex;gap:2px;background:#fff;border-bottom:1px solid var(--line);padding:0 14px;overflow-x:auto}
+  .tab{padding:11px 14px;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:13px}
+  .tab.active{color:var(--maroon);border-bottom-color:var(--maroon)}
+  .wrap{padding:18px 22px;max-width:1340px;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px}
+  .stat .n{font-size:23px;font-weight:800;color:var(--maroon)}
+  .stat .l{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-top:2px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:14px;margin-bottom:6px;color:var(--maroon);border-bottom:1px solid var(--line);padding-bottom:8px}
+  .card h2 .r{float:right;font-size:11px;font-weight:600;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{background:#f0f0ee;text-align:left;padding:7px 8px;font-weight:600;border:1px solid var(--line);color:#444;font-size:10.5px;text-transform:uppercase;letter-spacing:.3px}
+  td{padding:6px 8px;border:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:#fafafa}
+  .pill{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+  .pill.mgr{background:#fbeec9;color:var(--amber)}.pill.staff{background:#eef2f7;color:var(--blue)}
+  .vs{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10.5px;font-weight:700}
+  .vs-Filled{background:#e8f4ec;color:var(--green)}
+  .vs-Vacant{background:#fbe9e7;color:var(--red)}
+  .vs-Frozen{background:#e5e7ff;color:#3a3f8f}
+  .vs-UnderRecruitment{background:#fbeec9;color:var(--amber)}
+  .vs-OnHold{background:#f0f0ee;color:var(--muted)}
+  .vs-Contract{background:#e0f0f5;color:#1f6b82}
+  .vs-Outsourced{background:#f5e9d8;color:#8a5a1f}
+  .vs-Eliminated{background:#3a3a3a;color:#fff}
+  .badge-stage{display:inline-block;padding:3px 9px;border-radius:4px;font-size:11px;font-weight:700}
+  .st-Applied{background:#eef2f7;color:var(--blue)}.st-InterviewScheduled{background:#fbeec9;color:var(--amber)}
+  .st-Selected{background:#e8f4ec;color:var(--green)}.st-Rejected{background:#fbe9e7;color:var(--red)}.st-OnHold{background:#f0f0ee;color:var(--muted)}
+  label{display:block;font-size:11.5px;font-weight:600;color:#444;margin:9px 0 3px}
+  input,select,textarea{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:6px;font-size:13px;font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--maroon)}
+  textarea{resize:vertical;min-height:52px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px}
+  .btn{background:var(--maroon);color:#fff;border:none;padding:9px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}
+  .btn:hover{opacity:.92}
+  .btn.gold{background:var(--gold);color:var(--maroon)}.btn.ghost{background:#fff;color:var(--maroon);border:1px solid var(--maroon)}
+  .btn.sm{padding:5px 11px;font-size:12px}.btn.green{background:var(--green)}.btn.danger{background:var(--red)}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .muted{color:var(--muted)}.req{color:var(--red)}
+  .hint{font-size:11px;color:var(--muted);margin-top:2px}
+  .filterbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .filterbar input,.filterbar select{width:auto;min-width:130px}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;padding:16px;overflow-y:auto}
+  .modal-bg.show{display:flex;align-items:flex-start;justify-content:center}
+  .modal{background:#fff;border-radius:10px;max-width:760px;width:100%;padding:22px;margin:auto}
+  .modal h3{color:var(--maroon);margin-bottom:6px;font-size:16px}
+  .close-x{float:right;cursor:pointer;font-size:20px;color:var(--muted);line-height:1}
+  .pcn{font-family:ui-monospace,Menlo,monospace;font-weight:700;color:var(--maroon);font-size:12px}
+  .empty{text-align:center;padding:36px;color:var(--muted)}
+  .doc-chip{display:inline-block;background:#eef2f7;border:1px solid var(--line);border-radius:4px;padding:3px 8px;font-size:11px;margin:2px 3px 0 0}
+  .panel-box{background:#fafafa;border:1px solid var(--line);border-radius:6px;padding:10px;margin-top:8px}
+  .pin-screen{max-width:340px;margin:80px auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px;text-align:center}
+  .pin-screen .logo{width:48px;height:48px;border-radius:8px;background:var(--maroon);color:var(--gold);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 14px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;width:fit-content;flex-wrap:wrap}
+  .seg button{border:none;background:#fff;padding:7px 13px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--muted)}
+  .seg button.on{background:var(--maroon);color:#fff}
+  .mini{font-size:11px;color:var(--muted)}
+  .comp-block{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;overflow:hidden}
+  .comp-head{background:#faf7f2;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+  .comp-head .nm{font-weight:700;font-size:13px}
+  .comp-head .wt{font-size:11px;color:var(--maroon);font-weight:700;background:#fbeec9;padding:2px 8px;border-radius:10px}
+  .comp-body{padding:6px 12px 12px}
+  .lvl{display:flex;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent;align-items:flex-start;margin-top:4px}
+  .lvl:hover{background:#fafafa}.lvl.sel{background:#f3e9ea;border-color:var(--maroon)}
+  .lvl input{width:auto;margin-top:3px;flex-shrink:0}
+  .lvl .lbl{font-weight:700;font-size:12px;min-width:118px;flex-shrink:0}
+  .lvl .desc{font-size:12px;color:#444}.lvl .pts{font-size:10.5px;color:var(--muted);font-weight:700;margin-left:auto;flex-shrink:0}
+  .section-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:10px;margin-bottom:6px}
+  .tag-att{background:#e8f4ec;color:var(--green)}.tag-skill{background:#eef2f7;color:var(--blue)}.tag-know{background:#fbeec9;color:var(--amber)}
+  .placeholder{background:#fff8e1;border:1px dashed var(--amber);border-radius:6px;padding:8px 10px;font-size:11.5px;color:var(--amber);margin:6px 0}
+  .recchip{padding:3px 10px;border-radius:6px;font-weight:700;font-size:12px}
+  .rec-strong{background:#e8f4ec;color:var(--green)}.rec-rec{background:#eef7ec;color:#4a7c3f}.rec-hold{background:#fbeec9;color:var(--amber)}.rec-rej{background:#fbe9e7;color:var(--red)}
+  .redflags{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+  .redflags label{display:flex;gap:6px;align-items:center;font-weight:500;margin:0;font-size:12.5px}.redflags input{width:auto}
+  .divg{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+  .divg-ok{background:#e8f4ec;color:var(--green)}.divg-warn{background:#fbe9e7;color:var(--red)}
+  .scoresum{background:#f3e9ea;border:1px solid var(--maroon);border-radius:6px;padding:8px 12px;font-size:12.5px;margin-top:8px}
+  .locknote{background:#fff8e1;border:1px dashed var(--amber);border-radius:6px;padding:10px;font-size:12px;color:var(--amber);text-align:center}
+  .gate{background:#fbe9e7;border:1px solid var(--red);border-radius:6px;padding:8px 10px;font-size:11.5px;color:var(--red);margin-top:6px}
+  .gate-ok{background:#e8f4ec;border-color:var(--green);color:var(--green)}
+  .infobar{background:#faf7f2;border-left:3px solid var(--gold);padding:8px 12px;font-size:12px;margin-bottom:12px;border-radius:0 6px 6px 0}
+  @media(max-width:680px){.grid2,.grid3,.grid4{grid-template-columns:1fr}.lvl{flex-wrap:wrap}.lvl .lbl{min-width:auto}}
+</style>
+</head>
+<body>
+
+<div id="pinGate">
+  <div class="pin-screen">
+    <div class="logo">CP</div>
+    <h2 style="color:var(--maroon);font-size:17px;margin-bottom:4px">Recruitment & Position Control</h2>
+    <p class="muted" style="font-size:12px;margin-bottom:16px">Centre Point Amravati · 2026</p>
+    <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="6" style="text-align:center;letter-spacing:4px;font-size:18px" onkeydown="if(event.key==='Enter')checkPin()">
+    <div id="pinErr" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Wrong PIN</div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="checkPin()">Unlock</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<header>
+  <div class="brand"><div class="logo">CP</div>
+  <div><h1>Recruitment & Position Control</h1><div class="sub">Position-first · recruit against approved PCNs, not requests</div></div></div>
+  <div style="display:flex;gap:8px">
+    <button class="btn ghost sm" onclick="exportData()" style="color:#fff;border-color:#fff">Export</button>
+    <button class="btn gold sm" onclick="document.getElementById('imp').click()">Import</button>
+    <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-v="dash" onclick="showView('dash')">Dashboard</div>
+  <div class="tab" data-v="pcr" onclick="showView('pcr')">Position Control Register</div>
+  <div class="tab" data-v="apply" onclick="showView('apply')">Applications</div>
+  <div class="tab" data-v="pipeline" onclick="showView('pipeline')">Pipeline & Interviews</div>
+  <div class="tab" data-v="framework" onclick="showView('framework')">Framework & Grades</div>
+</div>
+
+<div class="wrap">
+
+<!-- DASH -->
+<div class="view active" id="dash">
+  <div class="stat-row" id="statRow"></div>
+  <div class="card"><h2>Vacancy Status Breakdown<span class="r">every sanctioned position carries one status</span></h2>
+    <div id="statusBreak" style="display:flex;gap:10px;flex-wrap:wrap"></div>
+  </div>
+  <div class="card"><h2>Aging Vacancies<span class="r">days idle vs. replacement SLA</span></h2>
+    <div class="infobar">Counts days since a position went <b>Vacant</b> (not yet under recruitment). Rows past their replacement SLA are flagged — a critical seat idle beyond SLA is the real cost, not the count.</div>
+    <table id="agingTable"><thead><tr><th>Job Code</th><th>Designation</th><th>Dept</th><th>Grade</th><th>Days Vacant</th><th>Repl. SLA</th><th>Status vs SLA</th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="card"><h2>Manpower by Department</h2>
+    <table id="deptTable"><thead><tr><th>Department</th><th>Positions</th><th>Filled</th><th>Under Recruitment</th><th>Vacant (idle)</th><th>Frozen/Hold</th><th>Budgeted Salary</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<!-- POSITION CONTROL REGISTER -->
+<div class="view" id="pcr">
+  <div class="card">
+    <h2>Position Control Register<span class="r" id="pcrCount"></span></h2>
+    <div class="infobar"><b>Positions exist independently of employees.</b> Recruitment can only open against a position that is Approved + Vacant + within budget. Employees occupy PCNs; they don't create them.</div>
+    <div class="filterbar">
+      <input id="pcrSearch" placeholder="Search PCN / designation…" oninput="renderPCR()">
+      <select id="pcrDept" onchange="renderPCR()"><option value="">All departments</option></select>
+      <select id="pcrGrade" onchange="renderPCR()"><option value="">All grades</option></select>
+      <select id="pcrStatus" onchange="renderPCR()"><option value="">All statuses</option><option>Vacant</option><option>Filled</option><option>Under Recruitment</option><option>Frozen</option><option>On Hold</option><option>Contract</option><option>Outsourced</option><option>Eliminated</option></select>
+      <button class="btn gold sm" onclick="openPosition()">+ Add Position</button>
+    </div>
+    <div style="overflow-x:auto">
+    <table id="pcrTable"><thead><tr><th>Job Code</th><th>PCN (seat)</th><th>Designation</th><th>Job Family</th><th>Grade</th><th>Dept</th><th>Reports To</th><th>Cost Centre</th><th>Budget ₹/mo</th><th>Status</th><th>Days Vacant</th><th>Occupant</th><th>Flags</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- APPLY -->
+<div class="view" id="apply">
+  <div class="card"><h2>New Application — against a Position</h2>
+    <div class="infobar">A candidate applies to a <b>Job Code</b> (the role). Only roles with <b>Vacant</b> or <b>Under Recruitment</b> openings appear below. HR maps the applicant to a specific position seat on selection.</div>
+    <form id="applyForm" onsubmit="return false">
+      <div class="grid2">
+        <div><label>Position (Job Code) <span class="req">*</span></label><select id="f_pcn" onchange="autofillPCN()" required></select><div class="hint" id="pcnHint"></div></div>
+        <div><label>Business Unit / Location (auto)</label><input id="f_unit" value="Centre Point Amravati · Amravati, MH" readonly></div>
+      </div>
+      <div class="grid3">
+        <div><label>Full Name <span class="req">*</span></label><input id="f_name" required></div>
+        <div><label>Age</label><input id="f_age" type="number"></div>
+        <div><label>Gender</label><select id="f_gender"><option value="">—</option><option>Male</option><option>Female</option><option>Other</option></select></div>
+      </div>
+      <div class="grid3">
+        <div><label>Mobile</label><input id="f_mobile"></div>
+        <div><label>Qualification</label><input id="f_qual"></div>
+        <div><label>Total Experience (yr)</label><input id="f_exp" type="number" step="0.5"></div>
+      </div>
+      <div class="grid3">
+        <div><label>Current Designation</label><input id="f_curdesig"></div>
+        <div><label>Years in Current Firm</label><input id="f_curyears" type="number" step="0.5"></div>
+        <div><label>Current Salary (₹/mo)</label><input id="f_cursal" type="number"></div>
+      </div>
+      <div class="grid3">
+        <div><label>Expected Salary (₹/mo)</label><input id="f_expsal" type="number"><div class="hint" id="bandHint"></div></div>
+        <div><label>Relocate?</label><select id="f_relocate"><option>Yes</option><option>No</option></select></div>
+        <div><label>Need Accommodation?</label><select id="f_accom"><option>Yes</option><option>No</option></select></div>
+      </div>
+      <div class="grid2">
+        <div><label>Heard about vacancy from?</label><select id="f_source"><option>Referral (employee)</option><option>Walk-in</option><option>Naukri / Portal</option><option>Instagram / Social</option><option>Newspaper</option><option>Consultant</option><option>Other</option></select></div>
+        <div><label>Why join CPH?</label><input id="f_why"></div>
+      </div>
+      <label>Brief intro (under 50 words) <span id="wc" class="hint">0 / 50</span></label>
+      <textarea id="f_intro" oninput="countWords()"></textarea>
+      <label style="margin-top:12px">Upload CV / Certificates / Achievements</label>
+      <input type="file" id="f_docs" multiple onchange="showDocs()"><div id="docList"></div>
+      <div class="btn-row"><button class="btn" onclick="submitApplication()">Submit Application</button><button class="btn ghost" onclick="resetApply()">Clear</button></div>
+    </form>
+  </div>
+</div>
+
+<!-- PIPELINE -->
+<div class="view" id="pipeline">
+  <div class="card"><h2>Pipeline & Interviews<span class="r">selection fills the PCN</span></h2>
+    <div class="filterbar">
+      <input id="pipSearch" placeholder="Search name / PCN…" oninput="renderPipeline()">
+      <select id="pipStage" onchange="renderPipeline()"><option value="">All stages</option><option>Applied</option><option>Interview Scheduled</option><option>Selected</option><option>Rejected</option><option>On Hold</option></select>
+    </div>
+    <div style="overflow-x:auto">
+    <table id="pipTable"><thead><tr><th>Applicant</th><th>PCN</th><th>Designation</th><th>Exp</th><th>Stage</th><th>Panel Score</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+    <div id="pipEmpty" class="empty" style="display:none">No applications yet.</div>
+  </div>
+</div>
+
+<!-- FRAMEWORK -->
+<div class="view" id="framework">
+  <div class="card"><h2>Corporate Grade Structure</h2>
+    <table><thead><tr><th>Grade</th><th>Meaning</th><th>Present at CPA?</th><th>Interview Panel</th></tr></thead><tbody id="gradeTable"></tbody></table>
+    <p class="hint" style="margin-top:8px">CPA (a full-service unit) has no A2/A4 positions in its sanctioned strength — shown honestly, not invented. Grades A1–A3 convene a 3-member committee; A4 and below use a 2-member panel.</p>
+  </div>
+  <div class="card"><h2>PCN Format</h2>
+    <div class="infobar" style="font-family:ui-monospace,Menlo,monospace"><b>CPA – DEPT – GRADE – SERIAL</b> &nbsp;e.g. <span class="pcn">CPA-FO-C1-001</span></div>
+    <p class="hint">Corporate Grade, Designation, Job Family, Business Unit, and PCN are separate concepts and never mixed. Two people at grade B1 can hold different designations, job families, and salary bands.</p>
+  </div>
+  <div class="card"><h2>Scoring Framework</h2>
+    <table><thead><tr><th>Section</th><th>Weight</th><th>Competencies</th></tr></thead><tbody>
+      <tr><td><b>Attitude</b></td><td>60%</td><td>Guest Orientation 20 · Cultural Fit 15 · Communication 15 · Learning & Teamwork 10</td></tr>
+      <tr><td><b>Skills</b></td><td>25%</td><td>Practical 12 · Problem Solving 8 · Grooming 5 (FO); role-specific for others</td></tr>
+      <tr><td><b>Knowledge</b></td><td>15%</td><td>Role Knowledge 10 · Hospitality Awareness 5</td></tr>
+    </tbody></table>
+    <p class="hint" style="margin-top:8px">Behavioural MCQ, never bare numbers. Score bands: 85+ Strongly Recommend · 70–84 Recommend · 55–69 Hold · &lt;55 Do Not Recommend. Any red flag → HR review regardless of score.</p>
+  </div>
+  <div class="card"><h2>Recruitment Gate (position-first discipline)</h2>
+    <p style="font-size:12.5px">A candidate can only be <b>Selected</b> into a PCN when: the position <b>exists</b>, its status is <b>Vacant / Under Recruitment</b> (not Frozen/Eliminated/Filled), and the required panel has scored. Selecting a candidate flips the PCN to <b>Filled</b> and records the occupant. This is the manpower discipline: no hire without an approved, budgeted, vacant position behind it.</p>
+  </div>
+</div>
+
+</div></div>
+
+<div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+<div class="modal-bg" id="scoreBg"><div class="modal" id="scoreBody" style="max-width:780px"></div></div>
+<div class="modal-bg" id="posBg"><div class="modal" id="posBody" style="max-width:640px"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+function checkPin(){if(document.getElementById('pinInput').value==='131313'){document.getElementById('pinGate').style.display='none';document.getElementById('app').style.display='block';init();}else document.getElementById('pinErr').style.display='block';}
+
+/* ===== GRADE MODEL ===== */
+const GRADES=[
+  {g:"BOD",mean:"Board",cpa:false,panel:3},
+  {g:"H1",mean:"Enterprise Leadership",cpa:false,panel:3},
+  {g:"H2",mean:"Corporate Functional Leadership",cpa:false,panel:3},
+  {g:"H3",mean:"Corporate Professionals / Business Partners",cpa:false,panel:3},
+  {g:"A1",mean:"Business Unit Head",cpa:true,panel:3},
+  {g:"A2",mean:"Executive Committee",cpa:false,panel:3},
+  {g:"A3",mean:"Department Head",cpa:true,panel:3},
+  {g:"A4",mean:"Assistant Manager",cpa:false,panel:2},
+  {g:"B1",mean:"Executive / Officer / Specialist",cpa:true,panel:2},
+  {g:"B2",mean:"Supervisor / Team Leader",cpa:true,panel:2},
+  {g:"C1",mean:"Associate",cpa:true,panel:2},
+  {g:"C2",mean:"Junior Associate",cpa:true,panel:2},
+  {g:"T",mean:"Trainee / Apprentice",cpa:false,panel:2},
+];
+function panelForGrade(g){const x=GRADES.find(z=>z.g===g);return x?x.panel:2;}
+function isCommittee(g){return panelForGrade(g)===3;}
+
+/* ===== POSITIONS (CPA sanctioned strength remapped to corporate grades) ===== */
+/* Modernised designations per prompt: GSA→Guest Service Associate, Steward→Service Associate, Captain→Team Leader */
+const DEPT_ABBR={"Front Office":"FO","F&B Service":"FB","Kitchen":"KIT","Housekeeping":"HK","Engineering":"ENG","Security":"SEC","Admin":"ADM","Stores":"STR","Kitchen Stewarding":"KST","Leadership":"LDR","Operations":"OPS"};
+/* base roster: designation, family, grade, dept, reportsTo, count, min, max, revenue, guestFacing, critical, foRealContent */
+const ROSTER=[
+  {desig:"General Manager",fam:"Corporate Services",grade:"A1",dept:"Leadership",reports:"Group / Ownership",count:1,min:150000,max:250000,rev:true,guest:true,crit:true},
+  {desig:"Operations Manager",fam:"Corporate Services",grade:"A3",dept:"Operations",reports:"General Manager",count:1,min:30000,max:65000,rev:true,guest:true,crit:true},
+  {desig:"Admin Head",fam:"Administration",grade:"A3",dept:"Admin",reports:"General Manager",count:1,min:30000,max:65000,rev:false,guest:false,crit:true},
+  {desig:"Executive Chef",fam:"Kitchen",grade:"A3",dept:"Kitchen",reports:"General Manager",count:1,min:30000,max:65000,rev:true,guest:false,crit:true},
+  {desig:"Front Office Executive",fam:"Front Office",grade:"B1",dept:"Front Office",reports:"Operations Manager",count:1,min:20000,max:27000,rev:true,guest:true,crit:true,fo:"exec"},
+  {desig:"Admin Executive",fam:"Administration",grade:"B1",dept:"Admin",reports:"Admin Head",count:2,min:20000,max:27000,rev:false,guest:false,crit:false},
+  {desig:"Security Executive",fam:"Security",grade:"B1",dept:"Security",reports:"Operations Manager",count:1,min:20000,max:27000,rev:false,guest:false,crit:true},
+  {desig:"F&B Executive",fam:"F&B Service",grade:"B1",dept:"F&B Service",reports:"Operations Manager",count:2,min:20000,max:27000,rev:true,guest:true,crit:true},
+  {desig:"Engineering Executive",fam:"Engineering",grade:"B1",dept:"Engineering",reports:"Operations Manager",count:1,min:20000,max:27000,rev:false,guest:false,crit:true},
+  {desig:"Housekeeping Executive",fam:"Housekeeping",grade:"B1",dept:"Housekeeping",reports:"Operations Manager",count:1,min:20000,max:27000,rev:false,guest:true,crit:true},
+  {desig:"Chef de Partie",fam:"Kitchen",grade:"B1",dept:"Kitchen",reports:"Executive Chef",count:1,min:22000,max:32000,rev:true,guest:false,crit:false},
+  {desig:"Demi Chef de Partie",fam:"Kitchen",grade:"B2",dept:"Kitchen",reports:"Chef de Partie",count:1,min:18000,max:25000,rev:true,guest:false,crit:false},
+  {desig:"Team Leader — F&B",fam:"F&B Service",grade:"B2",dept:"F&B Service",reports:"F&B Executive",count:2,min:15000,max:20000,rev:true,guest:true,crit:false},
+  {desig:"Housekeeping Supervisor",fam:"Housekeeping",grade:"B2",dept:"Housekeeping",reports:"Housekeeping Executive",count:2,min:15000,max:20000,rev:false,guest:true,crit:false},
+  {desig:"Kitchen Stewarding Supervisor",fam:"Kitchen",grade:"B2",dept:"Kitchen Stewarding",reports:"Executive Chef",count:1,min:15000,max:20000,rev:false,guest:false,crit:false},
+  {desig:"Engineering Associate",fam:"Engineering",grade:"C1",dept:"Engineering",reports:"Engineering Executive",count:2,min:13000,max:18000,rev:false,guest:false,crit:false},
+  {desig:"Guest Service Associate — F&B",fam:"F&B Service",grade:"C1",dept:"F&B Service",reports:"Team Leader — F&B",count:12,min:13000,max:18000,rev:true,guest:true,crit:false},
+  {desig:"Senior Commis",fam:"Kitchen",grade:"C1",dept:"Kitchen",reports:"Chef de Partie",count:5,min:15000,max:22000,rev:true,guest:false,crit:false},
+  {desig:"Junior Commis",fam:"Kitchen",grade:"C2",dept:"Kitchen",reports:"Senior Commis",count:5,min:14000,max:18000,rev:true,guest:false,crit:false},
+  {desig:"Guest Service Associate — Front Office",fam:"Front Office",grade:"C1",dept:"Front Office",reports:"Front Office Executive",count:3,min:13000,max:18000,rev:true,guest:true,crit:false,fo:"assoc"},
+  {desig:"Guest Service Associate — Housekeeping",fam:"Housekeeping",grade:"C1",dept:"Housekeeping",reports:"Housekeeping Supervisor",count:9,min:13000,max:18000,rev:false,guest:true,crit:false},
+  {desig:"Store Associate",fam:"Purchase",grade:"C1",dept:"Stores",reports:"Admin Head",count:1,min:13000,max:18000,rev:false,guest:false,crit:false},
+  {desig:"Security Guard",fam:"Security",grade:"C1",dept:"Security",reports:"Security Executive",count:3,min:13000,max:18000,rev:false,guest:true,crit:false},
+  {desig:"Guest Service Associate — Valet",fam:"Front Office",grade:"C1",dept:"Front Office",reports:"Front Office Executive",count:2,min:13000,max:18000,rev:false,guest:true,crit:false},
+  {desig:"Bell Attendant",fam:"Front Office",grade:"C2",dept:"Front Office",reports:"Front Office Executive",count:2,min:12500,max:14000,rev:false,guest:true,crit:false},
+  {desig:"Kitchen Steward",fam:"Kitchen",grade:"C2",dept:"Kitchen Stewarding",reports:"Kitchen Stewarding Supervisor",count:4,min:12500,max:14000,rev:false,guest:false,crit:false},
+];
+/* expand roster into individual PCN positions */
+let POSITIONS=[];
+function seedPositions(){
+  POSITIONS=[];
+  const serial={};
+  ROSTER.forEach(r=>{
+    for(let n=0;n<r.count;n++){
+      const abbr=DEPT_ABBR[r.dept]||"GEN";
+      const key=abbr+"-"+r.grade;
+      serial[key]=(serial[key]||0)+1;
+      const pcn="CPA-"+abbr+"-"+r.grade+"-"+String(serial[key]).padStart(3,'0');
+      POSITIONS.push({
+        pcn,unit:"Centre Point Amravati",unitClass:"HT2 (Full Service Hotel)",dept:r.dept,fam:r.fam,
+        desig:r.desig,grade:r.grade,reports:r.reports,costCentre:r.dept,
+        min:r.min,max:r.max,budget:r.max,
+        status:"Vacant",occupant:"",rev:r.rev,guest:r.guest,crit:r.crit,
+        replSLA:r.crit?"15 days":"30 days",approver:r.grade==="A1"?"Ownership":"General Manager",
+        created:"26 Jun 2026",vacantSince:"26 Jun 2026",remarks:"",fo:r.fo||null
+      });
+    }
+  });
+}
+
+/* ===== COMPETENCIES ===== */
+const LEVELS=[{lbl:"Exceptional",pct:1},{lbl:"Strong",pct:.8},{lbl:"Acceptable",pct:.6},{lbl:"Below Expectations",pct:.4},{lbl:"Not Suitable",pct:.2}];
+const ATTITUDE=[
+  {key:"guest",name:"Guest Orientation",wt:20,section:"att",anchors:["Warm first impression; specific example of anticipating a guest need or going beyond role. Would represent CP unsupervised.","Friendly, courteous, guest-focused; handles most interactions confidently with minor coaching.","Understands service matters, polite, but lacks confidence/consistency; suitable with training.","Basic responses, limited warmth/empathy/ownership; may struggle in demanding situations.","No service mindset; indifferent to guests or inconsistent with CP standards."]},
+  {key:"culture",name:"Cultural Fit (Centre Point values)",wt:15,section:"att",anchors:["Concrete examples showing flexibility AND focus; values align with CP (guest-first, ownership, respect).","Clearly shares CP values; showed willingness to flex with a real example.","Values broadly compatible; stated right intent but example generic/hypothetical.","Value tension — rigid where flexibility needed, or loose where standards must hold.","Values conflict with CP culture; dismissive of guest-first/team-first behaviour."]},
+  {key:"comm",name:"Communication",wt:15,section:"att",anchors:["Confident, active listener, clear, professional throughout, strong eye contact.","Clear and confident, minor improvement only.","Basic information conveyed but needs coaching in confidence/fluency/language.","Struggles to express thoughts; repeated clarification needed.","Inadequate for a guest-facing role."]},
+  {key:"team",name:"Learning Attitude & Teamwork",wt:10,section:"att",anchors:["Highly coachable, collaborative, seeks feedback; real example of helping a teammate.","Works well with others, willing to learn.","Learns with supervision, contributes when guided.","Resistant to feedback or teamwork.","Negative attitude to learning/collaboration."]},
+];
+const FO_SKILLS=[
+  {key:"practical",name:"Practical Assessment (mock check-in / scenario)",wt:12,section:"skill",anchors:["Handled mock check-in + early-check-in scenario smoothly; upsold naturally; professional phone manner.","Completed mock tasks well with minor prompting.","Managed basics but hesitant on upsell/problem scenario.","Struggled; needed heavy guidance.","Could not perform the core front-desk task."]},
+  {key:"problem",name:"Problem Solving",wt:8,section:"skill",anchors:["Calm on 'guest shouting' scenario; clear guest-preserving resolution with ownership.","Reasonable resolution, good composure.","Basic resolution, limited ownership.","Flustered; weak resolution or deflected blame.","No workable approach."]},
+  {key:"groom",name:"Grooming & Professional Presence",wt:5,section:"skill",anchors:["Polished, hotel-ready; excellent posture, hygiene, etiquette.","Well groomed, minor improvements only.","Meets minimum expectation, needs coaching.","Below hospitality standard.","Inconsistent with CP image."]},
+];
+const FO_KNOW_ASSOC=[
+  {key:"foknow",name:"Front Office Knowledge",wt:10,section:"know",anchors:["Confidently explained check-in documents, reservation vs registration vs check-in, guest folio.","Good grasp, minor gaps.","Basic fundamentals.","Limited; unsure on most basics.","No relevant knowledge."]},
+  {key:"hosaware",name:"Hospitality Awareness",wt:5,section:"know",anchors:["Strong industry/brand awareness.","Good.","Average.","Weak.","None."]},
+];
+const FO_KNOW_EXEC=[
+  {key:"foknow",name:"Front Office Knowledge (Executive)",wt:10,section:"know",anchors:["Explained overbooking management and shift-closing/cash handling plus core concepts.","Good incl. some supervisory concepts.","Basic, weak on supervisory topics.","Limited on executive topics.","No relevant executive knowledge."]},
+  {key:"hosaware",name:"Hospitality Awareness",wt:5,section:"know",anchors:["Strong industry/brand awareness.","Good.","Average.","Weak.","None."]},
+];
+function placeholderSkills(){return[{key:"practical",name:"[PLACEHOLDER — HOD to replace] Practical / Trade Assessment",wt:15,section:"skill",placeholder:true,anchors:["Demonstrated the core practical task at expert level.","Performed well with minor prompting.","Basic competence, needs training.","Struggled with the core task.","Could not perform it."]},{key:"groom",name:"Grooming & Professional Presence",wt:10,section:"skill",anchors:["Polished, hotel-ready.","Well groomed, minor improvements.","Minimum expectation, needs coaching.","Below standard.","Inconsistent with CP image."]}];}
+function placeholderKnow(){return[{key:"roleknow",name:"[PLACEHOLDER — HOD to replace] Role / Technical Knowledge",wt:10,section:"know",placeholder:true,anchors:["Strong role-specific knowledge.","Good, minor gaps.","Basic.","Limited.","None."]},{key:"hosaware",name:"Hospitality Awareness",wt:5,section:"know",anchors:["Strong awareness.","Good.","Average.","Weak.","None."]}];}
+function buildCompetencies(fo){
+  const att=ATTITUDE.map(c=>({...c}));let skills,know;
+  if(fo==="assoc"){skills=FO_SKILLS.map(c=>({...c}));know=FO_KNOW_ASSOC.map(c=>({...c}));}
+  else if(fo==="exec"){skills=FO_SKILLS.map(c=>({...c}));know=FO_KNOW_EXEC.map(c=>({...c}));}
+  else{skills=placeholderSkills();know=placeholderKnow();}
+  return[...att,...skills,...know];
+}
+
+/* ===== STATE ===== */
+let APPS=[];
+
+function init(){seedPositions();fillSelectors();buildGradeTable();renderAll();}
+function pos(pcn){return POSITIONS.find(p=>p.pcn===pcn);}
+function recruitable(p){return p.status==='Vacant'||p.status==='Under Recruitment';}
+
+/* parse "26 Jun 2026" or "26/06/2026" or ISO; returns Date or null */
+const MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseDate(s){
+  if(!s)return null;
+  s=String(s).trim();
+  let m=s.match(/^(\d{1,2})\s+([A-Za-z]{3})[a-z]*\s+(\d{4})$/);
+  if(m){const mo=MON[m[2].toLowerCase().slice(0,3)];if(mo!==undefined)return new Date(+m[3],mo,+m[1]);}
+  m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if(m)return new Date(+m[3],+m[2]-1,+m[1]);
+  const d=new Date(s); return isNaN(d)?null:d;
+}
+function daysVacant(p){
+  if(p.status!=='Vacant')return null;
+  const d=parseDate(p.vacantSince);if(!d)return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  return Math.max(0,Math.round((today-d)/86400000));
+}
+function slaDays(p){const m=String(p.replSLA||'').match(/(\d+)/);return m?+m[1]:null;}
+function slaBreached(p){const dv=daysVacant(p),s=slaDays(p);return dv!=null&&s!=null&&dv>s;}
+/* Job Code = role-level (drops seat serial). CPA-FB-C1-007 -> CPA-FB-C1. Candidate/dashboard facing. */
+function jobCode(pcn){return String(pcn).replace(/-\d{3}$/,'');}
+
+function fillSelectors(){
+  const sel=document.getElementById('f_pcn');
+  sel.innerHTML='<option value="">— select an open position —</option>';
+  // group recruitable positions by job code so candidate sees role, not seat number
+  const recs=POSITIONS.filter(recruitable);
+  const seatIndex={};
+  recs.forEach(p=>{const jc=jobCode(p.pcn);seatIndex[jc]=(seatIndex[jc]||0)+1;});
+  const running={};
+  recs.forEach(p=>{
+    const jc=jobCode(p.pcn);running[jc]=(running[jc]||0)+1;
+    const multi=seatIndex[jc]>1?` — opening ${running[jc]} of ${seatIndex[jc]}`:'';
+    sel.innerHTML+=`<option value="${p.pcn}">${jc} · ${p.desig}${multi} (${p.status})</option>`;
+  });
+  const depts=[...new Set(POSITIONS.map(p=>p.dept))];
+  document.getElementById('pcrDept').innerHTML='<option value="">All departments</option>'+depts.map(d=>`<option>${d}</option>`).join('');
+  const grades=[...new Set(POSITIONS.map(p=>p.grade))];
+  document.getElementById('pcrGrade').innerHTML='<option value="">All grades</option>'+grades.map(g=>`<option>${g}</option>`).join('');
+}
+function buildGradeTable(){
+  document.getElementById('gradeTable').innerHTML=GRADES.map(g=>`<tr><td><b>${g.g}</b></td><td>${g.mean}</td><td>${g.cpa?'<span class="vs vs-Filled">Yes</span>':'<span class="mini muted">—</span>'}</td><td>${g.panel}-member${g.panel===3?' committee':''}</td></tr>`).join('');
+}
+function showView(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById(v).classList.add('active');document.querySelector(`.tab[data-v="${v}"]`).classList.add('active');}
+function renderAll(){renderDash();renderPCR();renderPipeline();fillSelectors();}
+
+/* ===== DASH ===== */
+function renderDash(){
+  const total=POSITIONS.length;
+  const by=s=>POSITIONS.filter(p=>p.status===s).length;
+  const filled=by('Filled'),vacant=by('Vacant'),under=by('Under Recruitment');
+  const budget=POSITIONS.reduce((s,p)=>s+(p.status!=='Eliminated'?Number(p.budget):0),0);
+  const vacantPos=POSITIONS.filter(p=>p.status==='Vacant');
+  const dvs=vacantPos.map(daysVacant).filter(x=>x!=null);
+  const avgDV=dvs.length?Math.round(dvs.reduce((a,b)=>a+b,0)/dvs.length):0;
+  const breached=vacantPos.filter(slaBreached).length;
+  document.getElementById('statRow').innerHTML=`
+    <div class="stat"><div class="n">${total}</div><div class="l">Positions (PCNs)</div></div>
+    <div class="stat"><div class="n" style="color:var(--green)">${filled}</div><div class="l">Filled</div></div>
+    <div class="stat"><div class="n" style="color:var(--amber)">${under}</div><div class="l">Under Recruitment</div></div>
+    <div class="stat"><div class="n" style="color:var(--red)">${vacant}</div><div class="l">Vacant (idle)</div></div>
+    <div class="stat"><div class="n">${avgDV}</div><div class="l">Avg Days Vacant</div></div>
+    <div class="stat"><div class="n" style="color:${breached?'var(--red)':'var(--green)'}">${breached}</div><div class="l">Past SLA</div></div>`;
+  const statuses=["Filled","Under Recruitment","Vacant","Frozen","On Hold","Contract","Outsourced","Eliminated"];
+  document.getElementById('statusBreak').innerHTML=statuses.map(s=>{const n=by(s);const cls='vs-'+s.replace(/ /g,'');return `<div style="text-align:center;min-width:90px"><div style="font-size:20px;font-weight:800;color:var(--maroon)">${n}</div><span class="vs ${cls}">${s}</span></div>`;}).join('');
+  const depts=[...new Set(POSITIONS.map(p=>p.dept))];let rows='';
+  depts.forEach(d=>{const dp=POSITIONS.filter(p=>p.dept===d);const f=dp.filter(p=>p.status==='Filled').length;const u=dp.filter(p=>p.status==='Under Recruitment').length;const v=dp.filter(p=>p.status==='Vacant').length;const fr=dp.filter(p=>['Frozen','On Hold'].includes(p.status)).length;const b=dp.reduce((s,p)=>s+Number(p.budget),0);rows+=`<tr><td>${d}</td><td>${dp.length}</td><td style="color:var(--green);font-weight:700">${f}</td><td style="color:var(--amber)">${u}</td><td style="color:var(--red);font-weight:700">${v}</td><td>${fr}</td><td>₹${b.toLocaleString()}</td></tr>`;});
+  document.querySelector('#deptTable tbody').innerHTML=rows;
+  // aging vacancies (only status=Vacant), longest idle first
+  const aging=vacantPos.map(p=>({p,dv:daysVacant(p)})).filter(x=>x.dv!=null).sort((a,b)=>b.dv-a.dv);
+  const agingRows=aging.map(({p,dv})=>{
+    const s=slaDays(p);const over=slaBreached(p);
+    const cell=over?`<span class="vs vs-Vacant">Over by ${dv-s}d</span>`:(s!=null?`<span class="vs vs-Filled">Within SLA</span>`:'<span class="mini muted">no SLA set</span>');
+    return `<tr><td class="pcn">${jobCode(p.pcn)}</td><td>${p.desig}${p.crit?' <span class="pill mgr">Critical</span>':''}</td><td>${p.dept}</td><td>${p.grade}</td><td style="font-weight:700;color:${over?'var(--red)':'var(--ink)'}">${dv} days</td><td>${p.replSLA||'—'}</td><td>${cell}</td></tr>`;
+  }).join('');
+  document.querySelector('#agingTable tbody').innerHTML=agingRows||'<tr><td colspan="7" class="empty">No positions currently in Vacant status.</td></tr>';
+}
+
+/* ===== PCR ===== */
+function renderPCR(){
+  const q=(document.getElementById('pcrSearch').value||'').toLowerCase();
+  const fd=document.getElementById('pcrDept').value,fg=document.getElementById('pcrGrade').value,fs=document.getElementById('pcrStatus').value;
+  let rows='',shown=0;
+  POSITIONS.forEach(p=>{
+    if(q&&!(p.pcn.toLowerCase().includes(q)||p.desig.toLowerCase().includes(q)))return;
+    if(fd&&p.dept!==fd)return;if(fg&&p.grade!==fg)return;if(fs&&p.status!==fs)return;
+    shown++;
+    const flags=[p.crit?'<span class="pill mgr">Critical</span>':'',p.rev?'<span class="pill staff">Rev</span>':'',p.guest?'<span class="pill staff">Guest</span>':''].filter(Boolean).join(' ');
+    rows+=`<tr>
+      <td class="pcn" style="color:var(--ink)">${jobCode(p.pcn)}</td><td class="pcn">${p.pcn}</td><td>${p.desig}</td><td>${p.fam}</td><td>${p.grade}</td><td>${p.dept}</td>
+      <td>${p.reports}</td><td>${p.costCentre}</td><td>₹${Number(p.budget).toLocaleString()}</td>
+      <td><span class="vs vs-${p.status.replace(/ /g,'')}">${p.status}</span></td>
+      <td>${(()=>{const dv=daysVacant(p);if(dv==null)return '<span class="mini muted">—</span>';const over=slaBreached(p);return `<span style="font-weight:700;color:${over?'var(--red)':'var(--ink)'}">${dv}d</span>${over?' <span class="mini" style="color:var(--red)">&gt;SLA</span>':''}`;})()}</td>
+      <td>${p.occupant||'<span class="mini muted">vacant</span>'}</td><td>${flags}</td>
+      <td><button class="btn sm ghost" onclick="openPosition('${p.pcn}')">Edit</button></td>
+    </tr>`;
+  });
+  document.querySelector('#pcrTable tbody').innerHTML=rows||'<tr><td colspan="14" class="empty">No positions match.</td></tr>';
+  document.getElementById('pcrCount').textContent=shown+' of '+POSITIONS.length+' positions';
+}
+
+/* POSITION add/edit */
+function openPosition(pcn){
+  const p=pcn?pos(pcn):null;
+  const g=p?p.grade:'C1';
+  document.getElementById('posBody').innerHTML=`
+    <span class="close-x" onclick="closePos()">×</span>
+    <h3>${p?'Edit Position':'Add Position'}</h3>
+    ${p?`<p class="pcn" style="margin-bottom:8px">${p.pcn}</p>`:'<p class="hint" style="margin-bottom:8px">PCN auto-generated as CPA-DEPT-GRADE-SERIAL on save.</p>'}
+    <div class="grid2">
+      <div><label>Designation <span class="req">*</span></label><input id="po_desig" value="${p?p.desig:''}"></div>
+      <div><label>Job Family</label><input id="po_fam" value="${p?p.fam:''}"></div>
+    </div>
+    <div class="grid3">
+      <div><label>Corporate Grade</label><select id="po_grade">${GRADES.map(x=>`<option ${g===x.g?'selected':''}>${x.g}</option>`).join('')}</select></div>
+      <div><label>Department</label><input id="po_dept" value="${p?p.dept:''}"></div>
+      <div><label>Cost Centre</label><input id="po_cc" value="${p?p.costCentre:''}"></div>
+    </div>
+    <div class="grid2">
+      <div><label>Reports To</label><input id="po_rep" value="${p?p.reports:''}"></div>
+      <div><label>Approval Authority</label><input id="po_appr" value="${p?p.approver:'General Manager'}"></div>
+    </div>
+    <div class="grid3">
+      <div><label>Salary Min</label><input id="po_min" type="number" value="${p?p.min:''}"></div>
+      <div><label>Salary Max</label><input id="po_max" type="number" value="${p?p.max:''}"></div>
+      <div><label>Budgeted Salary</label><input id="po_budget" type="number" value="${p?p.budget:''}"></div>
+    </div>
+    <div class="grid2">
+      <div><label>Vacancy Status</label><select id="po_status">${["Vacant","Filled","Under Recruitment","Frozen","On Hold","Contract","Outsourced","Eliminated"].map(s=>`<option ${p&&p.status===s?'selected':''}>${s}</option>`).join('')}</select></div>
+      <div><label>Replacement SLA</label><input id="po_sla" value="${p?p.replSLA:'30 days'}"></div>
+    </div>
+    <div class="redflags" style="margin-top:8px">
+      <label><input type="checkbox" id="po_crit" ${p&&p.crit?'checked':''}>Critical Position</label>
+      <label><input type="checkbox" id="po_rev" ${p&&p.rev?'checked':''}>Revenue Generating</label>
+      <label><input type="checkbox" id="po_guest" ${p&&p.guest?'checked':''}>Guest Facing</label>
+    </div>
+    <label>Remarks</label><input id="po_rem" value="${p?p.remarks:''}">
+    <div class="btn-row">
+      <button class="btn green" onclick="savePosition('${pcn||''}')">Save</button>
+      <button class="btn ghost" onclick="closePos()">Cancel</button>
+      ${p?`<button class="btn danger sm" onclick="eliminatePosition('${p.pcn}')" style="margin-left:auto">Eliminate</button>`:''}
+    </div>`;
+  document.getElementById('posBg').classList.add('show');
+}
+function savePosition(pcn){
+  const dept=document.getElementById('po_dept').value.trim();
+  const grade=document.getElementById('po_grade').value;
+  const desig=document.getElementById('po_desig').value.trim();
+  if(!desig||!dept){toast('Designation and department required');return;}
+  const data={
+    desig,fam:document.getElementById('po_fam').value.trim(),grade,dept,
+    costCentre:document.getElementById('po_cc').value.trim(),reports:document.getElementById('po_rep').value.trim(),
+    approver:document.getElementById('po_appr').value.trim(),
+    min:Number(document.getElementById('po_min').value)||0,max:Number(document.getElementById('po_max').value)||0,
+    budget:Number(document.getElementById('po_budget').value)||0,
+    status:document.getElementById('po_status').value,replSLA:document.getElementById('po_sla').value.trim(),
+    crit:document.getElementById('po_crit').checked,rev:document.getElementById('po_rev').checked,guest:document.getElementById('po_guest').checked,
+    remarks:document.getElementById('po_rem').value.trim()
+  };
+  if(pcn){const p=pos(pcn);const wasVacant=p.status==='Vacant';Object.assign(p,data);
+    if(data.status==='Vacant'&&!wasVacant){p.vacantSince=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});p.occupant='';}
+    toast('Position updated');}
+  else{
+    const abbr=DEPT_ABBR[dept]||dept.slice(0,3).toUpperCase();
+    const key=abbr+"-"+grade;
+    const existing=POSITIONS.filter(p=>p.pcn.startsWith("CPA-"+key)).length;
+    const newpcn="CPA-"+abbr+"-"+grade+"-"+String(existing+1).padStart(3,'0');
+    POSITIONS.push({pcn:newpcn,unit:"Centre Point Amravati",unitClass:"HT2 (Full Service Hotel)",occupant:"",created:new Date().toLocaleDateString('en-IN'),vacantSince:new Date().toLocaleDateString('en-IN'),fo:null,...data});
+    toast('Position created: '+newpcn);
+  }
+  closePos();renderAll();
+}
+function eliminatePosition(pcn){const p=pos(pcn);if(p.occupant){toast('Cannot eliminate a filled position — separate the occupant first');return;}if(!confirm('Mark position Eliminated? It will stop accepting recruitment.'))return;p.status='Eliminated';closePos();renderAll();toast('Position eliminated');}
+function closePos(){document.getElementById('posBg').classList.remove('show');}
+document.getElementById('posBg').addEventListener('click',e=>{if(e.target.id==='posBg')closePos();});
+
+/* ===== APPLY ===== */
+function autofillPCN(){
+  const p=pos(document.getElementById('f_pcn').value);const h=document.getElementById('pcnHint');const bh=document.getElementById('bandHint');
+  if(!p){h.textContent='';bh.textContent='';return;}
+  h.innerHTML=`<b>${jobCode(p.pcn)}</b> · ${p.desig} · ${p.fam} · Grade ${p.grade} · ${p.dept} · reports to ${p.reports} · ${panelForGrade(p.grade)}-member panel`;
+  bh.textContent=`Band ₹${p.min.toLocaleString()}–${p.max.toLocaleString()} (budget ₹${Number(p.budget).toLocaleString()})`;
+}
+function countWords(){const t=document.getElementById('f_intro').value.trim();const w=t?t.split(/\s+/).length:0;const el=document.getElementById('wc');el.textContent=`${w} / 50`;el.style.color=w>50?'var(--red)':'var(--muted)';}
+let pendingDocs=[];function showDocs(){pendingDocs=[...document.getElementById('f_docs').files].map(f=>f.name);document.getElementById('docList').innerHTML=pendingDocs.map(n=>`<span class="doc-chip">📎 ${n}</span>`).join('');}
+function val(id){return document.getElementById(id).value;}
+function submitApplication(){
+  const pcn=val('f_pcn');const name=val('f_name').trim();
+  if(!pcn){toast('Select a PCN');return;}if(!name){toast('Enter name');return;}
+  const p=pos(pcn);if(!recruitable(p)){toast('Position is not open for recruitment');return;}
+  const intro=val('f_intro').trim();if(intro&&intro.split(/\s+/).length>50){toast('Intro under 50 words');return;}
+  // auto-flip Vacant -> Under Recruitment on first applicant
+  if(p.status==='Vacant'){p.status='Under Recruitment';}
+  APPS.push({id:'A'+Date.now(),pcn,desig:p.desig,dept:p.dept,grade:p.grade,fam:p.fam,fo:p.fo,name,age:val('f_age'),gender:val('f_gender'),mobile:val('f_mobile'),qual:val('f_qual'),exp:val('f_exp'),curdesig:val('f_curdesig'),curyears:val('f_curyears'),cursal:val('f_cursal'),expsal:val('f_expsal'),relocate:val('f_relocate'),accom:val('f_accom'),source:val('f_source'),why:val('f_why'),intro,docs:[...pendingDocs],stage:'Applied',reason:'',interviewDate:'',panel:[],panelScores:[],appliedOn:new Date().toLocaleDateString('en-IN')});
+  toast('Application submitted: '+name);resetApply();renderAll();showView('pipeline');
+}
+function resetApply(){document.getElementById('applyForm').reset();pendingDocs=[];document.getElementById('docList').innerHTML='';document.getElementById('pcnHint').textContent='';document.getElementById('bandHint').textContent='';document.getElementById('wc').textContent='0 / 50';}
+
+/* ===== PIPELINE ===== */
+function renderPipeline(){
+  const q=(document.getElementById('pipSearch').value||'').toLowerCase();const fs=document.getElementById('pipStage').value;
+  const list=APPS.filter(a=>{if(q&&!(a.name.toLowerCase().includes(q)||a.pcn.toLowerCase().includes(q)))return false;if(fs&&a.stage!==fs)return false;return true;});
+  document.getElementById('pipEmpty').style.display=APPS.length?'none':'block';
+  const stCls={'Applied':'st-Applied','Interview Scheduled':'st-InterviewScheduled','Selected':'st-Selected','Rejected':'st-Rejected','On Hold':'st-OnHold'};
+  let rows='';
+  list.forEach(a=>{
+    const need=panelForGrade(a.grade);const have=a.panelScores.length;let sc='—';
+    if(have){const avg=Math.round(a.panelScores.reduce((s,x)=>s+x.total,0)/have);const spread=have>1?Math.max(...a.panelScores.map(x=>x.total))-Math.min(...a.panelScores.map(x=>x.total)):0;sc=`<b>${avg}</b>/100 <span class="mini">(${have}/${need})</span>${spread>15?' <span class="divg divg-warn">⚠'+spread+'</span>':''}`;}
+    rows+=`<tr><td><b>${a.name}</b><div class="mini">${a.appliedOn} · ${a.source}</div></td><td class="pcn">${a.pcn}</td><td>${a.desig}</td><td>${a.exp||'—'}y</td><td><span class="badge-stage ${stCls[a.stage]}">${a.stage}</span>${a.stage==='Rejected'&&a.reason?`<div class="mini">${a.reason}</div>`:''}${a.stage==='Interview Scheduled'&&a.interviewDate?`<div class="mini">${a.interviewDate}</div>`:''}</td><td>${sc}</td><td><button class="btn sm" onclick="openApplicant('${a.id}')">Open</button></td></tr>`;
+  });
+  document.querySelector('#pipTable tbody').innerHTML=rows;
+}
+
+/* ===== APPLICANT MODAL ===== */
+let _tmpStage={};
+function openApplicant(id){
+  const a=APPS.find(x=>x.id===id);const p=pos(a.pcn);const need=panelForGrade(a.grade);const committee=isCommittee(a.grade);
+  let panelInputs='';for(let i=0;i<need;i++)panelInputs+=`<input id="pn_${i}" placeholder="Panel member ${i+1} name" value="${a.panel[i]||''}" style="margin-bottom:4px">`;
+  let scoreSummary='';
+  if(a.panelScores.length){
+    const avg=Math.round(a.panelScores.reduce((s,x)=>s+x.total,0)/a.panelScores.length);
+    const spread=a.panelScores.length>1?Math.max(...a.panelScores.map(x=>x.total))-Math.min(...a.panelScores.map(x=>x.total)):0;
+    const anyFlag=a.panelScores.some(x=>x.flags.length);let cls,txt;
+    if(avg>=85){cls='rec-strong';txt='Strongly Recommend';}else if(avg>=70){cls='rec-rec';txt='Recommend';}else if(avg>=55){cls='rec-hold';txt='Hold';}else{cls='rec-rej';txt='Do Not Recommend';}
+    scoreSummary=`<div class="scoresum"><b>Panel: ${a.panelScores.length}/${need} scored · Avg ${avg}/100</b> <span class="recchip ${cls}">${txt}</span>${spread>15?' <span class="divg divg-warn">⚠ Diverged '+spread+'pts — discuss, do not average</span>':''}<br>${a.panelScores.map(x=>`<span class="mini">• ${x.panelist} (${x.prole}): <b>${x.total}</b>${x.flags.length?' 🚩 '+x.flags.join(', '):''}</span>`).join('<br>')}${anyFlag?'<br><span class="mini" style="color:var(--red)"><b>Red flag → HR review regardless of score.</b></span>':''}</div>`;
+  }
+  // position gate check
+  const gateOK=recruitable(p);
+  document.getElementById('modalBody').innerHTML=`
+    <span class="close-x" onclick="closeModal()">×</span>
+    <h3>${a.name} <span class="mini">· applying into ${a.pcn}</span></h3>
+    <p class="muted" style="margin-bottom:6px">${a.desig} · ${a.fam} · Grade ${a.grade} · ${a.dept} · ${committee?'<b style="color:var(--amber)">3-member committee</b>':'2-member panel'}</p>
+    <div class="${gateOK?'gate gate-ok':'gate'}">${gateOK?'✓ Position '+p.pcn+' is '+p.status+' — recruitment permitted.':'⚠ Position '+p.pcn+' is '+p.status+' — recruitment gate CLOSED. Cannot select into this PCN.'}</div>
+    <div class="card" style="margin:10px 0;background:#fafafa"><table style="font-size:12px">
+      <tr><td><b>Age/Gender</b></td><td>${a.age||'—'} / ${a.gender||'—'}</td><td><b>Mobile</b></td><td>${a.mobile||'—'}</td></tr>
+      <tr><td><b>Qualification</b></td><td>${a.qual||'—'}</td><td><b>Total Exp</b></td><td>${a.exp||'—'}y</td></tr>
+      <tr><td><b>Current</b></td><td>${a.curdesig||'—'} (${a.curyears||'—'}y)</td><td><b>Salary</b></td><td>₹${a.cursal?Number(a.cursal).toLocaleString():'—'} → ₹${a.expsal?Number(a.expsal).toLocaleString():'—'}</td></tr>
+      <tr><td><b>Band</b></td><td>₹${p.min.toLocaleString()}–${p.max.toLocaleString()}</td><td><b>Relocate/Accom</b></td><td>${a.relocate} / ${a.accom}</td></tr>
+      <tr><td><b>Source</b></td><td>${a.source}</td><td><b>Why CPH</b></td><td>${a.why||'—'}</td></tr>
+      <tr><td><b>Intro</b></td><td colspan="3">${a.intro||'—'}</td></tr>
+      <tr><td><b>Docs</b></td><td colspan="3">${a.docs.length?a.docs.map(d=>`<span class="doc-chip">📎 ${d}</span>`).join(''):'<span class="muted">none</span>'}</td></tr>
+    </table></div>
+    <div class="panel-box"><label style="margin-top:0">Recruiter Panel (${need} required)</label>${panelInputs}</div>
+    ${scoreSummary}
+    <div class="panel-box"><label style="margin-top:0">Interview Scoring</label>
+      ${a.stage==='Applied'?'<div class="locknote">Set stage to <b>Interview Scheduled</b> and save to unlock scoring.</div>':`<button class="btn gold sm" onclick="openScoring('${a.id}')">+ Add / Edit a Panellist's Score</button>`}
+    </div>
+    <div class="panel-box"><label style="margin-top:0">Set Stage</label>
+      <div class="seg" style="margin-bottom:8px">
+        <button class="${a.stage==='Applied'?'on':''}" onclick="setStage('${a.id}','Applied')">Applied</button>
+        <button class="${a.stage==='Interview Scheduled'?'on':''}" onclick="setStage('${a.id}','Interview Scheduled')">Interview</button>
+        <button class="${a.stage==='Selected'?'on':''}" onclick="setStage('${a.id}','Selected')">Select</button>
+        <button class="${a.stage==='Rejected'?'on':''}" onclick="setStage('${a.id}','Rejected')">Reject</button>
+        <button class="${a.stage==='On Hold'?'on':''}" onclick="setStage('${a.id}','On Hold')">Hold</button>
+      </div><div id="stageExtra"></div>
+    </div>
+    <div class="btn-row"><button class="btn green" onclick="saveApplicant('${a.id}')">Save</button><button class="btn ghost" onclick="closeModal()">Close</button><button class="btn danger sm" onclick="deleteApplicant('${a.id}')" style="margin-left:auto">Delete</button></div>`;
+  document.getElementById('modalBg').classList.add('show');renderStageExtra(a.id,a.stage);
+}
+function setStage(id,stage){_tmpStage[id]=stage;document.querySelectorAll('#modalBody .seg button').forEach(b=>b.classList.remove('on'));event.target.classList.add('on');renderStageExtra(id,stage);}
+function renderStageExtra(id,stage){const a=APPS.find(x=>x.id===id);const box=document.getElementById('stageExtra');if(!box)return;
+  if(stage==='Rejected')box.innerHTML=`<label style="margin-top:4px">Rejection Reason <span class="req">*</span></label><input id="rejReason" value="${a.reason||''}" placeholder="e.g. Panel score below 55, band mismatch">`;
+  else if(stage==='Interview Scheduled')box.innerHTML=`<label style="margin-top:4px">Interview Date/Time</label><input id="intDate" value="${a.interviewDate||''}" placeholder="e.g. 02 Jul 2026, 11:00 AM">`;
+  else if(stage==='Selected')box.innerHTML=`<div class="hint">On save, PCN <b>${a.pcn}</b> flips to <b>Filled</b> and records ${a.name} as occupant. Requires the position to be recruitable and panel to have scored.</div>`;
+  else box.innerHTML='';
+}
+function saveApplicant(id){
+  const a=APPS.find(x=>x.id===id);const p=pos(a.pcn);const need=panelForGrade(a.grade);
+  const panel=[];for(let i=0;i<need;i++){const el=document.getElementById('pn_'+i);if(el)panel.push(el.value.trim());}a.panel=panel;
+  const stage=_tmpStage[id]||a.stage;
+  if(stage==='Selected'){
+    if(!recruitable(p)){toast('Gate closed: '+a.pcn+' is '+p.status+' — cannot select');return;}
+    if(a.panelScores.length<need){if(!confirm(`Only ${a.panelScores.length}/${need} panellists scored. Select anyway?`))return;}
+    // fill the position
+    p.status='Filled';p.occupant=a.name;p.vacantSince='';
+    // reject other live applicants on same PCN? leave as-is but warn
+  }
+  if(stage==='Rejected'){const r=document.getElementById('rejReason');a.reason=r?r.value.trim():'';if(!a.reason){toast('Rejection reason required');return;}}
+  if(stage==='Interview Scheduled'){const d=document.getElementById('intDate');a.interviewDate=d?d.value.trim():'';}
+  a.stage=stage;delete _tmpStage[id];toast('Saved: '+a.name);closeModal();renderAll();
+}
+function deleteApplicant(id){if(!confirm('Delete permanently?'))return;APPS=APPS.filter(x=>x.id!==id);closeModal();renderAll();toast('Deleted');}
+function closeModal(){document.getElementById('modalBg').classList.remove('show');}
+document.getElementById('modalBg').addEventListener('click',e=>{if(e.target.id==='modalBg')closeModal();});
+
+/* ===== SCORING ===== */
+let curComps=[],curSel={},curAppId=null;
+function openScoring(id){
+  curAppId=id;const a=APPS.find(x=>x.id===id);curComps=buildCompetencies(a.fo);curSel={};
+  const secNames={att:'Attitude — 60%',skill:'Skills — 25%',know:'Knowledge — 15%'};const secTag={att:'tag-att',skill:'tag-skill',know:'tag-know'};
+  let html=`<span class="close-x" onclick="closeScoring()">×</span><h3>Score: ${a.name}</h3><p class="muted" style="margin-bottom:8px">${a.desig} · ${a.pcn} · Grade ${a.grade}</p>
+    <div class="grid2"><div><label>Panellist Name (YOU) <span class="req">*</span></label><input id="sc_panelist"></div>
+    <div><label>Panel Role</label><select id="sc_prole"><option>Panellist 1</option><option>Panellist 2</option>${isCommittee(a.grade)?'<option>Panellist 3 (Committee)</option>':''}</select></div></div>
+    <div class="hint" style="margin-bottom:8px">Score independently. On one device, note on paper first, then enter — so panellists don't anchor on each other.</div>`;
+  ['att','skill','know'].forEach(sec=>{const comps=curComps.filter(c=>c.section===sec);html+=`<div style="margin-top:10px"><span class="section-tag ${secTag[sec]}">${secNames[sec]}</span>`;
+    comps.forEach(c=>{const gci=curComps.indexOf(c);html+=`<div class="comp-block"><div class="comp-head"><span class="nm">${c.name}</span><span class="wt">${c.wt}%</span></div><div class="comp-body">`;
+      if(c.placeholder)html+=`<div class="placeholder">⚠ Placeholder — ${a.dept} HOD must replace before go-live.</div>`;
+      c.anchors.forEach((an,li)=>{html+=`<label class="lvl" id="slvl_${gci}_${li}" onclick="spick(${gci},${li})"><input type="radio" name="scomp_${gci}"><span class="lbl">${LEVELS[li].lbl}</span><span class="desc">${an}</span><span class="pts">${Math.round(c.wt*LEVELS[li].pct)}</span></label>`;});
+      html+=`</div></div>`;});html+=`</div>`;});
+  html+=`<div class="panel-box"><label style="margin-top:0">Evidence Observed</label><textarea id="sc_evidence" placeholder="What did the candidate actually say/do?"></textarea>
+    <div class="grid2"><div><label>Strengths</label><textarea id="sc_strength"></textarea></div><div><label>Concerns</label><textarea id="sc_concern"></textarea></div></div>
+    <label>Red Flags</label><div class="redflags">
+      <label><input type="checkbox" class="scrf" value="Poor Grooming">Poor Grooming</label>
+      <label><input type="checkbox" class="scrf" value="Dishonesty">Dishonesty</label>
+      <label><input type="checkbox" class="scrf" value="Poor Communication">Poor Communication</label>
+      <label><input type="checkbox" class="scrf" value="Negative Attitude">Negative Attitude</label>
+      <label><input type="checkbox" class="scrf" value="Frequent Job Changes">Job Hopping</label>
+      <label><input type="checkbox" class="scrf" value="Cultural Misfit">Cultural Misfit</label>
+    </div></div>
+    <div style="position:sticky;bottom:0;background:#fff;border-top:2px solid var(--maroon);padding:10px 0;margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+      <div><span class="mini">This panellist's score</span> <b style="font-size:22px;color:var(--maroon)" id="sc_total">0</b>/100 <span id="sc_rec"></span></div>
+      <div style="display:flex;gap:8px"><button class="btn ghost sm" onclick="closeScoring()">Cancel</button><button class="btn green" onclick="submitScore()">Submit Score</button></div>
+    </div>`;
+  document.getElementById('scoreBody').innerHTML=html;document.getElementById('scoreBg').classList.add('show');
+}
+function spick(ci,li){curSel[ci]=li;curComps[ci].anchors.forEach((a,l)=>document.getElementById(`slvl_${ci}_${l}`).classList.toggle('sel',l===li));supdate();}
+function supdate(){let t=0,ans=0;curComps.forEach((c,i)=>{if(curSel[i]!==undefined){t+=c.wt*LEVELS[curSel[i]].pct;ans++;}});document.getElementById('sc_total').textContent=Math.round(t);const rec=document.getElementById('sc_rec');if(ans<curComps.length){rec.innerHTML=`<span class="mini">${ans}/${curComps.length}</span>`;return;}const tt=Math.round(t);let cls,txt;if(tt>=85){cls='rec-strong';txt='Strongly Recommend';}else if(tt>=70){cls='rec-rec';txt='Recommend';}else if(tt>=55){cls='rec-hold';txt='Hold';}else{cls='rec-rej';txt='Do Not Recommend';}rec.innerHTML=`<span class="recchip ${cls}">${txt}</span>`;}
+function submitScore(){
+  const pan=document.getElementById('sc_panelist').value.trim();if(!pan){toast('Enter your name');return;}
+  if(Object.keys(curSel).length<curComps.length){toast('Score every competency');return;}
+  let t=0;curComps.forEach((c,i)=>t+=c.wt*LEVELS[curSel[i]].pct);
+  const flags=[...document.querySelectorAll('.scrf:checked')].map(x=>x.value);const a=APPS.find(x=>x.id===curAppId);
+  a.panelScores=a.panelScores.filter(x=>x.panelist.toLowerCase()!==pan.toLowerCase());
+  a.panelScores.push({panelist:pan,prole:document.getElementById('sc_prole').value,total:Math.round(t),flags,evidence:document.getElementById('sc_evidence').value.trim(),strength:document.getElementById('sc_strength').value.trim(),concern:document.getElementById('sc_concern').value.trim()});
+  toast('Score saved: '+pan);closeScoring();renderAll();openApplicant(curAppId);
+}
+function closeScoring(){document.getElementById('scoreBg').classList.remove('show');}
+document.getElementById('scoreBg').addEventListener('click',e=>{if(e.target.id==='scoreBg')closeScoring();});
+
+/* ===== IO ===== */
+function exportData(){const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),unit:'Centre Point Amravati',positions:POSITIONS,applications:APPS},null,2)],{type:'application/json'});const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='CPA_position_control_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);toast('Exported '+POSITIONS.length+' positions, '+APPS.length+' applicants');}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.positions)POSITIONS=d.positions;if(d.applications)APPS=d.applications.map(a=>({panelScores:[],panel:[],...a}));renderAll();toast('Imported');}catch(x){toast('Could not read file');}};r.readAsText(f);e.target.value='';}
+
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+window.onload=()=>document.getElementById('pinInput').focus();
+</script>
+</body>
+</html>

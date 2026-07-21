@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPH Interviewer Platform — Centre Point Amravati</title>
+<style>
+  :root{
+    --maroon:#6f0e13; --gold:#f1c53e; --ink:#1f2024; --muted:#6b6e76;
+    --line:#e3e4e8; --bg:#f6f6f4; --card:#fff;
+    --green:#2e7d4f; --red:#b3261e; --amber:#b8860b; --blue:#2c5f8a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+  header{background:var(--maroon);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header .brand{display:flex;align-items:center;gap:12px}
+  header .logo{width:34px;height:34px;border-radius:6px;background:var(--gold);color:var(--maroon);font-weight:800;display:flex;align-items:center;justify-content:center}
+  header h1{font-size:16px;font-weight:700}
+  header .sub{font-size:11px;opacity:.85}
+  .tabs{display:flex;gap:2px;background:#fff;border-bottom:1px solid var(--line);padding:0 14px;overflow-x:auto}
+  .tab{padding:11px 16px;cursor:pointer;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;white-space:nowrap;font-size:13px}
+  .tab.active{color:var(--maroon);border-bottom-color:var(--maroon)}
+  .wrap{padding:18px 22px;max-width:1180px;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+  .card h2{font-size:14px;margin-bottom:6px;color:var(--maroon);border-bottom:1px solid var(--line);padding-bottom:8px}
+  .card h2 .r{float:right;font-size:11px;font-weight:600;color:var(--muted)}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th{background:#f0f0ee;text-align:left;padding:8px 9px;font-weight:600;border:1px solid var(--line);color:#444;font-size:11px;text-transform:uppercase;letter-spacing:.3px}
+  td{padding:7px 9px;border:1px solid var(--line);vertical-align:top}
+  tr:nth-child(even) td{background:#fafafa}
+  label{display:block;font-size:11.5px;font-weight:600;color:#444;margin:9px 0 3px}
+  input,select,textarea{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:6px;font-size:13px;font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--maroon)}
+  textarea{resize:vertical;min-height:52px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .btn{background:var(--maroon);color:#fff;border:none;padding:9px 18px;border-radius:6px;font-weight:700;cursor:pointer;font-size:13px}
+  .btn:hover{opacity:.92}
+  .btn.gold{background:var(--gold);color:var(--maroon)}
+  .btn.ghost{background:#fff;color:var(--maroon);border:1px solid var(--maroon)}
+  .btn.sm{padding:5px 11px;font-size:12px}
+  .btn.green{background:var(--green)}.btn.danger{background:var(--red)}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+  .muted{color:var(--muted)}.req{color:var(--red)}
+  .hint{font-size:11px;color:var(--muted);margin-top:2px}
+  .filterbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  .filterbar input,.filterbar select{width:auto;min-width:150px}
+  .pin-screen{max-width:340px;margin:80px auto;background:#fff;border:1px solid var(--line);border-radius:12px;padding:28px;text-align:center}
+  .pin-screen .logo{width:48px;height:48px;border-radius:8px;background:var(--maroon);color:var(--gold);font-weight:800;display:flex;align-items:center;justify-content:center;font-size:20px;margin:0 auto 14px}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 20px;border-radius:8px;font-size:13px;z-index:99;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .comp-block{border:1px solid var(--line);border-radius:8px;margin-bottom:12px;overflow:hidden}
+  .comp-head{background:#faf7f2;padding:9px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line)}
+  .comp-head .nm{font-weight:700;font-size:13px}
+  .comp-head .wt{font-size:11px;color:var(--maroon);font-weight:700;background:#fbeec9;padding:2px 8px;border-radius:10px}
+  .comp-body{padding:6px 12px 12px}
+  .lvl{display:flex;gap:8px;padding:7px 8px;border-radius:6px;cursor:pointer;border:1px solid transparent;align-items:flex-start;margin-top:4px}
+  .lvl:hover{background:#fafafa}
+  .lvl.sel{background:#f3e9ea;border-color:var(--maroon)}
+  .lvl input{width:auto;margin-top:3px;flex-shrink:0}
+  .lvl .lbl{font-weight:700;font-size:12px;min-width:120px;flex-shrink:0}
+  .lvl .desc{font-size:12px;color:#444}
+  .lvl .pts{font-size:10.5px;color:var(--muted);font-weight:700;margin-left:auto;flex-shrink:0}
+  .section-tag{display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:2px 8px;border-radius:10px;margin-bottom:6px}
+  .tag-att{background:#e8f4ec;color:var(--green)}
+  .tag-skill{background:#eef2f7;color:var(--blue)}
+  .tag-know{background:#fbeec9;color:var(--amber)}
+  .placeholder{background:#fff8e1;border:1px dashed var(--amber);border-radius:6px;padding:8px 10px;font-size:11.5px;color:var(--amber);margin:6px 0}
+  .scorebar{position:sticky;bottom:0;background:#fff;border-top:2px solid var(--maroon);padding:12px 16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:0 -22px -18px;box-shadow:0 -4px 12px rgba(0,0,0,.06)}
+  .scorebig{font-size:26px;font-weight:800;color:var(--maroon)}
+  .recchip{padding:4px 12px;border-radius:6px;font-weight:700;font-size:13px}
+  .rec-strong{background:#e8f4ec;color:var(--green)}
+  .rec-rec{background:#eef7ec;color:#4a7c3f}
+  .rec-hold{background:#fbeec9;color:var(--amber)}
+  .rec-rej{background:#fbe9e7;color:var(--red)}
+  .redflags{display:flex;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .redflags label{display:flex;gap:6px;align-items:center;font-weight:500;margin:0;font-size:12.5px}
+  .redflags input{width:auto}
+  .divg{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px}
+  .divg-ok{background:#e8f4ec;color:var(--green)}
+  .divg-warn{background:#fbe9e7;color:var(--red)}
+  .panelist-row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+  .empty{text-align:center;padding:36px;color:var(--muted)}
+  .mini{font-size:11px;color:var(--muted)}
+  .valuebox{background:#faf7f2;border-left:3px solid var(--gold);padding:8px 12px;font-size:12px;margin-bottom:10px;border-radius:0 6px 6px 0}
+  @media(max-width:680px){.grid2,.grid3{grid-template-columns:1fr}.lvl{flex-wrap:wrap}.lvl .lbl{min-width:auto}}
+</style>
+</head>
+<body>
+
+<div id="pinGate">
+  <div class="pin-screen">
+    <div class="logo">CP</div>
+    <h2 style="color:var(--maroon);font-size:17px;margin-bottom:4px">Interviewer Platform</h2>
+    <p class="muted" style="font-size:12px;margin-bottom:16px">Centre Point Amravati · Recruitment 2026</p>
+    <input type="password" id="pinInput" placeholder="Enter PIN" maxlength="6" style="text-align:center;letter-spacing:4px;font-size:18px" onkeydown="if(event.key==='Enter')checkPin()">
+    <div id="pinErr" style="color:var(--red);font-size:12px;margin-top:8px;display:none">Wrong PIN</div>
+    <button class="btn" style="width:100%;margin-top:14px" onclick="checkPin()">Unlock</button>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+<header>
+  <div class="brand">
+    <div class="logo">CP</div>
+    <div><h1>Interviewer Scoring Platform</h1>
+    <div class="sub">Behavioural model · Attitude 60% · Skills 25% · Knowledge 15%</div></div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn ghost sm" onclick="exportData()" style="color:#fff;border-color:#fff">Export</button>
+    <button class="btn gold sm" onclick="document.getElementById('imp').click()">Import</button>
+    <input type="file" id="imp" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-v="score" onclick="showView('score')">Score a Candidate</div>
+  <div class="tab" data-v="compare" onclick="showView('compare')">Panel Comparison</div>
+  <div class="tab" data-v="framework" onclick="showView('framework')">Framework & Guide</div>
+</div>
+
+<div class="wrap">
+
+<!-- SCORING -->
+<div class="view active" id="score">
+  <div class="card">
+    <h2>Interview Setup</h2>
+    <div class="grid3">
+      <div><label>Candidate Name <span class="req">*</span></label><input id="c_name"></div>
+      <div><label>Role Being Interviewed <span class="req">*</span></label><select id="c_role" onchange="buildScoreForm()"></select></div>
+      <div><label>Interview Date</label><input id="c_date" type="date"></div>
+    </div>
+    <div class="grid2">
+      <div><label>Panellist Name (YOU) <span class="req">*</span></label><input id="c_panelist" placeholder="Your name — each panellist scores separately"></div>
+      <div><label>Panel Role</label><select id="c_prole"><option>Panellist 1</option><option>Panellist 2</option><option>Panellist 3 (Manager committee)</option></select></div>
+    </div>
+    <div class="hint" id="panelNote"></div>
+  </div>
+
+  <div id="scoreForm"></div>
+
+  <div class="card" id="wrapCard" style="display:none">
+    <h2>Evidence, Red Flags & Recommendation</h2>
+    <label>Evidence Observed (specific examples given by candidate)</label>
+    <textarea id="c_evidence" placeholder="What did they actually say/do? Quote specifics, not impressions."></textarea>
+    <div class="grid2">
+      <div><label>Key Strengths</label><textarea id="c_strength"></textarea></div>
+      <div><label>Concerns / Development Areas</label><textarea id="c_concern"></textarea></div>
+    </div>
+    <label>Red Flags observed</label>
+    <div class="redflags">
+      <label><input type="checkbox" class="rf" value="Poor Grooming">Poor Grooming</label>
+      <label><input type="checkbox" class="rf" value="Dishonesty">Dishonesty / Integrity</label>
+      <label><input type="checkbox" class="rf" value="Poor Communication">Poor Communication</label>
+      <label><input type="checkbox" class="rf" value="Negative Attitude">Negative Attitude</label>
+      <label><input type="checkbox" class="rf" value="Frequent Job Changes">Frequent Job Changes</label>
+      <label><input type="checkbox" class="rf" value="Cultural Misfit">Cultural Misfit</label>
+    </div>
+    <div class="hint" style="margin-top:8px">Any red flag ticked overrides the numeric score — surface it to HR regardless of total.</div>
+  </div>
+
+  <div class="scorebar" id="scorebar" style="display:none">
+    <div>
+      <div class="mini">Weighted Score (this panellist)</div>
+      <span class="scorebig" id="totalScore">—</span><span class="muted" style="font-size:14px">/100</span>
+    </div>
+    <div id="recBox"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn ghost sm" onclick="resetScore()">Clear</button>
+      <button class="btn green" onclick="submitScore()">Submit My Score</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMPARE -->
+<div class="view" id="compare">
+  <div class="card">
+    <h2>Panel Comparison<span class="r">independent scores side-by-side</span></h2>
+    <p class="hint" style="margin-bottom:10px">Each panellist's submitted score appears here. Divergence &gt; 15 points is flagged — that means the panel saw the candidate differently and should discuss before deciding, not just average.</p>
+    <div class="filterbar">
+      <input id="cmpSearch" placeholder="Search candidate…" oninput="renderCompare()">
+      <select id="cmpRole" onchange="renderCompare()"><option value="">All roles</option></select>
+    </div>
+    <div id="compareBody"></div>
+  </div>
+</div>
+
+<!-- FRAMEWORK -->
+<div class="view" id="framework">
+  <div class="card">
+    <h2>Scoring Framework</h2>
+    <table>
+      <thead><tr><th>Section</th><th>Weight</th><th>Competencies</th><th>Why it's weighted this way</th></tr></thead>
+      <tbody>
+        <tr><td><b>Attitude</b></td><td>60%</td><td>Guest Orientation, Cultural Fit, Communication, Learning & Teamwork</td><td>Per CHR brief: attitude &amp; behaviour predict hospitality success more than technical knowledge, which can be trained.</td></tr>
+        <tr><td><b>Skills</b></td><td>25%</td><td>Practical assessment, Problem Solving, Grooming & Presence, PMS/Computer</td><td>Demonstrable ability the candidate should already have some of.</td></tr>
+        <tr><td><b>Knowledge</b></td><td>15%</td><td>Role Knowledge, Hospitality Awareness</td><td>Lowest weight — most teachable during induction.</td></tr>
+      </tbody>
+    </table>
+    <div class="valuebox" style="margin-top:12px"><b>Every competency is scored by behavioural MCQ, never a bare number.</b> The five levels map to Exceptional 100% · Strong 80% · Acceptable 60% · Below Expectations 40% · Not Suitable 20% of that competency's weight.</div>
+  </div>
+  <div class="card">
+    <h2>Score Interpretation</h2>
+    <table>
+      <thead><tr><th>Weighted Score</th><th>Recommendation</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td>85–100</td><td><span class="recchip rec-strong">Strongly Recommend</span></td><td>Ready for immediate hiring, aligned with CP service culture.</td></tr>
+        <tr><td>70–84</td><td><span class="recchip rec-rec">Recommend</span></td><td>Suitable with routine induction and training.</td></tr>
+        <tr><td>55–69</td><td><span class="recchip rec-hold">Hold</span></td><td>Potential, but needs further assessment or reference checks.</td></tr>
+        <tr><td>Below 55</td><td><span class="recchip rec-rej">Do Not Recommend</span></td><td>Did not meet behavioural standards for the role.</td></tr>
+      </tbody>
+    </table>
+    <div class="hint" style="margin-top:8px"><b>Red-flag override:</b> any integrity/attitude red flag routes to HR review regardless of numeric score.</div>
+  </div>
+  <div class="card">
+    <h2>Panel Composition Rule</h2>
+    <p style="font-size:12.5px">Non-manager roles (levels B, C): <b>2 independent panellists.</b> Manager roles (levels A1, A3 — GM, Ops Manager, Admin Head, Executive Chef): <b>3-member committee.</b> Each scores separately on their own device/sheet; scores are compared, not merged during the interview.</p>
+  </div>
+</div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function checkPin(){
+  if(document.getElementById('pinInput').value==='131313'){
+    document.getElementById('pinGate').style.display='none';
+    document.getElementById('app').style.display='block';init();
+  } else document.getElementById('pinErr').style.display='block';
+}
+
+/* ===== ROLES (from CPA Organogram) ===== */
+const ROLES=[
+  {code:"CPA-LDR-01",desig:"General Manager",level:"A1",dept:"Leadership"},
+  {code:"CPA-OPS-02",desig:"Operations Manager",level:"A3",dept:"Operations"},
+  {code:"CPA-ADM-03",desig:"Admin Head",level:"A3",dept:"Admin"},
+  {code:"CPA-KIT-04",desig:"Executive Chef",level:"A3",dept:"Kitchen"},
+  {code:"CPA-FO-05",desig:"Front Office Executive",level:"B1",dept:"Front Office"},
+  {code:"CPA-ADM-06",desig:"Admin Executive",level:"B1",dept:"Admin"},
+  {code:"CPA-SEC-07",desig:"Security Executive",level:"B1",dept:"Security"},
+  {code:"CPA-FB-08",desig:"F&B Executive",level:"B1",dept:"F&B Service"},
+  {code:"CPA-ENG-09",desig:"Engineering Executive",level:"B1",dept:"Engineering"},
+  {code:"CPA-HK-10",desig:"Housekeeping Executive",level:"B1",dept:"Housekeeping"},
+  {code:"CPA-KIT-11",desig:"CDP",level:"B1FP",dept:"Kitchen"},
+  {code:"CPA-KIT-12",desig:"DCDP",level:"B2FP",dept:"Kitchen"},
+  {code:"CPA-FB-13",desig:"Captain",level:"B2",dept:"F&B Service"},
+  {code:"CPA-HK-14",desig:"HK Supervisor",level:"B2",dept:"Housekeeping"},
+  {code:"CPA-KST-15",desig:"KST Supervisor",level:"B2",dept:"Kitchen Stewarding"},
+  {code:"CPA-ENG-16",desig:"Engineering Associate",level:"C1",dept:"Engineering"},
+  {code:"CPA-FB-17",desig:"F&B Associate",level:"C1",dept:"F&B Service"},
+  {code:"CPA-KIT-18",desig:"Sr. Commi",level:"C1FP",dept:"Kitchen"},
+  {code:"CPA-KIT-19",desig:"Jr. Commi",level:"C2FP",dept:"Kitchen"},
+  {code:"CPA-FO-20",desig:"Front Office Associate",level:"C1",dept:"Front Office"},
+  {code:"CPA-HK-21",desig:"HK Associate",level:"C1",dept:"Housekeeping"},
+  {code:"CPA-STR-22",desig:"Store Associate",level:"C1",dept:"Stores"},
+  {code:"CPA-SEC-23",desig:"Security Guard",level:"C1",dept:"Security"},
+  {code:"CPA-FO-24",desig:"Valet",level:"C1",dept:"Front Office"},
+  {code:"CPA-FO-25",desig:"Bell Boy",level:"C2",dept:"Front Office"},
+  {code:"CPA-KST-26",desig:"KST",level:"C2",dept:"Kitchen Stewarding"},
+];
+function isMgr(l){return l.charAt(0)==='A';}
+
+/* ===== BEHAVIOURAL LEVELS (shared 5-level scale) ===== */
+const LEVELS=[
+  {lbl:"Exceptional",pct:1.0},
+  {lbl:"Strong",pct:0.8},
+  {lbl:"Acceptable",pct:0.6},
+  {lbl:"Below Expectations",pct:0.4},
+  {lbl:"Not Suitable",pct:0.2},
+];
+
+/* ===== ATTITUDE BLOCK — common to ALL roles (60%) ===== */
+/* anchors drawn from your Behaviour-Based sample + Cultural Fit added, anchored to observable behaviour */
+const ATTITUDE=[
+  {key:"guest",name:"Guest Orientation",wt:20,section:"att",anchors:[
+    "Naturally creates a warm first impression; gave a specific example of anticipating a guest need or going beyond role. Would represent CP unsupervised.",
+    "Friendly, courteous, guest-focused; handles most interactions confidently with only minor coaching needed.",
+    "Understands service matters and is polite, but lacks confidence or consistency; suitable with structured training.",
+    "Basic responses, limited warmth/empathy/ownership; may struggle in demanding guest situations.",
+    "No service mindset; appears indifferent to guests or inconsistent with CP standards."
+  ]},
+  {key:"culture",name:"Cultural Fit (Centre Point values)",wt:15,section:"att",anchors:[
+    "Gave concrete examples showing flexibility AND focus; values align with CP (guest-first, ownership, respect). Adapts without losing standards.",
+    "Clearly shares CP's service values; showed willingness to flex to guest/team needs with a real example.",
+    "Values broadly compatible; stated the right intent but example was generic or hypothetical.",
+    "Some value tension — rigid where flexibility is needed, or flexible where standards must hold.",
+    "Values conflict with CP culture; dismissive of guest-first or team-first behaviour."
+  ]},
+  {key:"comm",name:"Communication",wt:15,section:"att",anchors:[
+    "Speaks confidently, listens actively, explains clearly, professional throughout, strong eye contact.",
+    "Clear and confident communication, only minor improvement needed.",
+    "Communicates basic information but needs coaching in confidence, fluency or professional language.",
+    "Frequently struggles to express thoughts; repeated clarification needed.",
+    "Communication inadequate for a guest-facing hospitality role."
+  ]},
+  {key:"team",name:"Learning Attitude & Teamwork",wt:10,section:"att",anchors:[
+    "Highly coachable and collaborative; actively seeks feedback; gave a real example of helping a teammate.",
+    "Works well with others, willing to learn.",
+    "Learns with supervision, contributes when guided.",
+    "Shows resistance to feedback or teamwork.",
+    "Negative attitude toward learning or collaboration."
+  ]},
+];
+
+/* ===== SKILLS (25%) & KNOWLEDGE (15%) ===== */
+/* Real content only for Front Office roles. Others = placeholder flags. */
+const FO_SKILLS=[
+  {key:"practical",name:"Practical Assessment (mock check-in / scenario)",wt:12,section:"skill",anchors:[
+    "Handled mock check-in and an early-check-in/room-not-ready scenario smoothly; upsold naturally; professional phone manner.",
+    "Completed the mock tasks well with minor prompting.",
+    "Managed basic scenario but hesitant on upsell or problem scenario.",
+    "Struggled with the practical scenario; needed heavy guidance.",
+    "Could not perform the core front-desk task."
+  ]},
+  {key:"problem",name:"Problem Solving",wt:8,section:"skill",anchors:[
+    "Stayed calm on the 'guest shouting' scenario; proposed a clear, guest-preserving resolution with ownership.",
+    "Reasonable resolution with good composure.",
+    "Basic resolution, some composure but limited ownership.",
+    "Flustered; resolution weak or deflected blame.",
+    "No workable approach; poor conflict handling."
+  ]},
+  {key:"groom",name:"Grooming & Professional Presence",wt:5,section:"skill",anchors:[
+    "Polished, hotel-ready; excellent posture, hygiene, etiquette.",
+    "Well groomed and professional, minor improvements only.",
+    "Meets minimum hospitality expectation, needs coaching.",
+    "Grooming/body language below hospitality standard.",
+    "Appearance/conduct inconsistent with CP image."
+  ]},
+];
+const FO_KNOW_ASSOC=[
+  {key:"foknow",name:"Front Office Knowledge",wt:10,section:"know",anchors:[
+    "Confidently explained check-in documents, difference between reservation/registration/check-in, and guest folio.",
+    "Good grasp of core FO concepts, minor gaps.",
+    "Basic understanding of the fundamentals.",
+    "Limited; unsure on most FO basics.",
+    "No relevant front-office knowledge."
+  ]},
+  {key:"hosaware",name:"Hospitality Awareness",wt:5,section:"know",anchors:[
+    "Strong sense of hospitality industry, brand awareness, guest-lifecycle understanding.",
+    "Good general awareness.","Average awareness.","Weak awareness.","No awareness."
+  ]},
+];
+const FO_KNOW_EXEC=[
+  {key:"foknow",name:"Front Office Knowledge (Executive)",wt:10,section:"know",anchors:[
+    "Explained overbooking management and shift-closing/cash handling clearly, in addition to core FO concepts.",
+    "Good grasp incl. some supervisory concepts, minor gaps.",
+    "Basic fundamentals but weak on supervisory topics.",
+    "Limited; unsure on most executive-level FO topics.",
+    "No relevant executive front-office knowledge."
+  ]},
+  {key:"hosaware",name:"Hospitality Awareness",wt:5,section:"know",anchors:[
+    "Strong industry/brand awareness and guest-lifecycle understanding.",
+    "Good general awareness.","Average awareness.","Weak awareness.","No awareness."
+  ]},
+];
+/* generic placeholder skills/knowledge for non-FO roles */
+function placeholderSkills(){return[
+  {key:"practical",name:"[PLACEHOLDER — HOD to replace] Practical / Trade Assessment",wt:15,section:"skill",placeholder:true,anchors:[
+    "Demonstrated the core practical task for this role at an expert level.",
+    "Performed the core task well with minor prompting.",
+    "Basic competence, needs training.",
+    "Struggled with the core practical task.",
+    "Could not perform the core task."
+  ]},
+  {key:"groom",name:"Grooming & Professional Presence",wt:10,section:"skill",anchors:[
+    "Polished, hotel-ready; excellent posture, hygiene, etiquette.",
+    "Well groomed and professional, minor improvements only.",
+    "Meets minimum expectation, needs coaching.",
+    "Below hospitality standard.",
+    "Inconsistent with CP image."
+  ]},
+];}
+function placeholderKnow(){return[
+  {key:"roleknow",name:"[PLACEHOLDER — HOD to replace] Role / Technical Knowledge",wt:10,section:"know",placeholder:true,anchors:[
+    "Strong role-specific technical knowledge.","Good, minor gaps.","Basic.","Limited.","None."
+  ]},
+  {key:"hosaware",name:"Hospitality Awareness",wt:5,section:"know",anchors:[
+    "Strong industry awareness.","Good.","Average.","Weak.","None."
+  ]},
+];}
+
+function buildCompetencies(role){
+  const att=ATTITUDE.map(c=>({...c}));
+  let skills,know;
+  if(role.desig==="Front Office Associate"){skills=FO_SKILLS.map(c=>({...c}));know=FO_KNOW_ASSOC.map(c=>({...c}));}
+  else if(role.desig==="Front Office Executive"){skills=FO_SKILLS.map(c=>({...c}));know=FO_KNOW_EXEC.map(c=>({...c}));}
+  else {skills=placeholderSkills();know=placeholderKnow();}
+  return [...att,...skills,...know];
+}
+
+/* ===== STATE ===== */
+let SCORES=[]; // submitted panellist scores
+let curComps=[]; let curSel={};
+
+function init(){
+  const sel=document.getElementById('c_role');
+  sel.innerHTML='<option value="">— select role —</option>'+ROLES.map(r=>`<option value="${r.code}">${r.desig} · ${r.level}${isMgr(r.level)?' · Manager (3-panel)':''}</option>`).join('');
+  const cr=document.getElementById('cmpRole');
+  cr.innerHTML='<option value="">All roles</option>'+[...new Set(ROLES.map(r=>r.desig))].map(d=>`<option>${d}</option>`).join('');
+  document.getElementById('c_date').value=new Date().toISOString().slice(0,10);
+}
+
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById(v).classList.add('active');
+  document.querySelector(`.tab[data-v="${v}"]`).classList.add('active');
+  if(v==='compare')renderCompare();
+}
+
+function buildScoreForm(){
+  const code=document.getElementById('c_role').value;
+  const role=ROLES.find(r=>r.code===code);
+  const host=document.getElementById('scoreForm');
+  if(!role){host.innerHTML='';document.getElementById('scorebar').style.display='none';document.getElementById('wrapCard').style.display='none';return;}
+  document.getElementById('panelNote').innerHTML=isMgr(role.level)
+    ? '<b style="color:var(--amber)">Manager role — 3-member committee.</b> Each of the 3 scores independently.'
+    : '2-member panel. Each scores independently.';
+  curComps=buildCompetencies(role);curSel={};
+  const secNames={att:'Attitude — 60%',skill:'Skills — 25%',know:'Knowledge — 15%'};
+  const secTag={att:'tag-att',skill:'tag-skill',know:'tag-know'};
+  let html='';let lastSec='';
+  curComps.forEach((c,ci)=>{
+    if(c.section!==lastSec){html+=`<div class="card"><span class="section-tag ${secTag[c.section]}">${secNames[c.section]}</span>`;lastSec=c.section;
+      // close previous card handled by grouping; simpler: one card per section
+    }
+    if(ci>0 && curComps[ci-1].section!==c.section){/* handled below */}
+  });
+  // simpler: render section by section
+  html='';
+  ['att','skill','know'].forEach(sec=>{
+    const comps=curComps.filter(c=>c.section===sec);
+    html+=`<div class="card"><span class="section-tag ${secTag[sec]}">${secNames[sec]}</span>`;
+    comps.forEach(c=>{
+      const gci=curComps.indexOf(c);
+      html+=`<div class="comp-block"><div class="comp-head"><span class="nm">${c.name}</span><span class="wt">${c.wt}%</span></div><div class="comp-body">`;
+      if(c.placeholder)html+=`<div class="placeholder">⚠ Placeholder content — the ${role.dept} HOD must replace these anchors with real trade-specific behaviours before this role goes live.</div>`;
+      c.anchors.forEach((a,li)=>{
+        html+=`<label class="lvl" id="lvl_${gci}_${li}" onclick="pick(${gci},${li})">
+          <input type="radio" name="comp_${gci}">
+          <span class="lbl">${LEVELS[li].lbl}</span>
+          <span class="desc">${a}</span>
+          <span class="pts">${Math.round(c.wt*LEVELS[li].pct)}</span>
+        </label>`;
+      });
+      html+=`</div></div>`;
+    });
+    html+=`</div>`;
+  });
+  host.innerHTML=html;
+  document.getElementById('scorebar').style.display='flex';
+  document.getElementById('wrapCard').style.display='block';
+  updateTotal();
+}
+function pick(ci,li){
+  curSel[ci]=li;
+  curComps.forEach((c,i)=>{if(i===ci){c.anchors.forEach((a,l)=>{document.getElementById(`lvl_${i}_${l}`).classList.toggle('sel',l===li);});}});
+  updateTotal();
+}
+function updateTotal(){
+  let total=0,answered=0;
+  curComps.forEach((c,i)=>{if(curSel[i]!==undefined){total+=c.wt*LEVELS[curSel[i]].pct;answered++;}});
+  const el=document.getElementById('totalScore');
+  const rec=document.getElementById('recBox');
+  if(answered<curComps.length){el.textContent=Math.round(total);rec.innerHTML=`<span class="mini">${answered}/${curComps.length} scored</span>`;return;}
+  const t=Math.round(total);el.textContent=t;
+  let cls,txt;
+  if(t>=85){cls='rec-strong';txt='Strongly Recommend';}
+  else if(t>=70){cls='rec-rec';txt='Recommend';}
+  else if(t>=55){cls='rec-hold';txt='Hold';}
+  else{cls='rec-rej';txt='Do Not Recommend';}
+  rec.innerHTML=`<span class="recchip ${cls}">${txt}</span>`;
+}
+function submitScore(){
+  const name=document.getElementById('c_name').value.trim();
+  const role=document.getElementById('c_role').value;
+  const pan=document.getElementById('c_panelist').value.trim();
+  if(!name||!role||!pan){toast('Candidate, role and your name are required');return;}
+  if(Object.keys(curSel).length<curComps.length){toast('Score every competency first');return;}
+  let total=0;curComps.forEach((c,i)=>total+=c.wt*LEVELS[curSel[i]].pct);
+  const flags=[...document.querySelectorAll('.rf:checked')].map(x=>x.value);
+  const roleObj=ROLES.find(r=>r.code===role);
+  SCORES.push({
+    id:'S'+Date.now(),candidate:name,role,roleName:roleObj.desig,level:roleObj.level,
+    date:document.getElementById('c_date').value,panelist:pan,prole:document.getElementById('c_prole').value,
+    total:Math.round(total),
+    breakdown:curComps.map((c,i)=>({name:c.name,section:c.section,level:LEVELS[curSel[i]].lbl,pts:Math.round(c.wt*LEVELS[curSel[i]].pct)})),
+    evidence:document.getElementById('c_evidence').value.trim(),
+    strength:document.getElementById('c_strength').value.trim(),
+    concern:document.getElementById('c_concern').value.trim(),
+    flags
+  });
+  toast('Score submitted: '+pan+' → '+name);
+  resetScore();
+}
+function resetScore(){
+  document.getElementById('c_name').value='';document.getElementById('c_panelist').value='';
+  document.getElementById('c_evidence').value='';document.getElementById('c_strength').value='';document.getElementById('c_concern').value='';
+  document.querySelectorAll('.rf').forEach(x=>x.checked=false);
+  curSel={};buildScoreForm();
+}
+
+/* ===== COMPARE ===== */
+function renderCompare(){
+  const q=(document.getElementById('cmpSearch').value||'').toLowerCase();
+  const fr=document.getElementById('cmpRole').value;
+  // group by candidate+role
+  const groups={};
+  SCORES.filter(s=>{if(q&&!s.candidate.toLowerCase().includes(q))return false;if(fr&&s.roleName!==fr)return false;return true;})
+    .forEach(s=>{const k=s.candidate+'||'+s.role;(groups[k]=groups[k]||[]).push(s);});
+  const keys=Object.keys(groups);
+  if(!keys.length){document.getElementById('compareBody').innerHTML='<div class="empty">No submitted scores yet.</div>';return;}
+  let html='';
+  keys.forEach(k=>{
+    const g=groups[k];const s0=g[0];
+    const need=isMgr(s0.level)?3:2;
+    const totals=g.map(x=>x.total);
+    const avg=Math.round(totals.reduce((a,b)=>a+b,0)/totals.length);
+    const spread=Math.max(...totals)-Math.min(...totals);
+    const diverged=spread>15;
+    const anyFlag=g.some(x=>x.flags.length);
+    let cls,txt;
+    if(avg>=85){cls='rec-strong';txt='Strongly Recommend';}else if(avg>=70){cls='rec-rec';txt='Recommend';}else if(avg>=55){cls='rec-hold';txt='Hold';}else{cls='rec-rej';txt='Do Not Recommend';}
+    html+=`<div class="comp-block"><div class="comp-head">
+      <span class="nm">${s0.candidate} <span class="mini">· ${s0.roleName}${isMgr(s0.level)?' · Committee':''}</span></span>
+      <span>${diverged?'<span class="divg divg-warn">⚠ Diverged '+spread+'pts</span>':'<span class="divg divg-ok">Aligned</span>'}</span>
+    </div><div class="comp-body">
+      <table><thead><tr><th>Panellist</th><th>Role</th><th>Score</th><th>Flags</th></tr></thead><tbody>
+      ${g.map(x=>`<tr><td>${x.panelist}</td><td>${x.prole}</td><td><b>${x.total}</b>/100</td><td>${x.flags.length?'<span style="color:var(--red)">'+x.flags.join(', ')+'</span>':'—'}</td></tr>`).join('')}
+      </tbody></table>
+      <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <div><span class="mini">Panel average</span> <b style="font-size:18px;color:var(--maroon)">${avg}</b>/100 · <span class="recchip ${cls}">${txt}</span> · ${g.length}/${need} panellists in</div>
+      </div>
+      ${diverged?'<div class="hint" style="color:var(--red);margin-top:6px"><b>Discuss before deciding.</b> Panellists scored this candidate '+spread+' points apart — do not simply average. Reconcile what one saw that the other did not.</div>':''}
+      ${anyFlag?'<div class="hint" style="color:var(--red);margin-top:4px"><b>Red flag raised</b> by at least one panellist — route to HR review regardless of score.</div>':''}
+      ${g.length<need?'<div class="hint" style="margin-top:4px">Waiting on '+(need-g.length)+' more panellist(s).</div>':''}
+    </div></div>`;
+  });
+  document.getElementById('compareBody').innerHTML=html;
+}
+
+/* ===== IO ===== */
+function exportData(){
+  const blob=new Blob([JSON.stringify({exported:new Date().toISOString(),unit:'Centre Point Amravati',scores:SCORES},null,2)],{type:'application/json'});
+  const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download='CPA_interview_scores_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(u);
+  toast('Exported '+SCORES.length+' scores');
+}
+function importData(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(d.scores){SCORES=d.scores;renderCompare();toast('Imported '+SCORES.length+' scores');}else toast('Invalid file');}catch(x){toast('Could not read file');}};r.readAsText(f);e.target.value='';}
+
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+window.onload=()=>document.getElementById('pinInput').focus();
+</script>
+</body>
+</html>

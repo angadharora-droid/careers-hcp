@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@theme {
+  /* Centre Point Nagpur design system (centrepointnagpur.com) */
+  --color-cream: #f8ede2;        /* page background (site-wide on the reference) */
+  --color-beige: #f0dfcd;        /* panels, inputs, alt sections, table headers */
+  --color-beige-deep: #efddc9;
+  --color-berry: #a80564;        /* PRIMARY accent — buttons, links, active nav */
+  --color-berry-dark: #7e044e;   /* hover */
+  --color-berry-soft: #f7e2ef;   /* berry tint backgrounds (selected rows, chips) */
+  --color-ink: #000000;          /* headings / nav */
+  --color-body: #393939;         /* body text */
+  --color-muted: #6b6257;        /* warm gray — AA contrast on cream/beige for small labels */
+  --color-line: #e6d9c8;         /* warm hairline borders */
+  --color-card: #ffffff;
+  --color-footer: #191919;       /* near-black footer */
+  --color-brand-green: #2e7d4f;
+  --color-brand-red: #b3261e;
+  --color-brand-amber: #b8860b;
+  --color-brand-blue: #2c5f8a;
+
+  --font-display: "Cormorant Garamond", Georgia, "Times New Roman", serif;
+  --font-label: "Marcellus", Georgia, serif;
+  --font-sans: "Inter", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-button: "Jost", "Inter", sans-serif;
+}
+
+/* ---------- UX standards (see FRONTEND_GUIDE.md) ---------- */
+
+/* Focus & keyboard: one visible focus style everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-berry);
+  outline-offset: 2px;
+}
+
+/* Smooth 200ms ease-out interaction transitions on every interactive element */
+a,
+button,
+input,
+select,
+textarea,
+summary,
+[role="button"] {
+  transition-property: color, background-color, border-color, outline-color,
+    text-decoration-color, opacity, transform;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0, 0, 0.2, 1);
+}
+
+/* Press feedback on pressable things (transform/opacity only) */
+button:not(:disabled):active,
+[role="button"]:active {
+  transform: scale(0.98);
+}
+a:active {
+  opacity: 0.8;
+}
+
+/* Entrance motion — transform/opacity only. `backwards` fill so the element
+   is hidden during its stagger delay but nothing sticks after the animation,
+   leaving hover transforms free to apply. */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.card-enter {
+  animation: rise-in 240ms ease-out backwards;
+}
+.toast-enter {
+  animation: rise-in 200ms ease-out backwards;
+}
+
+/* Scroll reveal (used via the Reveal component; transform/opacity only) */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 400ms ease-out, transform 400ms ease-out;
+}
+.reveal-in {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Reduced motion: effectively disable all motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
