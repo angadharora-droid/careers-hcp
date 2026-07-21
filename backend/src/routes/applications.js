@@ -45,11 +45,14 @@ async function withDerived(app) {
 
 /* ===== HR: list / detail ===== */
 
-// GET /api/applications?stage=&q=&red_flag=true
+// GET /api/applications?stage=&q=&department=&job_code=&grade=&red_flag=true
 router.get('/', requireRole('hr_admin'), async (req, res) => {
-  const { stage, q, red_flag } = req.query;
+  const { stage, q, red_flag, department, job_code, grade } = req.query;
   const filter = {};
   if (stage) filter.stage = stage;
+  if (department) filter.department = department;
+  if (job_code) filter.job_code = job_code;
+  if (grade) filter.grade = grade;
   if (q) filter.$or = [
     { candidate_name: { $regex: q, $options: 'i' } },
     { job_code: { $regex: q, $options: 'i' } },

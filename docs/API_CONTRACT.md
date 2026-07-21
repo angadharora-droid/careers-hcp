@@ -88,6 +88,10 @@ Application (HR view) includes candidate fields plus:
 ```
 `panel_size` is a legacy alias of `rounds` and carries the same number.
 
+### Pipeline list — `GET /applications`
+Query: `stage`, `q` (candidate name / job code / reference), `department`, `job_code`, `grade`, `red_flag=true`.
+All compose; omitting a param leaves that dimension unfiltered. → `{ applications: [Application] }`
+
 ### Stage change — `PATCH /applications/:id/stage`
 Body: `{ stage, rejection_reason?, interview_date?, date_of_joining?, offered_salary?, position_id?, allow_partial_panel? }`
 Server-enforced rules (surface the returned `error` to the user):

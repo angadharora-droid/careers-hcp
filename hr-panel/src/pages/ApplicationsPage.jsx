@@ -61,6 +61,8 @@ export default function ApplicationsPage() {
   const [err, setErr] = useState(null);
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
+  const [dept, setDept] = useState('');
+  const [job, setJob] = useState('');
   const [openId, setOpenId] = useState(null);
 
   const debounce = useRef(null);
@@ -88,17 +90,48 @@ export default function ApplicationsPage() {
     return () => clearTimeout(debounce.current);
   }, [q, load]);
 
+  // Filter options come from the applications actually on hand, so the dropdowns
+  // never offer a department or role with nothing behind it. Jobs narrow to the
+  // chosen department.
+  const departments = useMemo(
+    () => [...new Set(apps.map((a) => a.department).filter(Boolean))].sort(),
+    [apps]
+  );
+  const jobs = useMemo(() => {
+    const pool = dept ? apps.filter((a) => a.department === dept) : apps;
+    const byCode = new Map();
+    for (const a of pool) if (a.job_code && !byCode.has(a.job_code)) byCode.set(a.job_code, a.designation);
+    return [...byCode].sort((x, y) => String(x[1]).localeCompare(String(y[1])));
+  }, [apps, dept]);
+
+  // Department/job narrow the pool the stage chips count, so a chip always reports
+  // how many of THAT filtered set sit at that stage.
+  const scoped = useMemo(
+    () => apps.filter((a) => (!dept || a.department === dept) && (!job || a.job_code === job)),
+    [apps, dept, job]
+  );
+
   const counts = useMemo(() => {
     const c = {};
     for (const s of STAGES) c[s] = 0;
-    for (const a of apps) if (c[a.stage] !== undefined) c[a.stage] += 1;
+    for (const a of scoped) if (c[a.stage] !== undefined) c[a.stage] += 1;
     return c;
-  }, [apps]);
+  }, [scoped]);
 
   const displayed = useMemo(
-    () => (stage ? apps.filter((a) => a.stage === stage) : apps),
-    [apps, stage]
+    () => (stage ? scoped.filter((a) => a.stage === stage) : scoped),
+    [scoped, stage]
   );
+
+  const filtered = Boolean(q || stage || dept || job);
+  function clearAll() { setQ(''); setStage(''); setDept(''); setJob(''); }
+
+  // Name the export after whatever narrowed it, so downloaded files stay tellable apart.
+  const slug = (s) => String(s).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
+  function csvScope() {
+    const parts = [dept && slug(dept), job && slug(job), stage && slug(stage)].filter(Boolean);
+    return parts.length ? `${parts.join('-')}-` : '';
+  }
 
   function stageChipCls(active) {
     return `inline-flex items-center gap-1.5 font-button text-[11px] font-medium uppercase tracking-[1.5px] px-3 py-1.5 min-h-10 rounded-sm border cursor-pointer transition-colors duration-150 active:scale-[0.98] ${
@@ -125,7 +158,7 @@ export default function ApplicationsPage() {
             onClick={() => setStage('')}
           >
             All
-            <span className="tabular-nums font-semibold">{apps.length}</span>
+            <span className="tabular-nums font-semibold">{scoped.length}</span>
           </button>
           {STAGES.map((s) => (
             <button
@@ -152,10 +185,46 @@ export default function ApplicationsPage() {
               onChange={(e) => setQ(e.target.value)}
             />
           </div>
+
+          <select
+            className="inp w-auto min-w-[170px]"
+            aria-label="Filter by department"
+            value={dept}
+            onChange={(e) => {
+              const next = e.target.value;
+              setDept(next);
+              // The chosen role may not exist in the new department — drop it.
+              if (job && next && !apps.some((a) => a.job_code === job && a.department === next)) setJob('');
+            }}
+          >
+            <option value="">All departments</option>
+            {departments.map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+
+          <select
+            className="inp w-auto min-w-[210px]"
+            aria-label="Filter by job"
+            value={job}
+            onChange={(e) => setJob(e.target.value)}
+          >
+            <option value="">All jobs{dept ? ` in ${dept}` : ''}</option>
+            {jobs.map(([code, designation]) => (
+              <option key={code} value={code}>{designation}</option>
+            ))}
+          </select>
+
+          {filtered && (
+            <button type="button" className="btn btn-ghost btn-sm" onClick={clearAll}>
+              Clear filters
+            </button>
+          )}
+
           <button
             type="button"
             className="btn btn-ghost btn-sm ml-auto"
-            onClick={() => exportCSV(`applications-${stage ? stage.replace(/\s+/g, '-').toLowerCase() + '-' : ''}${stamp()}.csv`, APP_CSV, displayed)}
+            onClick={() => exportCSV(`applications-${csvScope()}${stamp()}.csv`, APP_CSV, displayed)}
             disabled={displayed.length === 0}
             title="Download the applications shown below as a CSV spreadsheet"
           >
@@ -171,17 +240,17 @@ export default function ApplicationsPage() {
         ) : displayed.length === 0 ? (
           <Empty
             icon={Users}
-            title={q || stage ? 'No applications match' : 'No applications yet'}
+            title={filtered ? 'No applications match' : 'No applications yet'}
             action={
-              (q || stage) && (
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setQ(''); setStage(''); }}>
+              filtered && (
+                <button type="button" className="btn btn-ghost btn-sm" onClick={clearAll}>
                   Clear search & filters
                 </button>
               )
             }
           >
-            {q || stage
-              ? 'Try a different search term or another stage chip.'
+            {filtered
+              ? 'Try a different search term, department, job or stage.'
               : 'Candidates who apply on the public Careers site appear here automatically.'}
           </Empty>
         ) : (
@@ -202,7 +271,10 @@ export default function ApplicationsPage() {
                       <div className="mini font-mono">{a.reference_id}</div>
                     </td>
                     <td className="pcn">{a.job_code}</td>
-                    <td>{a.designation}</td>
+                    <td>
+                      {a.designation}
+                      <div className="mini">{a.department}{a.grade ? ` · ${a.grade}` : ''}</div>
+                    </td>
                     <td className="num">{a.total_experience_years ?? '—'}y</td>
                     <td>
                       <StageBadge stage={a.stage} />
