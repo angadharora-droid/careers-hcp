@@ -7,7 +7,8 @@ import PanelScore from '../models/PanelScore.js';
 import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
-  RECRUITABLE_STATUSES, recruitable, panelSizeForGrade, scoreSummary, wordCount,
+  RECRUITABLE_STATUSES, recruitable, roundsForGrade, scoreSummary, wordCount,
+  applyPanelRule, resolvePanelRule,
 } from '../utils/helpers.js';
 import { buildOfferLetter } from '../utils/offerLetter.js';
 import { isEmailConfigured, sendMail } from '../utils/mailer.js';
@@ -16,24 +17,29 @@ const router = Router();
 router.use(requireAuth);
 
 async function withDerived(app) {
-  const [scores, assignments, panelSize] = await Promise.all([
+  const [scores, assignments, rounds] = await Promise.all([
     PanelScore.find({ application_id: app._id }),
     PanelAssignment.find({ application_id: app._id }).populate('interviewer_user_id', 'name email department designation'),
-    panelSizeForGrade(app.grade),
+    roundsForGrade(app.grade),
   ]);
   const o = app.toObject({ versionKey: false });
   o.id = o._id;
-  o.panel_size = panelSize;
-  o.score_summary = scoreSummary(scores, panelSize);
-  o.panel_assignments = assignments.map((a) => ({
-    id: a._id,
-    interviewer: a.interviewer_user_id
-      ? { id: a.interviewer_user_id._id, name: a.interviewer_user_id.name, department: a.interviewer_user_id.department, designation: a.interviewer_user_id.designation }
-      : null,
-    panel_role: a.panel_role,
-    status: a.status,
-    assigned_at: a.assigned_at,
-  }));
+  o.rounds = rounds;
+  o.panel_size = rounds; // retained for existing clients
+  o.score_summary = scoreSummary(scores, rounds);
+  o.panel_assignments = assignments
+    .sort((a, b) => a.round - b.round)
+    .map((a) => ({
+      id: a._id,
+      round: a.round,
+      interviewer: a.interviewer_user_id
+        ? { id: a.interviewer_user_id._id, name: a.interviewer_user_id.name, department: a.interviewer_user_id.department, designation: a.interviewer_user_id.designation }
+        : null,
+      panel_role: a.panel_role,
+      status: a.status,
+      auto_assigned: a.auto_assigned,
+      assigned_at: a.assigned_at,
+    }));
   return o;
 }
 
@@ -112,18 +118,21 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
   }
   if (stage === 'Interview Scheduled') {
     app.interview_date = String(interview_date || '').trim();
+    // Lay down the fixed panel from Interview_Panel.xlsx. Silent when no rule covers
+    // this unit/grade/department — HR then assigns by hand as before.
+    await applyPanelRule(app, { assignedBy: req.user._id });
   }
 
   if (stage === 'Selected') {
-    // Gate 1: enough panellists must have scored (2 or 3 depending on grade).
-    const panelSize = await panelSizeForGrade(app.grade);
+    // Gate 1: every round must have been scored (2 or 3 depending on grade).
+    const rounds = await roundsForGrade(app.grade);
     const scores = await PanelScore.find({ application_id: app._id });
-    if (scores.length < panelSize) {
+    if (scores.length < rounds) {
       if (!allow_partial_panel || scores.length === 0) {
         return res.status(400).json({
-          error: `Recruitment gate: only ${scores.length}/${panelSize} panellists have scored. ` +
+          error: `Recruitment gate: only ${scores.length}/${rounds} interview rounds are complete. ` +
             (scores.length === 0
-              ? 'At least one score is required.'
+              ? 'At least one round must be scored.'
               : 'Pass allow_partial_panel:true to override deliberately.'),
         });
       }
@@ -264,42 +273,104 @@ router.post('/:id/send-offer', requireRole('hr_admin'), async (req, res) => {
 
 /* ===== HR: interviewer appointment ===== */
 
-// POST /api/applications/:id/assign-panel  { assignments: [{ interviewer_user_id, panel_role }] }
+// POST /api/applications/:id/assign-panel  { assignments: [{ interviewer_user_id, round }] }
+// Overrides the fixed panel. One interviewer MAY hold several rounds — the workbook
+// puts the same person in Round 1 and Round 3 on every A-grade row.
 router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
   const app = await Application.findById(req.params.id);
   if (!app) return res.status(404).json({ error: 'Application not found' });
   const list = (req.body || {}).assignments || [];
-  const panelSize = await panelSizeForGrade(app.grade);
-  if (list.length < 1 || list.length > panelSize) {
-    return res.status(400).json({ error: `This grade requires a ${panelSize}-member panel (got ${list.length})` });
+  const rounds = await roundsForGrade(app.grade);
+  if (list.length < 1 || list.length > rounds) {
+    return res.status(400).json({ error: `This grade runs ${rounds} interview rounds (got ${list.length})` });
   }
-  const ids = list.map((a) => String(a.interviewer_user_id));
-  if (new Set(ids).size !== ids.length) {
-    return res.status(400).json({ error: 'The same interviewer cannot hold two panel slots' });
+
+  // Accept a bare list (round inferred from order) or explicit round numbers.
+  const slots = list.map((a, i) => ({ interviewer_user_id: a.interviewer_user_id, round: Number(a.round) || i + 1 }));
+  const roundNos = slots.map((s) => s.round);
+  if (roundNos.some((n) => !Number.isInteger(n) || n < 1 || n > rounds)) {
+    return res.status(400).json({ error: `Round numbers must be between 1 and ${rounds}` });
   }
-  const users = await User.find({ _id: { $in: ids }, role: 'interviewer' });
+  if (new Set(roundNos).size !== roundNos.length) {
+    return res.status(400).json({ error: 'Two panellists cannot hold the same round' });
+  }
+
+  const ids = [...new Set(slots.map((s) => String(s.interviewer_user_id)))];
+  const users = await User.find({ _id: { $in: ids }, roles: 'interviewer' });
   if (users.length !== ids.length) {
     return res.status(400).json({ error: 'All panellists must be registered interviewer accounts' });
   }
 
-  // Replace semantics: drop Pending assignments not in the new list (Scored ones stay).
+  // Replace semantics: drop Pending rounds not in the new list (Scored ones stay).
   const existing = await PanelAssignment.find({ application_id: app._id });
   for (const ex of existing) {
-    if (!ids.includes(String(ex.interviewer_user_id))) {
+    if (!roundNos.includes(ex.round)) {
       if (ex.status === 'Scored') {
-        return res.status(400).json({ error: 'Cannot remove a panellist who has already scored' });
+        return res.status(400).json({ error: `Cannot remove round ${ex.round} — it has already been scored` });
       }
       await ex.deleteOne();
     }
   }
-  for (const a of list) {
+  for (const s of slots) {
+    const held = existing.find((e) => e.round === s.round);
+    if (held?.status === 'Scored' && String(held.interviewer_user_id) !== String(s.interviewer_user_id)) {
+      return res.status(400).json({ error: `Round ${s.round} has already been scored — reassign it only after clearing that score` });
+    }
     await PanelAssignment.findOneAndUpdate(
-      { application_id: app._id, interviewer_user_id: a.interviewer_user_id },
-      { panel_role: a.panel_role || 'Panellist 1', assigned_by: req.user._id },
+      { application_id: app._id, round: s.round },
+      {
+        interviewer_user_id: s.interviewer_user_id,
+        panel_role: `Round ${s.round}`,
+        assigned_by: req.user._id,
+        auto_assigned: false,
+      },
       { upsert: true, setDefaultsOnInsert: true }
     );
   }
   res.json({ application: await withDerived(app) });
+});
+
+// POST /api/applications/:id/apply-panel-rule — (re)apply the fixed panel from the
+// workbook, e.g. after HR has fiddled with it. { replace?: true } overwrites
+// unscored manual picks; scored rounds are never touched.
+router.post('/:id/apply-panel-rule', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  const { applied, rule } = await applyPanelRule(app, {
+    assignedBy: req.user._id,
+    replace: Boolean((req.body || {}).replace),
+  });
+  if (!rule) {
+    return res.status(404).json({
+      error: `No fixed panel is defined for ${app.unit_code} / grade ${app.grade} / ${app.department}. Assign the panel manually.`,
+    });
+  }
+  res.json({ application: await withDerived(app), rounds_applied: applied });
+});
+
+// GET /api/applications/:id/panel-rule — preview the fixed panel without writing it
+router.get('/:id/panel-rule', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  const rule = await resolvePanelRule(app.unit_code, app.grade, app.department);
+  if (!rule) return res.json({ rule: null });
+  await rule.populate([
+    { path: 'rounds.interviewer_user_id', select: 'name email designation department' },
+    { path: 'rounds.alternates', select: 'name email designation department' },
+  ]);
+  res.json({
+    rule: {
+      unit_code: rule.unit_code,
+      grade: rule.grade,
+      department: rule.department,
+      dept_code: rule.dept_code,
+      rounds: rule.rounds.map((s) => ({
+        round: s.round,
+        interviewer: s.interviewer_user_id,
+        alternates: s.alternates,
+      })),
+    },
+  });
 });
 
 /* ===== Shared read: panel comparison (HR + assigned interviewers) ===== */
@@ -309,23 +380,27 @@ router.get('/:id/scores', async (req, res) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ error: 'Application not found' });
   const app = await Application.findById(req.params.id);
   if (!app) return res.status(404).json({ error: 'Application not found' });
-  if (req.user.role !== 'hr_admin') {
+  // HR sees every score; a dual-role user reading as HR must not be forced down
+  // the panellist path just because 'interviewer' happens to be their primary role.
+  if (!req.user.hasRole('hr_admin')) {
     const assigned = await PanelAssignment.findOne({
       application_id: app._id, interviewer_user_id: req.user._id,
     });
     if (!assigned) return res.status(403).json({ error: 'You are not on this candidate\'s panel' });
   }
-  const scores = await PanelScore.find({ application_id: app._id }).sort('submitted_at');
-  const panelSize = await panelSizeForGrade(app.grade);
+  const scores = await PanelScore.find({ application_id: app._id }).sort('round');
+  const rounds = await roundsForGrade(app.grade);
   res.json({
     candidate_name: app.candidate_name,
     designation: app.designation,
     job_code: app.job_code,
     grade: app.grade,
     stage: app.stage,
-    summary: scoreSummary(scores, panelSize),
+    rounds,
+    summary: scoreSummary(scores, rounds),
     scores: scores.map((s) => ({
       id: s._id,
+      round: s.round,
       panelist_name: s.panelist_name,
       panel_role: s.panel_role,
       total_score: s.total_score,

@@ -7,11 +7,28 @@ import { UserPlus, Users } from '../components/Icons';
 
 const EMPTY_FORM = { name: '', email: '', department: '', designation: '', password: '', role: 'interviewer' };
 
-function RoleChip({ role }) {
-  const hr = role === 'hr_admin';
+const ROLE_LABEL = {
+  interviewer: 'Interviewer',
+  hr_admin: 'HR admin',
+  both: 'HR admin + interviewer',
+};
+
+// A person may hold both roles on one login — one chip per role.
+function RoleChips({ roles, role }) {
+  const list = roles?.length ? roles : [role].filter(Boolean);
   return (
-    <span className={`inline-block px-2 py-0.5 rounded-sm text-[11px] font-semibold uppercase tracking-[1px] ${hr ? 'bg-berry-soft text-berry' : 'bg-brand-blue/10 text-brand-blue'}`}>
-      {hr ? 'HR Admin' : 'Interviewer'}
+    <span className="inline-flex gap-1 flex-wrap">
+      {list.map((r) => {
+        const hr = r === 'hr_admin';
+        return (
+          <span
+            key={r}
+            className={`inline-block px-2 py-0.5 rounded-sm text-[11px] font-semibold uppercase tracking-[1px] ${hr ? 'bg-berry-soft text-berry' : 'bg-brand-blue/10 text-brand-blue'}`}
+          >
+            {hr ? 'HR Admin' : 'Interviewer'}
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -57,9 +74,9 @@ export default function InterviewersPage() {
         department: form.department.trim(),
         designation: form.designation.trim(),
         password: form.password,
-        role: form.role,
+        roles: form.role === 'both' ? ['interviewer', 'hr_admin'] : [form.role],
       });
-      toast(`${form.role === 'hr_admin' ? 'HR admin' : 'Interviewer'} account created: ${form.name.trim()}`);
+      toast(`${ROLE_LABEL[form.role]} account created: ${form.name.trim()}`);
       setForm(EMPTY_FORM);
       load();
     } catch (ex) {
@@ -99,7 +116,7 @@ export default function InterviewersPage() {
                   <tr key={u.id}>
                     <td className="font-bold">{u.name}</td>
                     <td>{u.email}</td>
-                    <td><RoleChip role={u.role} /></td>
+                    <td><RoleChips roles={u.roles} role={u.role} /></td>
                     <td>{u.department || '—'}</td>
                     <td>{u.designation || '—'}</td>
                   </tr>
@@ -127,6 +144,7 @@ export default function InterviewersPage() {
               <select className="inp" value={form.role} onChange={set('role')}>
                 <option value="interviewer">Interviewer</option>
                 <option value="hr_admin">HR Admin</option>
+                <option value="both">HR Admin + Interviewer</option>
               </select>
             </div>
             <div>

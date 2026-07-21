@@ -11,6 +11,7 @@ const positionSchema = new mongoose.Schema(
     pcn: { type: String, required: true, unique: true },       // CPA-FO-C1-001
     job_code: { type: String, required: true, index: true },   // CPA-FO-C1 (role-level, candidate-facing)
     unit: { type: String, default: 'Centre Point Amravati' },
+    unit_code: { type: String, default: 'CPA', index: true }, // HCP | CPA | CPNM | PABLO | DALI
     unit_class: { type: String, default: 'HT2 (Full Service Hotel)' },
     designation: { type: String, required: true },
     job_family: { type: String, default: '' },

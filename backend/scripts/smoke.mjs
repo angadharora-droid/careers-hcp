@@ -107,8 +107,27 @@ ok('application accepted with reference id', applied.status === 201 && /^CPH-/.t
 
 // auto-flip Vacant -> Under Recruitment
 const hrLogin = await req('POST', '/auth/login', { body: { email: 'hr@cph.in', password: 'hr@2026' } });
-ok('HR login', hrLogin.status === 200 && hrLogin.json.user.role === 'hr_admin');
+ok('HR login', hrLogin.status === 200 && hrLogin.json.user.roles.includes('hr_admin'));
 const hr = hrLogin.json.token;
+
+// Parag, Rajkumar and the shared recruiter run recruitment AND sit on panels:
+// one login has to open both panels.
+const dual = await req('POST', '/auth/login', { body: { email: 'cso.nagpur@cpgh.in', password: 'panel@2026' } });
+ok('dual-role login carries both roles',
+  dual.status === 200 && dual.json.user.roles.includes('hr_admin') && dual.json.user.roles.includes('interviewer'),
+  JSON.stringify(dual.json?.user?.roles));
+const dualTok = dual.json.token;
+ok('dual-role user reaches HR-only routes', (await req('GET', '/applications', { token: dualTok })).status === 200);
+ok('dual-role user reaches interviewer-only routes', (await req('GET', '/interviewer/assignments', { token: dualTok })).status === 200);
+const paragIsHr = await req('GET', '/users?role=hr_admin', { token: hr });
+ok('HR directory lists the three panel-side HR people',
+  ['cso.nagpur@cpgh.in', 'hr.units@cpgh.in', 'recruiter@cpgh.in']
+    .every((e) => paragIsHr.json.users.some((u) => u.email === e)),
+  JSON.stringify(paragIsHr.json?.users?.map((u) => u.email)));
+// …and an interviewer-only account must still be refused HR routes
+const plain = await req('POST', '/auth/login', { body: { email: 'arjun.arora@cpgh.in', password: 'panel@2026' } });
+ok('interviewer-only account refused HR routes',
+  (await req('GET', '/applications', { token: plain.json.token })).status === 403);
 
 const foSeats = await req('GET', `/positions?q=${foRole.job_code}`, { token: hr });
 const flipped = foSeats.json.positions.filter((p) => p.job_code === foRole.job_code);
@@ -140,21 +159,41 @@ await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 
 const selEarly = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Selected' } });
 ok('selection blocked with 0/2 scores', selEarly.status === 400);
 
-// appoint panel
+// the fixed panel from Interview_Panel.xlsx covers this role before HR touches it
+const rulePreview = await req('GET', `/applications/${app.id}/panel-rule`, { token: hr });
+ok('fixed panel rule found for CPA / C1 / Front Office',
+  rulePreview.status === 200 && rulePreview.json.rule?.rounds?.length === 2,
+  JSON.stringify(rulePreview.json?.rule));
+ok('round 2 of a C1 interview is the shared HR recruiter',
+  rulePreview.json.rule?.rounds?.[1]?.interviewer?.email === 'recruiter@cpgh.in',
+  rulePreview.json.rule?.rounds?.[1]?.interviewer?.email);
+
+// appoint panel — rounds, not simultaneous slots
 const users = await req('GET', '/users?role=interviewer', { token: hr });
 const [i1, i2] = users.json.users;
 const assign = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,
   body: { assignments: [
-    { interviewer_user_id: i1.id, panel_role: 'Panellist 1' },
-    { interviewer_user_id: i2.id, panel_role: 'Panellist 2' },
+    { interviewer_user_id: i1.id, round: 1 },
+    { interviewer_user_id: i2.id, round: 2 },
   ] },
 });
-ok('panel assigned (2 members)', assign.status === 200 && assign.json.application.panel_assignments.length === 2);
+ok('panel assigned (2 rounds)', assign.status === 200 && assign.json.application.panel_assignments.length === 2);
+ok('assignments carry round numbers',
+  assign.json.application.panel_assignments.map((a) => a.round).join(',') === '1,2');
 
-// schedule interview
+// two people cannot share a round
+const clash = await req('POST', `/applications/${app.id}/assign-panel`, {
+  token: hr,
+  body: { assignments: [{ interviewer_user_id: i1.id, round: 1 }, { interviewer_user_id: i2.id, round: 1 }] },
+});
+ok('two panellists in the same round rejected', clash.status === 400);
+
+// schedule interview — HR's manual picks must survive the auto-assign
 const sched = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Interview Scheduled', interview_date: '20 Jul 2026, 11:00 AM' } });
 ok('stage → Interview Scheduled', sched.status === 200);
+ok('auto-assign does not overwrite HR\'s manual panel',
+  sched.json.application.panel_assignments.every((a) => a.auto_assigned === false));
 
 // interviewer 1 scores
 const int1 = await req('POST', '/auth/login', { body: { email: i1.email, password: 'panel@2026' } });
@@ -165,6 +204,15 @@ ok('interviewer sees only assigned candidate', queue1.json.assignments.length ==
 const detail = await req('GET', `/interviewer/applications/${app.id}`, { token: t1 });
 ok('scoring form resolves FO associate competencies (9)', detail.json.competencies.length === 9, `got ${detail.json?.competencies?.length}`);
 ok('competency weights sum to 100', detail.json.competencies.reduce((s, c) => s + c.weight, 0) === 100);
+ok('round 1 is open for its interviewer', detail.json.panel.active_round === 1 && !detail.json.panel.locked_reason);
+
+// round 2 is locked until round 1 is in
+const int2early = await req('POST', '/auth/login', { body: { email: i2.email, password: 'panel@2026' } });
+const early = await req('POST', `/interviewer/applications/${app.id}/score`, {
+  token: int2early.json.token,
+  body: { competency_selections: detail.json.competencies.map((c) => ({ key: c.key, level_index: 1 })) },
+});
+ok('round 2 blocked while round 1 is unscored', early.status === 400 && /opens once round 1/.test(early.json?.error || ''), early.json?.error);
 
 const allStrong = detail.json.competencies.map((c) => ({ key: c.key, level_index: 1 })); // Strong = 80%
 const score1 = await req('POST', `/interviewer/applications/${app.id}/score`, {
@@ -173,8 +221,10 @@ const score1 = await req('POST', `/interviewer/applications/${app.id}/score`, {
 });
 ok('score 1 submitted, server total = 80', score1.status === 201 && score1.json.score.total_score === 80, `got ${score1.json?.score?.total_score}`);
 
-// unassigned interviewer is locked out
-const int3 = await req('POST', '/auth/login', { body: { email: 'chef@cph.in', password: 'panel@2026' } });
+// an interviewer who holds no round on this candidate is locked out
+const outsider = users.json.users.find((u) => u.id !== i1.id && u.id !== i2.id);
+const int3 = await req('POST', '/auth/login', { body: { email: outsider.email, password: 'panel@2026' } });
+ok('seeded panellist can log in', int3.status === 200 && !!int3.json.token, outsider.email);
 const locked = await req('GET', `/interviewer/applications/${app.id}`, { token: int3.json.token });
 ok('unassigned interviewer gets 403', locked.status === 403);
 

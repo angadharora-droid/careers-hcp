@@ -142,6 +142,8 @@ export default function Assignments() {
           {visible.map((a, i) => {
             const scheduled = a.stage === 'Interview Scheduled';
             const scored = a.status === 'Scored';
+            // Rounds run in order — this one waits until the earlier rounds are in.
+            const waiting = !scored && a.unlocked === false;
             return (
               <div
                 key={a.id}
@@ -160,7 +162,7 @@ export default function Assignments() {
                     <span className="font-mono font-bold text-berry">{a.job_code}</span> · Grade{' '}
                     {a.grade} · {a.department}
                     {isCommitteeGrade(a.grade) && (
-                      <span className="text-brand-amber font-semibold"> · 3-member committee</span>
+                      <span className="text-brand-amber font-semibold"> · 3 interview rounds</span>
                     )}
                   </div>
                   <div className="flex items-center gap-x-4 gap-y-1 flex-wrap font-button text-[11px] uppercase tracking-[1.5px] text-muted mt-1.5">
@@ -171,8 +173,13 @@ export default function Assignments() {
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <IconUsers size={14} className="shrink-0" />
-                      My role: <b className="text-ink font-semibold">{a.panel_role}</b>
+                      My round: <b className="text-ink font-semibold">{a.panel_role}</b>
                     </span>
+                    {waiting && (
+                      <span className="text-brand-amber font-semibold">
+                        Waiting for round {a.round - 1}
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -183,6 +190,10 @@ export default function Assignments() {
                       onClick={() => navigate(`/score/${a.application_id}`)}
                     >
                       Review / edit my score
+                    </button>
+                  ) : waiting ? (
+                    <button className={`${btnGhost} ${btnSm}`} disabled title={`Round ${a.round} opens once round ${a.round - 1} has been scored`}>
+                      Round {a.round} locked
                     </button>
                   ) : scheduled ? (
                     <button

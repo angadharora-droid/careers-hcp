@@ -44,9 +44,55 @@ export function recommendation(total) {
   return 'Do Not Recommend';
 }
 
-export async function panelSizeForGrade(gradeCode) {
+// How many interview ROUNDS this grade runs. Grade.panel_size carries the number
+// (3 for A-grades and above, 2 for B/C) — the same figure the workbook implies by
+// filling PANEL 1/2/3 on senior rows and only PANEL 1/2 on junior ones.
+export async function roundsForGrade(gradeCode) {
   const g = await Grade.findOne({ code: gradeCode });
   return g ? g.panel_size : 2;
+}
+
+/* ===== Fixed panel lookup (Interview_Panel.xlsx) =====
+   Most specific match wins: an exact department rule beats the unit's '*' rule.
+   Returns null when nothing matches, which leaves the panel for HR to set by hand. */
+export async function resolvePanelRule(unitCode, gradeCode, department) {
+  const PanelRule = (await import('../models/PanelRule.js')).default;
+  const candidates = await PanelRule.find({
+    unit_code: unitCode, grade: gradeCode, department: { $in: [department, '*'] },
+  });
+  if (!candidates.length) return null;
+  return candidates.find((c) => c.department === department) || candidates.find((c) => c.department === '*');
+}
+
+// Writes the fixed panel onto an application. Rounds already scored are left alone
+// so a re-run can never rewrite history; HR's manual picks survive unless `replace`.
+export async function applyPanelRule(app, { assignedBy = null, replace = false } = {}) {
+  const PanelAssignment = (await import('../models/PanelAssignment.js')).default;
+  const rule = await resolvePanelRule(app.unit_code, app.grade, app.department);
+  if (!rule) return { applied: 0, rule: null };
+
+  const existing = await PanelAssignment.find({ application_id: app._id });
+  const scoredRounds = new Set(existing.filter((e) => e.status === 'Scored').map((e) => e.round));
+  const heldRounds = new Set(existing.map((e) => e.round));
+
+  let applied = 0;
+  for (const slot of rule.rounds) {
+    if (scoredRounds.has(slot.round)) continue;
+    if (!replace && heldRounds.has(slot.round)) continue;
+    await PanelAssignment.findOneAndUpdate(
+      { application_id: app._id, round: slot.round },
+      {
+        interviewer_user_id: slot.interviewer_user_id,
+        panel_role: `Round ${slot.round}`,
+        assigned_by: assignedBy,
+        auto_assigned: true,
+        assigned_at: new Date(),
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+    applied += 1;
+  }
+  return { applied, rule };
 }
 
 // PCN generation is server-side and atomic so concurrent HR users can't collide.
@@ -79,19 +125,29 @@ export async function resolveCompetencies(profile) {
   return [...core, ...rest];
 }
 
-export function scoreSummary(scores, panelSize) {
-  if (!scores.length) return { count: 0, needed: panelSize, average: null, spread: 0, diverged: false, any_red_flags: false, recommendation: null };
+// The final recommendation is the average across all rounds, so an early round
+// carries the same weight as the last one.
+export function scoreSummary(scores, rounds) {
+  if (!scores.length) {
+    return {
+      count: 0, needed: rounds, average: null, spread: 0, diverged: false,
+      any_red_flags: false, recommendation: null, rounds_completed: [], next_round: 1,
+    };
+  }
   const totals = scores.map((s) => s.total_score);
   const average = Math.round(totals.reduce((a, b) => a + b, 0) / totals.length);
   const spread = totals.length > 1 ? Math.max(...totals) - Math.min(...totals) : 0;
+  const done = [...new Set(scores.map((s) => s.round || 1))].sort((a, b) => a - b);
   return {
     count: scores.length,
-    needed: panelSize,
+    needed: rounds,
     average,
     spread,
-    diverged: spread > 15, // >15-point divergence → panel should discuss, not average
+    diverged: spread > 15, // >15-point divergence between rounds → HR should look, not average blindly
     any_red_flags: scores.some((s) => (s.red_flags || []).length > 0),
     recommendation: recommendation(average),
+    rounds_completed: done,
+    next_round: done.length >= rounds ? null : (done.length ? Math.max(...done) + 1 : 1),
   };
 }
 

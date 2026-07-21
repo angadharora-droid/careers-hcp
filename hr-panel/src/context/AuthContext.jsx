@@ -35,7 +35,9 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const data = await api.post('/auth/login', { email, password });
-    if (!data.user || data.user.role !== 'hr_admin') {
+    // Checks membership, not the primary role — staff who also sit on interview
+    // panels (Parag, Rajkumar, the recruiter) use this one login for both panels.
+    if (!data.user || !(data.user.roles || [data.user.role]).includes('hr_admin')) {
       throw new Error('This panel is for HR administrators only');
     }
     storeSession(data.token, data.user);

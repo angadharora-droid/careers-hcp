@@ -4,7 +4,7 @@ import User from '../models/User.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'cph-dev-secret-change-in-production';
 
 export function signToken(user) {
-  return jwt.sign({ sub: user._id.toString(), role: user.role }, JWT_SECRET, { expiresIn: '12h' });
+  return jwt.sign({ sub: user._id.toString(), roles: user.roles }, JWT_SECRET, { expiresIn: '12h' });
 }
 
 export async function requireAuth(req, res, next) {
@@ -22,9 +22,11 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+// Passes when the user holds ANY of the listed roles — an account carrying both
+// hr_admin and interviewer reaches both sets of routes.
 export function requireRole(...roles) {
   return (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) {
+    if (!req.user || !req.user.hasRole(...roles)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
     next();

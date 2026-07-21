@@ -30,7 +30,8 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const data = await api('/auth/login', { method: 'POST', body: { email, password } });
-    if (!data || !data.user || data.user.role !== 'interviewer') {
+    // Membership check: an HR admin who also holds interview rounds gets in here too.
+    if (!data || !data.user || !(data.user.roles || [data.user.role]).includes('interviewer')) {
       throw new Error('This panel is for interview panellists only — use your interviewer login.');
     }
     setSession(data.token, data.user);

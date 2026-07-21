@@ -9,12 +9,21 @@ Internal panels authenticate with `Authorization: Bearer <token>`.
 
 | Endpoint | Body | Response |
 |---|---|---|
-| `POST /auth/login` | `{ email, password }` | `{ token, user: { id, name, email, role, department, designation } }` |
+| `POST /auth/login` | `{ email, password }` | `{ token, user: { id, name, email, role, roles, department, designation } }` |
 | `GET /auth/me` | — | `{ user }` |
 
-Roles: `hr_admin`, `interviewer`. Seeded logins:
-- HR: `hr@cph.in` / `hr@2026`
-- Interviewers (all `panel@2026`): `gm@cph.in`, `ops@cph.in`, `chef@cph.in`, `admin@cph.in`, `fo@cph.in`
+Roles: `hr_admin`, `interviewer`. **An account can hold both** — check membership of
+`roles`, not equality against `role`. `role` is the primary role (`roles[0]`), kept for
+display and older clients. A route admits anyone holding *any* of its required roles.
+
+Seeded logins — panellists come from `Interview_Panel.xlsx` via `seed/panelData.js`
+(28 accounts, password `panel@2026`, override with `SEED_PANEL_PASSWORD`):
+- HR only: `hr@cph.in` / `hr@2026`
+- **HR + interviewer** (run recruitment *and* sit on panels): `cso.nagpur@cpgh.in` (Parag),
+  `hr.units@cpgh.in` (Rajkumar), `recruiter@cpgh.in` (shared by all 3 recruiters)
+- Interviewer only: the remaining 25, e.g. `arjun.arora@cpgh.in`, `opsmanager.cpa@cpgh.in`
+
+Accounts written before multi-role are migrated automatically on boot (`roles: [role]`).
 
 ## Public (Career Panel — NO auth)
 
@@ -71,17 +80,20 @@ Application (HR view) includes candidate fields plus:
   "date_of_joining": "", "offered_salary": null, "offer_sent_at": null, "offer_sent_to": "",
   "applied_on": "…",
   "documents": [{ "filename": "…", "original_name": "cv.pdf" }],
+  "rounds": 2,
   "panel_size": 2,
-  "score_summary": { "count": 1, "needed": 2, "average": 78, "spread": 0, "diverged": false, "any_red_flags": false, "recommendation": "Recommend" },
-  "panel_assignments": [{ "id": "…", "interviewer": { "id", "name", "department", "designation" }, "panel_role": "Panellist 1", "status": "Pending|Scored", "assigned_at": "…" }]
+  "score_summary": { "count": 1, "needed": 2, "average": 78, "spread": 0, "diverged": false, "any_red_flags": false, "recommendation": "Recommend", "rounds_completed": [1], "next_round": 2 },
+  "panel_assignments": [{ "id": "…", "round": 1, "interviewer": { "id", "name", "department", "designation" }, "panel_role": "Round 1", "status": "Pending|Scored", "auto_assigned": true, "assigned_at": "…" }]
 }
 ```
+`panel_size` is a legacy alias of `rounds` and carries the same number.
 
 ### Stage change — `PATCH /applications/:id/stage`
 Body: `{ stage, rejection_reason?, interview_date?, date_of_joining?, offered_salary?, position_id?, allow_partial_panel? }`
 Server-enforced rules (surface the returned `error` to the user):
 - `Rejected` requires `rejection_reason`, which must be one of the standard reasons: `Frequent job changes / no stability`, `Negative attitude or poor professionalism`, `Weak communication skills`, `Not suitable for hotel culture / team fit`, `Lack of required skills or knowledge`.
-- `Selected`: requires enough panel scores (`panel_size`) — override with `allow_partial_panel:true` only if ≥1 score — AND a seat with that job_code in Vacant/Under Recruitment. Atomically fills the seat (status→Filled, occupant recorded). Response also has `filled_pcn`. Optional `date_of_joining` (ISO `YYYY-MM-DD`) and `offered_salary` (monthly, number) are stored as the offer terms.
+- `Interview Scheduled`: also writes the standing interview panel onto the application (see *Interview rounds*).
+- `Selected`: requires every round scored (`rounds`) — override with `allow_partial_panel:true` only if ≥1 score — AND a seat with that job_code in Vacant/Under Recruitment. Atomically fills the seat (status→Filled, occupant recorded). Response also has `filled_pcn`. Optional `date_of_joining` (ISO `YYYY-MM-DD`) and `offered_salary` (monthly, number) are stored as the offer terms.
 - Moving a Selected candidate to another stage releases their seat back to Under Recruitment.
 
 ### Offer letter (HR)
@@ -91,16 +103,40 @@ Server-enforced rules (surface the returned `error` to the user):
 
 SMTP is configured with `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_SECURE` (`true`/`false`), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in `backend/.env`. Without them, letter preview/print still works; only server-side emailing is disabled.
 
+### Interview rounds
+
+An interview is a sequence of **rounds**, not a committee sitting together. Grade
+decides how many (`grades.panel_size`: 3 for A-grades, 2 for B/C). Round N stays locked
+for its interviewer until round N-1 has been scored, and the final recommendation is
+the average across all rounds.
+
+One interviewer may hold **several rounds** on the same candidate — the standing panel
+puts the same senior person in round 1 and round 3 of every A-grade interview.
+
+The standing panel comes from `Interview_Panel.xlsx` and is keyed on
+unit + grade + department. Moving an application to `Interview Scheduled` writes it
+automatically; rounds HR has already set by hand, and rounds already scored, are left alone.
+
+- `GET /applications/:id/panel-rule` — preview the standing panel without writing it.
+  → `{ rule: { unit_code, grade, department, dept_code, rounds: [{ round, interviewer, alternates }] } | null }`.
+  `alternates` holds the other names where the sheet offers a choice ("ARJUN SIR/ANGADH SIR").
+- `POST /applications/:id/apply-panel-rule` — Body `{ replace?: false }`. (Re)applies it.
+  `replace:true` overwrites unscored manual picks. 404 when no rule covers this
+  unit/grade/department. → `{ application, rounds_applied }`
+
 ### Panel appointment — `POST /applications/:id/assign-panel`
-Body: `{ assignments: [{ interviewer_user_id, panel_role: "Panellist 1|2|3 (Committee)" }] }`
-1..panel_size distinct registered interviewers; panellists who already scored can't be removed. → `{ application }`
+Body: `{ assignments: [{ interviewer_user_id, round }] }` — `round` may be omitted, in which
+case it is taken from array order. 1..`rounds` entries, each round distinct; two people
+cannot share a round, but one person may hold several. A round that has already been
+scored can be neither removed nor reassigned. → `{ application }`
 
 ### Shared scores read — `GET /applications/:id/scores` (hr_admin OR an assigned interviewer)
 ```json
 {
   "candidate_name": "…", "designation": "…", "job_code": "…", "grade": "C1", "stage": "…",
-  "summary": { "count": 2, "needed": 2, "average": 81, "spread": 18, "diverged": true, "any_red_flags": false, "recommendation": "Recommend" },
-  "scores": [{ "panelist_name": "…", "panel_role": "…", "total_score": 90, "red_flags": [], "evidence_notes": "…", "strengths": "…", "concerns": "…", "competency_breakdown": [{ "competency_key", "name", "section", "weight", "level_index", "level_label", "points" }], "submitted_at": "…" }]
+  "rounds": 2,
+  "summary": { "count": 2, "needed": 2, "average": 81, "spread": 18, "diverged": true, "any_red_flags": false, "recommendation": "Recommend", "rounds_completed": [1, 2], "next_round": null },
+  "scores": [{ "round": 1, "panelist_name": "…", "panel_role": "…", "total_score": 90, "red_flags": [], "evidence_notes": "…", "strengths": "…", "concerns": "…", "competency_breakdown": [{ "competency_key", "name", "section", "weight", "level_index", "level_label", "points" }], "submitted_at": "…" }]
 }
 ```
 `diverged` = spread > 15 points → "discuss, don't average". Any red flag → HR review regardless of score.
@@ -126,27 +162,30 @@ Profiles: `core` (Attitude 60%, all roles) · `fo_assoc` · `fo_exec` · `generi
 - `POST /competencies` / `PATCH /competencies/:id` / `DELETE /competencies/:id` (exactly 5 anchors enforced)
 
 ### Users
-- `GET /users?role=interviewer` → `{ users }` (interviewer directory for panel appointment)
-- `POST /users` `{ name, email, password, role, department, designation }` → `201 { user }`
+- `GET /users?role=interviewer` → `{ users }` — matches anyone *holding* that role, so dual-role staff appear in both the interviewer and the HR directory.
+- `POST /users` `{ name, email, password, roles: ["hr_admin","interviewer"], department, designation }` → `201 { user }`. A single `role` string is still accepted; omitting both defaults to `interviewer`.
 
 ## Interviewer (role `interviewer`)
 
-- `GET /interviewer/assignments` → `{ assignments: [{ id, application_id, panel_role, status: "Pending|Scored", assigned_at, candidate_name, designation, job_code, grade, department, stage, interview_date }] }` — only rows where HR named this interviewer.
-- `GET /interviewer/applications/:id` →
+- `GET /interviewer/assignments` → `{ assignments: [{ id, application_id, round, panel_role, status: "Pending|Scored", unlocked, assigned_at, candidate_name, designation, job_code, grade, department, stage, interview_date }] }` — only rows naming this interviewer. One row per round, so the same candidate appears twice for someone holding two rounds. `unlocked:false` means an earlier round is still outstanding.
+- `GET /interviewer/applications/:id?round=` →
 ```json
 {
   "application": { "id", "candidate_name", "designation", "job_code", "grade", "department", "job_family", "stage", "interview_date", "age", "gender", "qualification", "total_experience_years", "current_designation", "years_in_current_firm", "intro_note", "why_join", "documents" },
-  "panel": { "size": 2, "committee": false, "my_role": "Panellist 1" },
+  "panel": { "rounds": 2, "size": 2, "committee": false, "my_rounds": [1], "my_role": "Round 1", "active_round": 1, "locked_reason": null, "rounds_completed": [] },
   "levels": [{ "label": "Exceptional", "pct": 1 }, { "label": "Strong", "pct": 0.8 }, { "label": "Acceptable", "pct": 0.6 }, { "label": "Below Expectations", "pct": 0.4 }, { "label": "Not Suitable", "pct": 0.2 }],
   "competencies": [{ "key", "name", "section": "att|skill|know", "weight", "anchors": [5], "is_placeholder" }],
   "my_score": null
 }
 ```
-  403 if not assigned. `my_score` (same shape as a score) enables edit-and-resubmit.
+  403 if this interviewer holds no round on the candidate. Without `?round=`, the payload
+  targets their earliest unscored round. `active_round` is null and `locked_reason` explains
+  why when an earlier round is still open. `my_score` (same shape as a score) enables edit-and-resubmit.
 - `POST /interviewer/applications/:id/score`
-  `{ competency_selections: [{ key, level_index 0-4 }], evidence_notes, strengths, concerns, red_flags: [string] }`
+  `{ competency_selections: [{ key, level_index 0-4 }], evidence_notes, strengths, concerns, red_flags: [string], round? }`
   Every competency required; points computed server-side; only allowed while stage = `Interview Scheduled`.
-  → `201 { score: { total_score, recommendation, red_flags } }` (resubmit replaces own score)
+  400 with `locked_reason` if an earlier round has not been scored yet.
+  → `201 { score: { round, total_score, recommendation, red_flags }, next_round }` (resubmit replaces that round's score)
 - `GET /applications/:id/scores` — panel comparison (shared with HR, see above).
 
 ## Files
@@ -157,4 +196,4 @@ Profiles: `core` (Attitude 60%, all roles) · `fo_assoc` · `fo_exec` · `generi
 - 5 levels × pct: Exceptional 1.0 · Strong 0.8 · Acceptable 0.6 · Below Expectations 0.4 · Not Suitable 0.2. Competency points = weight × pct.
 - Bands: ≥85 Strongly Recommend · 70–84 Recommend · 55–69 Hold · <55 Do Not Recommend.
 - Red flags list: Poor Grooming, Dishonesty, Poor Communication, Negative Attitude, Frequent Job Changes, Cultural Misfit.
-- Panel: 2 members for grades below A-level; 3-member committee for A1–A3 (from `grades.panel_size`).
+- Rounds: 2 for grades below A-level; 3 for A1–A3 (from `grades.panel_size`). Run in order; the recommendation is the average across all rounds.

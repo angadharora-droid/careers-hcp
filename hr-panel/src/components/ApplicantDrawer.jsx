@@ -30,8 +30,10 @@ const STAGE_BUTTONS = [
   { stage: 'On Hold', label: 'Hold' },
 ];
 
+// Rounds run in order: round 1 interviews first, and round N stays locked for its
+// interviewer until round N-1 is scored.
 function roleFor(i) {
-  return i === 2 ? 'Panellist 3 (Committee)' : `Panellist ${i + 1}`;
+  return `Round ${i + 1}`;
 }
 
 function Info({ label, children, full = false }) {
@@ -85,9 +87,14 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
 
   const applyApp = useCallback((application) => {
     setApp(application);
-    const size = application.panel_size || 2;
+    const size = application.rounds || application.panel_size || 2;
+    // Keyed by round rather than array position — a gap in the middle must not
+    // shift everyone else's round number.
+    const byRound = new Map(
+      (application.panel_assignments || []).map((a) => [a.round, a.interviewer?.id])
+    );
     setPanelSel(Array.from({ length: size }, (_, i) =>
-      application.panel_assignments?.[i]?.interviewer?.id ? String(application.panel_assignments[i].interviewer.id) : ''
+      byRound.get(i + 1) ? String(byRound.get(i + 1)) : ''
     ));
     setSelStage(application.stage);
     setRejectionReason(application.rejection_reason || '');
@@ -136,12 +143,12 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
 
   async function savePanel() {
     setPanelErr(null);
+    // Send the round explicitly — one interviewer may legitimately take several
+    // rounds (the panel sheet puts the same person in rounds 1 and 3).
     const chosen = panelSel
-      .map((id, i) => ({ interviewer_user_id: id, panel_role: roleFor(i) }))
+      .map((id, i) => ({ interviewer_user_id: id, round: i + 1 }))
       .filter((x) => x.interviewer_user_id);
     if (!chosen.length) { setPanelErr('Appoint at least one interviewer'); return; }
-    const ids = chosen.map((x) => x.interviewer_user_id);
-    if (new Set(ids).size !== ids.length) { setPanelErr('The same interviewer cannot hold two panel slots'); return; }
     setPanelBusy(true);
     try {
       const d = await api.post(`/applications/${app.id}/assign-panel`, { assignments: chosen });
@@ -244,8 +251,9 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
     );
   }
 
-  const committee = (app.panel_size || 2) === 3;
-  const summary = app.score_summary || { count: 0, needed: app.panel_size || 2 };
+  const totalRounds = app.rounds || app.panel_size || 2;
+  const committee = totalRounds === 3;
+  const summary = app.score_summary || { count: 0, needed: totalRounds };
   const openSeats = positions.filter((p) => p.job_code === app.job_code && RECRUITABLE.includes(p.status));
   const gateOpen = openSeats.length > 0;
   const isSelected = app.stage === 'Selected' && app.pcn;
@@ -276,7 +284,7 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
         </div>
         <p className="mini mt-1">
           Ref <span className="font-mono font-bold">{app.reference_id}</span> · applied {fmtDate(app.applied_on)} ·{' '}
-          {committee ? <b className="text-brand-amber">3-member committee</b> : '2-member panel'}
+          {committee ? <b className="text-brand-amber">3 interview rounds</b> : '2 interview rounds'}
         </p>
 
         {/* Recruitment gate banner */}
@@ -408,15 +416,16 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
         {/* Interview panel */}
         <section className="mt-5">
           <SectionHeading>Interview panel</SectionHeading>
-          <p className="mini mt-0.5">{app.panel_size} panellist{app.panel_size > 1 ? 's' : ''} required for grade {app.grade}.</p>
+          <p className="mini mt-0.5">
+            Grade {app.grade} runs {app.rounds || app.panel_size} interview round{(app.rounds || app.panel_size) > 1 ? 's' : ''}, in order.
+            The fixed panel is applied automatically when you schedule the interview — change it here only if you need to.
+          </p>
           <div className="panel-box">
             {interviewers.length === 0 && (
               <div className="mini mb-1.5">No registered interviewers yet — add them in the Interviewers tab.</div>
             )}
             {panelSel.map((sel, i) => {
-              const assignment = (app.panel_assignments || []).find(
-                (a) => a.interviewer?.id && String(a.interviewer.id) === sel
-              );
+              const assignment = (app.panel_assignments || []).find((a) => a.round === i + 1);
               return (
                 <div key={i} className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="mini min-w-[150px]">{roleFor(i)}</span>

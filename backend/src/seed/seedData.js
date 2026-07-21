@@ -17,7 +17,9 @@ export const GRADES = [
   { code: 'B2', meaning: 'Supervisor / Team Leader', present_at_cpa: true, panel_size: 2, order: 10 },
   { code: 'C1', meaning: 'Associate', present_at_cpa: true, panel_size: 2, order: 11 },
   { code: 'C2', meaning: 'Junior Associate', present_at_cpa: true, panel_size: 2, order: 12 },
-  { code: 'T', meaning: 'Trainee / Apprentice', present_at_cpa: false, panel_size: 2, order: 13 },
+  // Commis-III appears on the HCP / CPNM / Pablo / Dali panel sheets as C3FP.
+  { code: 'C3', meaning: 'Entry Associate / Commis III', present_at_cpa: false, panel_size: 2, order: 13 },
+  { code: 'T', meaning: 'Trainee / Apprentice', present_at_cpa: false, panel_size: 2, order: 14 },
 ];
 
 // CPA sanctioned strength — 26 designations, expands to 67 individual PCN seats.
@@ -238,11 +240,9 @@ COMPETENCIES.push(
   }
 );
 
+// Interviewer logins are no longer invented here — they come from the real panel in
+// seed/panelData.js (transcribed from Interview_Panel.xlsx). Only the HR Panel login
+// is seeded directly.
 export const USERS = [
-  { name: 'HR Admin', email: 'hr@cph.in', role: 'hr_admin', department: 'Human Resources', designation: 'HR Manager', password: 'hr@2026' },
-  { name: 'Rajesh Deshmukh', email: 'gm@cph.in', role: 'interviewer', department: 'Leadership', designation: 'General Manager', password: 'panel@2026' },
-  { name: 'Meera Kulkarni', email: 'ops@cph.in', role: 'interviewer', department: 'Operations', designation: 'Operations Manager', password: 'panel@2026' },
-  { name: 'Vikram Chaudhary', email: 'chef@cph.in', role: 'interviewer', department: 'Kitchen', designation: 'Executive Chef', password: 'panel@2026' },
-  { name: 'Sunita Bhosale', email: 'admin@cph.in', role: 'interviewer', department: 'Admin', designation: 'Admin Head', password: 'panel@2026' },
-  { name: 'Arjun Patil', email: 'fo@cph.in', role: 'interviewer', department: 'Front Office', designation: 'Front Office Executive', password: 'panel@2026' },
+  { name: 'HR Admin', email: 'hr@cph.in', roles: ['hr_admin'], department: 'Human Resources', designation: 'HR Manager', password: 'hr@2026' },
 ];

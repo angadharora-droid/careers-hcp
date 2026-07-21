@@ -26,6 +26,7 @@ const applicationSchema = new mongoose.Schema(
     job_family: String,
     competency_profile: { type: String, default: null },
     unit: { type: String, default: 'Centre Point Amravati' },
+    unit_code: { type: String, default: 'CPA', index: true }, // keys the fixed-panel lookup
 
     candidate_name: { type: String, required: true },
     age: Number,
