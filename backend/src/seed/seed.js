@@ -53,10 +53,17 @@ export async function seedPanel() {
     idByKey[p.key] = user._id;
   }
 
-  // Rules are fully rebuilt: the workbook is the source of truth for them.
-  await PanelRule.deleteMany({});
+  // Seed-owned rules are fully rebuilt each boot: panelData.js is their source of
+  // truth. Imported rules (npm run import-panel) are left alone and take precedence,
+  // so a unit's own sheet is not silently reverted by a restart.
+  await PanelRule.deleteMany({ source: 'seed' });
+  const imported = new Set(
+    (await PanelRule.find({ source: 'import' }).select('unit_code grade department'))
+      .map((r) => `${r.unit_code}|${r.grade}|${r.department}`)
+  );
   const docs = [];
   for (const r of PANEL_RULES) {
+    if (imported.has(`${r.unit}|${r.grade}|${r.dept}`)) continue;
     const rounds = r.rounds
       .filter((s) => idByKey[s.key])
       .map((s) => ({
@@ -65,7 +72,7 @@ export async function seedPanel() {
         alternates: s.alternates.map((k) => idByKey[k]).filter(Boolean),
       }));
     if (rounds.length) {
-      docs.push({ unit_code: r.unit, grade: r.grade, department: r.dept, dept_code: r.dept_code, rounds });
+      docs.push({ unit_code: r.unit, grade: r.grade, department: r.dept, dept_code: r.dept_code, rounds, source: 'seed' });
     }
   }
   await PanelRule.insertMany(docs);

@@ -303,12 +303,43 @@ router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
   if (users.length !== ids.length) {
     return res.status(400).json({ error: 'All panellists must be registered interviewer accounts' });
   }
-  /* The fixed panel is a recommendation, not a restriction. A panellist from another
-     unit may legitimately take a panel — corporate staff sit across every branch, and
-     a branch without its own HOD borrows one — so any registered interviewer is
-     appointable. The HR dropdown surfaces the matrix's own people first, then the
-     rest of the directory, but nothing here rejects an off-matrix pick. */
+  const nameOf = new Map(users.map((u) => [String(u._id), u.name]));
   const existing = await PanelAssignment.find({ application_id: app._id });
+
+  /* A panel may only go to someone the fixed matrix names for THAT panel — its
+     interviewer, or one of the alternates the sheet offers as a choice ("A/B/C" in a
+     cell). Those people are frequently from another unit, which is fine: eligibility
+     follows the matrix, not the candidate's branch. The HR dropdown offers nothing
+     else; this is the guard for anything reaching the API directly. */
+  const rule = await resolvePanelRule(app.unit_code, app.grade, app.department);
+  if (!rule) {
+    return res.status(400).json({
+      error: `No fixed panel is defined for ${app.unit_code} / grade ${app.grade} / ${app.department}, so nobody is eligible to appoint. Add it to the panel matrix first.`,
+    });
+  }
+  await rule.populate([
+    { path: 'rounds.interviewer_user_id', select: 'name' },
+    { path: 'rounds.alternates', select: 'name' },
+  ]);
+  const eligible = new Map(
+    rule.rounds.map((s) => [s.round, [s.interviewer_user_id, ...s.alternates].filter(Boolean)])
+  );
+  for (const s of slots) {
+    // A panel already scored keeps its panellist even if the matrix has changed since.
+    // The lock governs new appointments; it must not retroactively invalidate a
+    // completed interview.
+    const held = existing.find((e) => e.round === s.round);
+    if (held?.status === 'Scored' && String(held.interviewer_user_id) === String(s.interviewer_user_id)) continue;
+    const allowed = eligible.get(s.round) || [];
+    if (!allowed.some((u) => String(u._id) === String(s.interviewer_user_id))) {
+      const who = nameOf.get(String(s.interviewer_user_id)) || 'That panellist';
+      return res.status(400).json({
+        error: allowed.length
+          ? `${who} is not on Panel ${s.round} for this job. Eligible: ${allowed.map((u) => u.name).join(', ')}.`
+          : `The fixed panel has no Panel ${s.round} for ${app.unit_code} / grade ${app.grade} / ${app.department}.`,
+      });
+    }
+  }
 
   for (const ex of existing) {
     if (!roundNos.includes(ex.round)) {

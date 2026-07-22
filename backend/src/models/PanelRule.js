@@ -8,6 +8,10 @@ const panelRuleSchema = new mongoose.Schema({
   grade: { type: String, required: true, index: true },
   department: { type: String, required: true },               // '*' = any department
   dept_code: { type: String, default: '' },                   // raw numeric code from the HCP/CPNM sheets
+  // 'seed'   → built from panelData.js, rebuilt on every boot
+  // 'import' → written by `npm run import-panel` from a unit's own sheet; the boot
+  //            seed leaves these alone, so an import is not undone by a restart.
+  source: { type: String, enum: ['seed', 'import'], default: 'seed', index: true },
   rounds: [
     {
       round: { type: Number, required: true },                // 1-based; sheet's PANEL 1/2/3

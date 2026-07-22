@@ -56,7 +56,6 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
 
   const [app, setApp] = useState(null);
   const [positions, setPositions] = useState([]);
-  const [interviewers, setInterviewers] = useState([]);
   const [panelRule, setPanelRule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -107,18 +106,16 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
     setLoading(true);
     setErr(null);
     try {
-      // Anyone registered as an interviewer may take a panel — panellists routinely
-      // come from another branch. The fixed panel is fetched too, but only to float
-      // its own people to the top of each dropdown as the suggested choice.
-      const [a, p, u, r] = await Promise.all([
+      // Eligibility comes from this job's fixed panel, not the interviewer directory:
+      // a panel may only go to the person the matrix names for it, or to one of the
+      // alternates it offers as a choice — regardless of which branch they sit in.
+      const [a, p, r] = await Promise.all([
         api.get(`/applications/${applicationId}`),
         api.get('/positions'), // gate check: any open seat under this job_code
-        api.get('/users?role=interviewer'),
         api.get(`/applications/${applicationId}/panel-rule`),
       ]);
       applyApp(a.application);
       setPositions(p.positions || []);
-      setInterviewers(u.users || []);
       setPanelRule(r.rule || null);
     } catch (e) {
       setErr(e.message);
@@ -424,23 +421,27 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
           <SectionHeading>Interview panel</SectionHeading>
           <p className="mini mt-0.5">
             Grade {app.grade} runs {app.rounds || app.panel_size} interview panel{(app.rounds || app.panel_size) > 1 ? 's' : ''}, in order.
-            The fixed panel is suggested first, but any interviewer can be appointed — including one from another branch.
+            Each panel lists only the panellists the fixed matrix names for it — its interviewer plus any alternates,
+            whichever branch they belong to.
           </p>
           <div className="panel-box">
-            {interviewers.length === 0 && (
-              <div className="mini mb-1.5">No registered interviewers yet — add them in the Interviewers tab.</div>
+            {!panelRule && (
+              <div className="mini mb-1.5">
+                No fixed panel is defined for {app.unit_code} / grade {app.grade} / {app.department}, so nobody is
+                eligible to appoint. Add it to the panel matrix first.
+              </div>
             )}
             {panelSel.map((sel, i) => {
               const assignment = (app.panel_assignments || []).find((a) => a.round === i + 1);
               const slot = (panelRule?.rounds || []).find((r) => r.round === i + 1);
-              // The matrix's own people for this panel, floated to the top as the
-              // suggestion; everyone else stays reachable below.
-              const suggestedIds = slot
-                ? [slot.interviewer, ...(slot.alternates || [])].filter(Boolean).map((u) => String(u._id))
-                : [];
-              const suggested = interviewers.filter((u) => suggestedIds.includes(String(u.id)));
-              const others = interviewers.filter((u) => !suggestedIds.includes(String(u.id)));
-              const labelOf = (u) => `${u.name}${u.designation ? ` — ${u.designation}` : u.department ? ` — ${u.department}` : ''}`;
+              // The named interviewer plus the sheet's alternates — nobody else.
+              const options = slot ? [slot.interviewer, ...(slot.alternates || [])].filter(Boolean) : [];
+              // A panel already scored keeps its panellist even if the matrix has since
+              // changed, so it must stay selectable or the form could not be re-saved.
+              if (assignment?.status === 'Scored' && assignment.interviewer
+                  && !options.some((u) => String(u._id) === String(assignment.interviewer.id))) {
+                options.push({ _id: assignment.interviewer.id, name: assignment.interviewer.name, designation: assignment.interviewer.designation });
+              }
               return (
                 <div key={i} className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span className="mini min-w-[150px]">{roleFor(i)}</span>
@@ -448,21 +449,17 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
                     className="inp flex-1 min-w-[200px] w-auto"
                     aria-label={roleFor(i)}
                     value={sel}
+                    disabled={options.length === 0}
                     onChange={(e) => setPanelSel((arr) => arr.map((v, j) => (j === i ? e.target.value : v)))}
                   >
-                    <option value="">— appoint interviewer —</option>
-                    {suggested.length > 0 && (
-                      <optgroup label={`Fixed panel for ${roleFor(i)}`}>
-                        {suggested.map((u) => (
-                          <option key={String(u.id)} value={String(u.id)}>{labelOf(u)}</option>
-                        ))}
-                      </optgroup>
-                    )}
-                    <optgroup label={suggested.length ? 'Other interviewers' : 'All interviewers'}>
-                      {others.map((u) => (
-                        <option key={String(u.id)} value={String(u.id)}>{labelOf(u)}</option>
-                      ))}
-                    </optgroup>
+                    <option value="">
+                      {options.length ? '— appoint interviewer —' : '— nobody assigned to this panel —'}
+                    </option>
+                    {options.map((u) => (
+                      <option key={String(u._id)} value={String(u._id)}>
+                        {u.name}{u.designation ? ` — ${u.designation}` : u.department ? ` — ${u.department}` : ''}
+                      </option>
+                    ))}
                   </select>
                   {assignment && <AssignmentChip status={assignment.status} />}
                 </div>

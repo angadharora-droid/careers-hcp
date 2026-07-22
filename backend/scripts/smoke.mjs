@@ -175,17 +175,18 @@ const slotOf = (n) => rulePreview.json.rule.rounds.find((r) => r.round === n).in
 const i1 = { id: slotOf(1)._id, email: slotOf(1).email };
 const i2 = { id: slotOf(2)._id, email: slotOf(2).email };
 
-// The fixed panel is a suggestion, not a gate: panellists come from other branches,
-// so an interviewer the matrix does not name for this job is still appointable.
-const suggestedIds = rulePreview.json.rule.rounds
+// someone who holds the interviewer role but is not named on THIS job's panel
+const eligibleIds = rulePreview.json.rule.rounds
   .flatMap((r) => [r.interviewer, ...(r.alternates || [])])
   .map((u) => String(u._id));
-const notOnPanel = users.json.users.find((u) => !suggestedIds.includes(String(u.id)));
+const notOnPanel = users.json.users.find((u) => !eligibleIds.includes(String(u.id)));
 const offPanel = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,
   body: { assignments: [{ interviewer_user_id: notOnPanel.id, round: 1 }] },
 });
-ok('interviewer outside the fixed panel is still appointable', offPanel.status === 200, `got ${offPanel.status} ${offPanel.json?.error || ''}`);
+ok('interviewer outside the fixed panel is rejected', offPanel.status === 400, `got ${offPanel.status}`);
+ok('rejection names who is eligible instead',
+  /not on Panel 1 for this job/.test(offPanel.json?.error || ''), offPanel.json?.error);
 
 const assign = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,
