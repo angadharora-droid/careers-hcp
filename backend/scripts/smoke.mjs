@@ -168,9 +168,26 @@ ok('round 2 of a C1 interview is the shared HR recruiter',
   rulePreview.json.rule?.rounds?.[1]?.interviewer?.email === 'recruiter@cpgh.in',
   rulePreview.json.rule?.rounds?.[1]?.interviewer?.email);
 
-// appoint panel — rounds, not simultaneous slots
+// appoint panel — rounds, not simultaneous slots. Appointment is locked to the fixed
+// panel, so the picks must come from the rule itself, not from the interviewer directory.
 const users = await req('GET', '/users?role=interviewer', { token: hr });
-const [i1, i2] = users.json.users;
+const slotOf = (n) => rulePreview.json.rule.rounds.find((r) => r.round === n).interviewer;
+const i1 = { id: slotOf(1)._id, email: slotOf(1).email };
+const i2 = { id: slotOf(2)._id, email: slotOf(2).email };
+
+// someone who holds the interviewer role but is not named on THIS job's panel
+const eligibleIds = rulePreview.json.rule.rounds
+  .flatMap((r) => [r.interviewer, ...(r.alternates || [])])
+  .map((u) => String(u._id));
+const notOnPanel = users.json.users.find((u) => !eligibleIds.includes(String(u.id)));
+const offPanel = await req('POST', `/applications/${app.id}/assign-panel`, {
+  token: hr,
+  body: { assignments: [{ interviewer_user_id: notOnPanel.id, round: 1 }] },
+});
+ok('interviewer outside the fixed panel is rejected', offPanel.status === 400, `got ${offPanel.status}`);
+ok('rejection names who is eligible instead',
+  /not on Panel 1 for this job/.test(offPanel.json?.error || ''), offPanel.json?.error);
+
 const assign = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,
   body: { assignments: [
@@ -178,7 +195,7 @@ const assign = await req('POST', `/applications/${app.id}/assign-panel`, {
     { interviewer_user_id: i2.id, round: 2 },
   ] },
 });
-ok('panel assigned (2 rounds)', assign.status === 200 && assign.json.application.panel_assignments.length === 2);
+ok('panel assigned (2 rounds)', assign.status === 200 && assign.json.application.panel_assignments.length === 2, assign.json?.error);
 ok('assignments carry round numbers',
   assign.json.application.panel_assignments.map((a) => a.round).join(',') === '1,2');
 
@@ -213,7 +230,7 @@ const early = await req('POST', `/interviewer/applications/${app.id}/score`, {
   token: int2early.json.token,
   body: { competency_selections: detail.json.competencies.map((c) => ({ key: c.key, level_index: 1 })) },
 });
-ok('round 2 blocked while round 1 is unscored', early.status === 400 && /opens once round 1/.test(early.json?.error || ''), early.json?.error);
+ok('panel 2 blocked while panel 1 is unscored', early.status === 400 && /opens once panel 1/.test(early.json?.error || ''), early.json?.error);
 
 const allStrong = detail.json.competencies.map((c) => ({ key: c.key, level_index: 1 })); // Strong = 80%
 const score1 = await req('POST', `/interviewer/applications/${app.id}/score`, {

@@ -34,7 +34,7 @@ function openRoundFor(mine, scoredRounds, requested) {
     return {
       round: null,
       assignment: target,
-      error: `Round ${target.round} opens once round${blocking.length > 1 ? 's' : ''} ${blocking.join(', ')} ${blocking.length > 1 ? 'have' : 'has'} been scored.`,
+      error: `Panel ${target.round} opens once panel${blocking.length > 1 ? 's' : ''} ${blocking.join(', ')} ${blocking.length > 1 ? 'have' : 'has'} been scored.`,
     };
   }
   return { round: target.round, assignment: target, error: null };

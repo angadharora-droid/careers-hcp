@@ -83,7 +83,7 @@ export async function applyPanelRule(app, { assignedBy = null, replace = false }
       { application_id: app._id, round: slot.round },
       {
         interviewer_user_id: slot.interviewer_user_id,
-        panel_role: `Round ${slot.round}`,
+        panel_role: `Panel ${slot.round}`,
         assigned_by: assignedBy,
         auto_assigned: true,
         assigned_at: new Date(),

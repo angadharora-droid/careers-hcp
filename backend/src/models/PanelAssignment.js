@@ -10,7 +10,7 @@ const panelAssignmentSchema = new mongoose.Schema({
   application_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Application', required: true, index: true },
   interviewer_user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
   round: { type: Number, required: true, default: 1 },
-  panel_role: { type: String, default: 'Round 1' }, // display label
+  panel_role: { type: String, default: 'Panel 1' }, // display label
   assigned_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   auto_assigned: { type: Boolean, default: false }, // seeded from a PanelRule rather than picked by HR
   assigned_at: { type: Date, default: Date.now },

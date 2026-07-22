@@ -3,6 +3,7 @@ import { api } from '../lib/api';
 import { ErrorBox, Empty, TableSkeleton } from '../components/LoadState';
 import { useToast } from '../context/ToastContext';
 import PageHeader from '../components/PageHeader';
+import Modal from '../components/Modal';
 import { UserPlus, Users } from '../components/Icons';
 
 const EMPTY_FORM = { name: '', email: '', department: '', designation: '', password: '', role: 'interviewer' };
@@ -33,8 +34,94 @@ function RoleChips({ roles, role }) {
   );
 }
 
+// Edit an existing account. Password is left blank unless it is being reset, so a
+// save never silently re-hashes a login the HR user did not mean to touch.
+function EditAccountModal({ user, onClose, onSaved }) {
+  const toast = useToast();
+  const roleOf = (u) => {
+    const r = u.roles?.length ? u.roles : [u.role].filter(Boolean);
+    if (r.includes('hr_admin') && r.includes('interviewer')) return 'both';
+    return r.includes('hr_admin') ? 'hr_admin' : 'interviewer';
+  };
+  const [form, setForm] = useState({
+    name: user.name || '', email: user.email || '',
+    department: user.department || '', designation: user.designation || '',
+    role: roleOf(user), password: '',
+  });
+  const [err, setErr] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  async function save(e) {
+    e.preventDefault();
+    setErr(null);
+    if (!form.name.trim() || !form.email.trim()) { setErr('Name and email are required'); return; }
+    setBusy(true);
+    try {
+      const body = {
+        name: form.name.trim(), email: form.email.trim(),
+        department: form.department.trim(), designation: form.designation.trim(),
+        roles: form.role === 'both' ? ['interviewer', 'hr_admin'] : [form.role],
+      };
+      if (form.password) body.password = form.password;
+      await api.patch(`/users/${user.id}`, body);
+      toast(`Account updated: ${form.name.trim()}`);
+      onSaved();
+      onClose();
+    } catch (ex) {
+      setErr(ex.message); // duplicate email / last-HR-admin / self-lockout guards
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} maxWidth="max-w-2xl" labelledBy="edit-account-h">
+      <h2 id="edit-account-h" className="card-h">Edit Account</h2>
+      <form onSubmit={save}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2.5">
+          <div>
+            <label className="lbl" htmlFor="ea-name">Full Name <span className="text-brand-red">*</span></label>
+            <input id="ea-name" className="inp" value={form.name} onChange={set('name')} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="ea-email">Email <span className="text-brand-red">*</span></label>
+            <input id="ea-email" className="inp" type="email" inputMode="email" value={form.email} onChange={set('email')} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="ea-role">Role</label>
+            <select id="ea-role" className="inp" value={form.role} onChange={set('role')}>
+              <option value="interviewer">Interviewer</option>
+              <option value="hr_admin">HR Admin</option>
+              <option value="both">HR Admin + Interviewer</option>
+            </select>
+          </div>
+          <div>
+            <label className="lbl" htmlFor="ea-dept">Department</label>
+            <input id="ea-dept" className="inp" value={form.department} onChange={set('department')} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="ea-desig">Designation</label>
+            <input id="ea-desig" className="inp" value={form.designation} onChange={set('designation')} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="ea-pw">New Password</label>
+            <input id="ea-pw" className="inp" type="password" autoComplete="new-password" value={form.password} onChange={set('password')} placeholder="leave blank to keep current" />
+          </div>
+        </div>
+        <ErrorBox error={err} />
+        <div className="flex gap-2 mt-3">
+          <button type="submit" className="btn" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>
+          <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function InterviewersPage() {
   const toast = useToast();
+  const [editing, setEditing] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
@@ -97,6 +184,7 @@ export default function InterviewersPage() {
         <h2 className="card-h">Registered Accounts <span className="r">{users.length} account{users.length === 1 ? '' : 's'}</span></h2>
         <div className="infobar">
           Panel appointment in the applicant drawer picks from the <b>interviewer</b> accounts below — panellists sign in to the Interview Panel with these logins and score independently.
+          Use <b>Edit</b> to correct a name, email, department or role, or to reset a password.
         </div>
         <ErrorBox error={err} onRetry={load} />
         {loading ? (
@@ -109,7 +197,7 @@ export default function InterviewersPage() {
           <div className="tbl-scroll">
             <table className="tbl">
               <thead>
-                <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Designation</th></tr>
+                <tr><th>Name</th><th>Email</th><th>Role</th><th>Department</th><th>Designation</th><th /></tr>
               </thead>
               <tbody>
                 {users.map((u) => (
@@ -119,6 +207,11 @@ export default function InterviewersPage() {
                     <td><RoleChips roles={u.roles} role={u.role} /></td>
                     <td>{u.department || '—'}</td>
                     <td>{u.designation || '—'}</td>
+                    <td className="text-right">
+                      <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditing(u)}>
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -167,6 +260,10 @@ export default function InterviewersPage() {
           </button>
         </form>
       </div>
+
+      {editing && (
+        <EditAccountModal user={editing} onClose={() => setEditing(null)} onSaved={load} />
+      )}
     </div>
   );
 }

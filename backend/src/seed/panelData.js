@@ -52,6 +52,8 @@ export const PANEL_USERS = [
   { key: 'recruiter',  name: 'HR Recruiter',      email: 'recruiter@cpgh.in',     designation: 'HR Recruiter (shared — 3 recruiters)', department: 'Human Resources', unit: '*', hr: true },
 
   // --- Hotel Centre Point, Nagpur ---
+  // HR confirmed: the CPA job catalogue's "Amit Sir" is this person (Amit Khandwal),
+  // and its "Amit Chakrborty" is amit_c below — two different people.
   { key: 'amit_kandwal', name: 'Amit Kandwal',       email: 'gm.nagpur@cpgh.in',  designation: 'General Manager',            department: 'Leadership',  unit: 'HCP' },
   { key: 'devendra',     name: 'Devendra Shirudkar', email: 'bom.nagpur@cpgh.in', designation: 'Banquet Operations Manager', department: 'Banquet',     unit: 'HCP' },
   { key: 'veerendra',    name: 'Veerendra Singh',    email: 'fnb.nagpur@cpgh.in', designation: 'F&B Manager',                department: 'F&B Service', unit: 'HCP' },
@@ -67,6 +69,8 @@ export const PANEL_USERS = [
   { key: 'shivesh',    name: 'Shivesh',           email: 'hod.d23.hcp@cpgh.in', designation: 'HOD — dept code 23', department: '', unit: 'HCP', note: 'department code 23 unresolved' },
 
   // --- Centre Point Amravati ---
+  // HR confirmed: the CPA job catalogue's "Ashish Sir" is this person. Its
+  // "Ashish Gudankwar" is somebody else entirely and has no account yet.
   { key: 'ashish_kamble', name: 'Ashish Kamble',  email: 'gm.cpa@cpgh.in',          designation: 'General Manager',     department: 'Leadership', unit: 'CPA', note: 'GM role inferred — occupies the same Round 2 slot Amit Kandwal (GM) holds on the HCP sheet' },
   { key: 'ashish_h',      name: 'Ashish',         email: 'hrexe@cpgh.in',           designation: 'HR Executive',        department: 'Human Resources', unit: 'CPA', note: "listed as 'ASHISH H' beside hrexe@cpgh.in; not on any panel row" },
   { key: 'avinash',       name: 'Avinash Rawat',  email: 'execchef.cpa@cpgh.in',    designation: 'Executive Chef',      department: 'Kitchen', unit: 'CPA' },

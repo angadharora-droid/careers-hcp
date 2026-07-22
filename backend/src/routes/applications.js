@@ -292,7 +292,7 @@ router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
   const slots = list.map((a, i) => ({ interviewer_user_id: a.interviewer_user_id, round: Number(a.round) || i + 1 }));
   const roundNos = slots.map((s) => s.round);
   if (roundNos.some((n) => !Number.isInteger(n) || n < 1 || n > rounds)) {
-    return res.status(400).json({ error: `Round numbers must be between 1 and ${rounds}` });
+    return res.status(400).json({ error: `Panel numbers must be between 1 and ${rounds}` });
   }
   if (new Set(roundNos).size !== roundNos.length) {
     return res.status(400).json({ error: 'Two panellists cannot hold the same round' });
@@ -303,13 +303,47 @@ router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
   if (users.length !== ids.length) {
     return res.status(400).json({ error: 'All panellists must be registered interviewer accounts' });
   }
+  const nameOf = new Map(users.map((u) => [String(u._id), u.name]));
 
-  // Replace semantics: drop Pending rounds not in the new list (Scored ones stay).
   const existing = await PanelAssignment.find({ application_id: app._id });
+
+  /* Hard lock: a round may only go to someone the fixed panel names for THAT round —
+     its interviewer, or one of the alternates the sheet offers as a choice. The HR
+     dropdown already offers nothing else; this is the guard for anything reaching the
+     API directly, and it is deliberately a block rather than a warning. */
+  const rule = await resolvePanelRule(app.unit_code, app.grade, app.department);
+  if (!rule) {
+    return res.status(400).json({
+      error: `No fixed panel is defined for ${app.unit_code} / grade ${app.grade} / ${app.department}, so nobody is eligible to appoint. Add it to the panel matrix first.`,
+    });
+  }
+  await rule.populate([
+    { path: 'rounds.interviewer_user_id', select: 'name' },
+    { path: 'rounds.alternates', select: 'name' },
+  ]);
+  const eligible = new Map(
+    rule.rounds.map((s) => [s.round, [s.interviewer_user_id, ...s.alternates].filter(Boolean)])
+  );
+  for (const s of slots) {
+    // A round already scored keeps its panellist even if the matrix has changed since.
+    // The lock governs new appointments; it must not retroactively invalidate a
+    // completed interview.
+    const held = existing.find((e) => e.round === s.round);
+    if (held?.status === 'Scored' && String(held.interviewer_user_id) === String(s.interviewer_user_id)) continue;
+    const allowed = eligible.get(s.round) || [];
+    if (!allowed.some((u) => String(u._id) === String(s.interviewer_user_id))) {
+      const who = nameOf.get(String(s.interviewer_user_id)) || 'That panellist';
+      return res.status(400).json({
+        error: allowed.length
+          ? `${who} is not on Panel ${s.round} for this job. Eligible: ${allowed.map((u) => u.name).join(', ')}.`
+          : `The fixed panel has no Panel ${s.round} for ${app.unit_code} / grade ${app.grade} / ${app.department}.`,
+      });
+    }
+  }
   for (const ex of existing) {
     if (!roundNos.includes(ex.round)) {
       if (ex.status === 'Scored') {
-        return res.status(400).json({ error: `Cannot remove round ${ex.round} — it has already been scored` });
+        return res.status(400).json({ error: `Cannot remove panel ${ex.round} — it has already been scored` });
       }
       await ex.deleteOne();
     }
@@ -317,13 +351,13 @@ router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
   for (const s of slots) {
     const held = existing.find((e) => e.round === s.round);
     if (held?.status === 'Scored' && String(held.interviewer_user_id) !== String(s.interviewer_user_id)) {
-      return res.status(400).json({ error: `Round ${s.round} has already been scored — reassign it only after clearing that score` });
+      return res.status(400).json({ error: `Panel ${s.round} has already been scored — reassign it only after clearing that score` });
     }
     await PanelAssignment.findOneAndUpdate(
       { application_id: app._id, round: s.round },
       {
         interviewer_user_id: s.interviewer_user_id,
-        panel_role: `Round ${s.round}`,
+        panel_role: `Panel ${s.round}`,
         assigned_by: req.user._id,
         auto_assigned: false,
       },
