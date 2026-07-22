@@ -56,7 +56,11 @@ export async function seedPanel() {
   // Seed-owned rules are fully rebuilt each boot: panelData.js is their source of
   // truth. Imported rules (npm run import-panel) are left alone and take precedence,
   // so a unit's own sheet is not silently reverted by a restart.
-  await PanelRule.deleteMany({ source: 'seed' });
+  // `$ne: 'import'` rather than `source: 'seed'` on purpose: rules written before the
+  // source field existed carry no source at all, and an equality match would skip them
+  // — leaving the old row in place for insertMany to collide with on the unique
+  // (unit_code, grade, department) index.
+  await PanelRule.deleteMany({ source: { $ne: 'import' } });
   const imported = new Set(
     (await PanelRule.find({ source: 'import' }).select('unit_code grade department'))
       .map((r) => `${r.unit_code}|${r.grade}|${r.department}`)
