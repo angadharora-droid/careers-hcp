@@ -186,7 +186,7 @@ const offPanel = await req('POST', `/applications/${app.id}/assign-panel`, {
 });
 ok('interviewer outside the fixed panel is rejected', offPanel.status === 400, `got ${offPanel.status}`);
 ok('rejection names who is eligible instead',
-  /not on Panel 1 for this job/.test(offPanel.json?.error || ''), offPanel.json?.error);
+  /not on the panel for this job/.test(offPanel.json?.error || ''), offPanel.json?.error);
 
 const assign = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,

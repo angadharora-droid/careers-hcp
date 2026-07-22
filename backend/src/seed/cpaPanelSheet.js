@@ -25,12 +25,12 @@ export const CPA_PANEL_SHEET = [
   { job_code: 'CPA-KIT-B2', designation: 'Demi Chef de Partie', department: 'Kitchen', grade: 'B2', panels: [['Ashish Gudankwar', 'Rajkumar Gudankwar'], ['Debraj Das', 'Ganesh Pagare', 'Shankar Tajne'], ['Ashish Gudankwar', 'Rajkumar Gudankwar']] },
   { job_code: 'CPA-HK-B2', designation: 'Housekeeping Supervisor', department: 'Housekeeping', grade: 'B2', panels: [['Ashish Gudankwar', 'Rajkumar Gudankwar'], ['Dharmendra Singh', 'Chaten Zoting', 'Ravi Sharma'], ['Ashish Gudankwar', 'Rajkumar Gudankwar']] },
   { job_code: 'CPA-KST-B2', designation: 'Kitchen Stewarding Supervisor', department: 'Kitchen Stewarding', grade: 'B2', panels: [['Ashish Gudankwar', 'Rajkumar Gudankwar'], ['Debraj Das', 'Shankar Tajne', 'Chagan Nibrate'], ['Ashish Gudankwar', 'Rajkumar Gudankwar']] },
-  { job_code: 'CPA-FB-B2', designation: 'Team Leader — F&B', department: 'F&B Service', grade: 'B2', panels: [['Ashish Gudankwar', 'Rajkumar Gudankwar'], ['Veer Rathore', 'Irfan Shiekh', 'Abhishek Meshram'], ['Ashish Gudankwar', 'Rajkumar Gudankwar']] },
+  { job_code: 'CPA-FB-B2', designation: 'Team Leader ï¿½ F&B', department: 'F&B Service', grade: 'B2', panels: [['Ashish Gudankwar', 'Rajkumar Gudankwar'], ['Veer Rathore', 'Irfan Shiekh', 'Abhishek Meshram'], ['Ashish Gudankwar', 'Rajkumar Gudankwar']] },
   { job_code: 'CPA-ENG-C1', designation: 'Engineering Associate', department: 'Engineering', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Ritesh Nirmalkar', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
-  { job_code: 'CPA-FB-C1', designation: 'Guest Service Associate — F&B', department: 'F&B Service', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Veer Rathore', 'Irfan Shiekh', 'Abhishek Meshram'], ['Ashish Gudankwar', 'Sakshi Raut']] },
-  { job_code: 'CPA-FO-C1', designation: 'Guest Service Associate — Front Office', department: 'Front Office', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Aniruddha Pimple', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
-  { job_code: 'CPA-HK-C1', designation: 'Guest Service Associate — Housekeeping', department: 'Housekeeping', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Dharmendra Singh', 'Chaten Zoting', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
-  { job_code: 'CPA-VAL-C1', designation: 'Guest Service Associate — Valet', department: 'Front Office', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Aniruddha Pimple', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
+  { job_code: 'CPA-FB-C1', designation: 'Guest Service Associate ï¿½ F&B', department: 'F&B Service', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Veer Rathore', 'Irfan Shiekh', 'Abhishek Meshram'], ['Ashish Gudankwar', 'Sakshi Raut']] },
+  { job_code: 'CPA-FO-C1', designation: 'Guest Service Associate ï¿½ Front Office', department: 'Front Office', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Aniruddha Pimple', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
+  { job_code: 'CPA-HK-C1', designation: 'Guest Service Associate ï¿½ Housekeeping', department: 'Housekeeping', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Dharmendra Singh', 'Chaten Zoting', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
+  { job_code: 'CPA-VAL-C1', designation: 'Guest Service Associate ï¿½ Valet', department: 'Front Office', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Aniruddha Pimple', 'Ravi Sharma'], ['Ashish Gudankwar', 'Sakshi Raut']] },
   { job_code: 'CPA-SEC-C1', designation: 'Security Guard', department: 'Security', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Shivesh Mishra', 'Prashant Raut'], ['Ashish Gudankwar', 'Sakshi Raut']] },
   { job_code: 'CPA-KIT-C1', designation: 'Senior Commis', department: 'Kitchen', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Debraj Das', 'Ganesh Pagare', 'Shankar Tajne'], ['Ashish Gudankwar', 'Sakshi Raut']] },
   { job_code: 'CPA-STR-C1', designation: 'Store Associate', department: 'Stores', grade: 'C1', panels: [['Ashish Gudankwar', 'Sakshi Raut'], ['Narendra Bondre', 'Abdul Rizwi'], ['Ashish Gudankwar', 'Sakshi Raut']] },
@@ -58,4 +58,5 @@ export const NAME_ALIASES = {
   'Veer Rathore': 'Veerendra Singh',
   'Irfan Shiekh': 'Irfan Khan',
   'Aniruddha Pimple': 'Anirudhha',
+  'Chaten Zoting': 'Chetan Zoting',    // HR gave the first name as "Chetan"
 };

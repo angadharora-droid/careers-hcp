@@ -77,6 +77,24 @@ export const PANEL_USERS = [
   { key: 'ravikant',      name: 'Ravikant Sharma', email: 'opsmanager.cpa@cpgh.in', designation: 'Operations Manager',  department: 'Operations', unit: 'CPA', note: 'covers every non-Food-Production B/C row at CPA' },
   { key: 'execsous_cpa',  name: 'Executive Sous Chef — CPA', email: 'execsouschef.cpa@cpgh.in', designation: 'Executive Sous Chef', department: 'Kitchen', unit: 'CPA' },
 
+  /* --- Nagpur staff who sit on Centre Point Amravati panels ---
+     Named on CPA_Job_Catalogue.xlsx but based at Nagpur; emails supplied by HR.
+     `department` is not guessed from the job title — it is taken from the departments
+     each person actually covers on the CPA sheet, which agrees with their email
+     prefix in every case (pastrychef → Kitchen, security → Security, and so on). */
+  { key: 'sunil_jinger',   name: 'Sunil Jinger',     email: 'eam.nagpur@cpgh.in',                 designation: 'Executive Assistant Manager', department: 'Leadership',        unit: 'HCP', note: 'covers Admin, Operations, Engineering and Front Office panels at CPA' },
+  { key: 'ganesh_pagare',  name: 'Ganesh Pagare',    email: 'pastrychef.nagpur@cpgh.in',          designation: 'Pastry Chef',                 department: 'Kitchen',           unit: 'HCP' },
+  { key: 'shankar_tajne',  name: 'Shankar Tajne',    email: 'exechef.nagpur@cpgh.in',             designation: 'Executive Chef',              department: 'Kitchen',           unit: 'HCP', note: 'also covers Kitchen Stewarding panels at CPA' },
+  { key: 'abhishek_m',     name: 'Abhishek Meshram', email: 'highsteak@cpgh.in',                  designation: 'Outlet Manager — High Steak', department: 'F&B Service',       unit: 'HCP' },
+  { key: 'chetan_zoting',  name: 'Chetan Zoting',    email: 'hk1.nagpur@cpgh.in',                 designation: 'Housekeeping Manager',        department: 'Housekeeping',      unit: 'HCP', note: "written 'Chaten Zoting' on the CPA sheet" },
+  { key: 'prashant_raut',  name: 'Prashant Raut',    email: 'security.nagpur@cpgh.in',            designation: 'Security Manager',            department: 'Security',          unit: 'HCP' },
+  { key: 'sakshi_raut',    name: 'Sakshi Raut',      email: 'hr@centrepointnagpur.com',           designation: 'HR',                          department: 'Human Resources',   unit: 'HCP', note: 'takes Panel 1 on every C-grade CPA row, across all departments' },
+  { key: 'narendra_b',     name: 'Narendra Bondre',  email: 'narendra.bondre@centrepointnagpur.com', designation: 'Purchase',                 department: 'Purchase',          unit: 'HCP', note: 'distinct person from Narendra Singh (chef.pablo@cpgh.in)' },
+  { key: 'abdul_rizwi',    name: 'Abdul Rizwi',      email: 'pm.nagpur@cpgh.in',                  designation: 'Purchase Manager',            department: 'Purchase',          unit: 'HCP' },
+  // No email was supplied for this one — derived from the name so the Kitchen
+  // Stewarding panels resolve. HR should correct it in the Interviewers page.
+  { key: 'chagan_nibrate', name: 'Chagan Nibrate',   email: 'chagan.nibrate@cpgh.in',             designation: 'Kitchen Stewarding',          department: 'Kitchen Stewarding', unit: 'HCP', note: 'EMAIL DERIVED, not supplied by HR — verify before this account is used' },
+
   // --- Centre Point Navi Mumbai ---
   { key: 'amit_c',       name: 'Amit Cakraborty',       email: 'gm.cpnm@cpgh.in',        designation: 'General Manager',    department: 'Leadership', unit: 'CPNM', note: 'GM role inferred from the Round 2 slot' },
   { key: 'opsmgr_cpnm',  name: 'Operations Manager — CPNM', email: 'opsmanager.cpnm@cpgh.in', designation: 'Operations Manager', department: 'Operations', unit: 'CPNM' },

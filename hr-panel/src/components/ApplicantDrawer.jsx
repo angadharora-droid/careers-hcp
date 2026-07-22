@@ -421,8 +421,7 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
           <SectionHeading>Interview panel</SectionHeading>
           <p className="mini mt-0.5">
             Grade {app.grade} runs {app.rounds || app.panel_size} interview panel{(app.rounds || app.panel_size) > 1 ? 's' : ''}, in order.
-            Each panel lists only the panellists the fixed matrix names for it — its interviewer plus any alternates,
-            whichever branch they belong to.
+            Anyone the fixed matrix names for this job can take either panel, whichever branch they belong to.
           </p>
           <div className="panel-box">
             {!panelRule && (
@@ -433,9 +432,14 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
             )}
             {panelSel.map((sel, i) => {
               const assignment = (app.panel_assignments || []).find((a) => a.round === i + 1);
-              const slot = (panelRule?.rounds || []).find((r) => r.round === i + 1);
-              // The named interviewer plus the sheet's alternates — nobody else.
-              const options = slot ? [slot.interviewer, ...(slot.alternates || [])].filter(Boolean) : [];
+              // Everyone the matrix names anywhere on this job — every panel's
+              // interviewer and alternates, de-duplicated — offered on every panel.
+              const options = [];
+              for (const slot of panelRule?.rounds || []) {
+                for (const u of [slot.interviewer, ...(slot.alternates || [])]) {
+                  if (u && !options.some((o) => String(o._id) === String(u._id))) options.push(u);
+                }
+              }
               // A panel already scored keeps its panellist even if the matrix has since
               // changed, so it must stay selectable or the form could not be re-saved.
               if (assignment?.status === 'Scored' && assignment.interviewer
