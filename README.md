@@ -55,6 +55,15 @@ SMTP_FROM="Centre Point HR <hr@centrepointhospitality.in>"
 ```
 On first run against an empty database the server seeds the full Centre Point Amravati roster: **67 PCN seats across 26 designations**, the 13-grade corporate structure, the competency library (Attitude 60% core + per-department Skills 25% / Knowledge 15% profiles for all 12 departments, at associate and executive level, + generic placeholders as a fallback), and demo users. `npm run seed -- --reset` wipes and reseeds.
 
+**Updating an already-populated database.** The seed stops the moment one position exists, so a deployed unit never picks up competency changes on restart — deliberately, since HR edits anchors through the Framework page and an automatic refresh each boot would overwrite that work. To push a change to the assessment library out to a live unit:
+
+```bash
+npm run sync -- --dry   # print the plan, write nothing
+npm run sync            # apply
+```
+
+It upserts the library, drops competencies the library no longer defines (an orphan would push a scoring form past 100%), back-fills `competency_profile` on seats and on applications that have not been scored yet, and verifies that every profile in use still totals 100%. It is idempotent, and it leaves seats whose designation isn't in the roster alone — those are listed for HR to set by hand.
+
 ## Seeded logins
 
 | Panel | Email | Password | Role |
