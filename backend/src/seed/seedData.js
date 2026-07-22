@@ -149,17 +149,21 @@ export const COMPETENCIES = [
    Section B tags no practical item as executive-only, so the skills block is identical
    at every grade within a department. Section C is what splits: an associate answers
    the two base questions, while a B1-and-above candidate answers the two '(Executive)'
-   questions — crisis management and manpower/budget — in their place. That is why the
-   exec variants carry `crisis` and `deploy` instead of `hosaware`.
+   questions — crisis management and manpower/budget — in their place.
+
+   Every profile is 3 skills + 2 knowledge. Section B's first two bullets (handle the
+   scenario, then write it up) are one competency, because they are one event: a
+   panellist watches the candidate resolve it and then reads what they wrote about it.
+   The document's two executive questions are likewise scored as a single competency.
 
    Leadership, Operations and Kitchen Stewarding have no section in the document. CPA
    has seated roles at those desks, so they are written here on the same pattern and
    are the three profiles most worth an HOD review before a role goes live.
 
    Weights hold to the document's split for every profile:
-     skills 25 = practical 10 + problem 8 + report 4 + groom 3
-     know  15 = deptknow 10 + hosaware 5          (associate)
-     know  15 = deptknow 6 + crisis 5 + deploy 4  (executive)                         */
+     skills 25 = practical 10 + problem 10 + groom 5
+     know  15 = deptknow 10 + hosaware 5   (associate)
+     know  15 = deptknow 10 + execmgmt 5   (executive)                                */
 
 // Grooming and hospitality awareness are not department-specific — one wording, used
 // everywhere, so an HR edit to either lands consistently across the whole library.
@@ -179,23 +183,16 @@ const HOSAWARE = L(
   'No awareness of the industry or of what a hotel guest expects.'
 );
 
-// The document words its two executive questions almost identically for every
-// department, varying only the department name — these follow that, with a
-// department-specific crisis example and escalation partners.
-const CRISIS = (d) => L(
-  `Walked a crisis end-to-end — ${d.crisis_eg} — in the right order: make safe, contain, inform. Named the internal escalation chain, the point at which ${d.partners} are pulled in, and when police / fire / medical authorities are called and who speaks to them.`,
-  `Sound crisis sequence with a clear escalation chain; slight hesitation on when external authorities come in.`,
-  `Knows a crisis must be escalated and roughly to whom, but assembled the sequence only with prompting.`,
-  `Vague on crisis response; would improvise rather than follow protocol, or would delay escalation.`,
-  `No grasp of crisis management or of coordination beyond their own department.`
-);
-
-const DEPLOY = (d) => L(
-  `Explained ${d.label} rostering against ${d.deploy_eg}, how leave and absenteeism are absorbed without breaking service, and how the departmental budget is built and defended. Talked in numbers — headcount, cost per shift, overtime.`,
-  `Clear on rostering and manpower planning and broadly comfortable with the budget lines; minor gaps.`,
-  `Can build a basic roster and knows what the budget covers, but manpower and cost planning are reactive.`,
-  `Limited grasp of scheduling or budgeting; would need close supervision on both.`,
-  `No working knowledge of manpower deployment or departmental budgeting.`
+// The document's two executive questions — crisis management, and shift scheduling /
+// manpower / budgeting — scored as one competency. It words them almost identically for
+// every department, varying only the department name, so this follows that with a
+// department-specific crisis example, escalation partners and deployment driver.
+const EXECMGMT = (d) => L(
+  `Walked a crisis end-to-end — ${d.crisis_eg} — in the right order: make safe, contain, inform, naming when ${d.partners} are pulled in and when police / fire / medical authorities are called. Equally clear on the routine side: ${d.label} rostering against ${d.deploy_eg}, absorbing leave and absenteeism without breaking service, and building and defending the departmental budget in numbers.`,
+  `Sound crisis sequence with a clear escalation chain, and clear on rostering, manpower and the budget lines; minor gaps on one side or the other.`,
+  `Knows a crisis must be escalated and roughly to whom, and can build a basic roster, but assembled both only with prompting and treats cost planning as reactive.`,
+  `Vague on crisis protocol and limited on scheduling or budgeting; would improvise rather than follow protocol, and needs close supervision on manpower and cost.`,
+  `No grasp of crisis management, of coordination beyond their own department, or of manpower and budget planning.`
 );
 
 const DEPT_ASSESSMENT = {
@@ -204,8 +201,7 @@ const DEPT_ASSESSMENT = {
     label: 'Front Office',
     know_name: 'Front Office Knowledge',
     practical_name: 'PMS Navigation, Phone & Radio Protocol',
-    incident_name: 'Front-Desk Incident & Emergency Handling',
-    report_name: 'Incident & Complaint Report Writing',
+    incident_name: 'Front-Desk Emergency Handling & Incident Report Writing',
     partners: 'Security, Housekeeping and Engineering',
     crisis_eg: 'a medical emergency in the lobby, a lost master key or a full evacuation',
     deploy_eg: 'the arrival/departure peaks and the occupancy forecast',
@@ -217,18 +213,11 @@ const DEPT_ASSESSMENT = {
       'Could not operate the front-desk system or follow basic communication protocol.'
     ),
     incident: L(
-      'Took charge of the emergency — guest safety first, then escalation, then documentation. Named who to call in what order, kept the desk covered, and stayed audibly calm with other guests watching.',
-      'Handled the scenario soundly with a clear sequence of actions; minor gaps in escalation.',
-      'Grasped the basic response but needed prompting on escalation or on protecting the guest first.',
-      'Flustered; response disordered, or left the desk and the guest unattended while seeking help.',
-      'No workable response to a front-desk emergency; would leave a guest or the property at risk.'
-    ),
-    report: L(
-      'Report was complete and factual — date and time, location, persons involved, sequence of events, action taken, follow-up owner. Kept observation separate from opinion; legible and signed.',
-      'Covered every essential in clear language; a detail or two missing.',
-      'Recorded the basics but thin on sequence or on action taken; some opinion written up as fact.',
-      'Report vague or incomplete; would not hold up if the guest escalated it.',
-      'Could not produce a usable written record of the incident.'
+      'Took charge of the emergency — guest safety first, then escalation, then documentation. Named who to call in what order, kept the desk covered, and stayed audibly calm with other guests watching. The report that followed was complete and factual — time, location, persons involved, sequence, action taken, follow-up owner — with observation kept separate from opinion.',
+      'Handled the scenario soundly with a clear sequence of actions, and the report covered every essential in clear language; minor gaps in escalation or a detail or two missing.',
+      'Grasped the basic response but needed prompting on escalation or on protecting the guest first; the report recorded the basics and was thin on sequence or action taken, with some opinion written up as fact.',
+      'Flustered; response disordered, or left the desk and the guest unattended while seeking help. Report vague or incomplete — it would not hold up if the guest escalated.',
+      'No workable response to a front-desk emergency, and could not produce a usable written record of it.'
     ),
     know: L(
       'Explained the full check-in and check-out sequence including ID and registration requirements, and how a folio or room-status discrepancy is traced and corrected. Knew precisely what a guest incident report must contain.',
@@ -251,8 +240,7 @@ const DEPT_ASSESSMENT = {
     label: 'Housekeeping',
     know_name: 'Housekeeping Knowledge',
     practical_name: 'Room Inspection, Room-Status System & Radio Protocol',
-    incident_name: 'Cleanliness & Maintenance Complaint Handling',
-    report_name: 'Lost & Found and Damage Report Writing',
+    incident_name: 'Complaint Handling & Lost-and-Found / Damage Report Writing',
     partners: 'Front Office, Engineering and Security',
     crisis_eg: 'a guest taken ill in a room, a serious in-room accident or an evacuation',
     deploy_eg: 'the occupancy forecast, departure load and rooms-per-attendant credit',
@@ -264,18 +252,11 @@ const DEPT_ASSESSMENT = {
       'Could not inspect a room to standard or operate the room-status system.'
     ),
     incident: L(
-      'Owned the complaint — apologised without excuses, re-cleaned or raised it to Engineering at once, offered a room move where it was warranted, and closed the loop with the guest. Named the follow-up owner.',
-      'Sound recovery with a clear fix and follow-up; minor gaps in closing the loop.',
-      'Apologised and arranged a re-clean, but recovery was passive and follow-up left to chance.',
-      'Defensive or deflecting; would leave the guest to chase the fix.',
-      'No workable recovery; would turn a routine complaint into a lost guest.'
-    ),
-    report: L(
-      'Report was complete — item or damage description, room and exact location, date and time, finder, witness, storage reference and the release procedure. Knew that valuables and perishables are logged and held differently.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the basics but thin on location, witness or custody trail.',
-      'Report vague; the item or the damage could not be traced from it.',
-      'Could not produce a usable lost & found or damage record.'
+      'Owned the complaint — apologised without excuses, re-cleaned or raised it to Engineering at once, offered a room move where it was warranted, and closed the loop with the guest. The written record was complete — item or damage description, room and exact location, date and time, finder, witness, storage reference and release procedure — and knew that valuables and perishables are logged and held differently.',
+      'Sound recovery with a clear fix and follow-up, and the record covered every essential clearly; minor gaps in closing the loop or a detail or two missing.',
+      'Apologised and arranged a re-clean, but recovery was passive and follow-up left to chance; the record captured the basics and was thin on location, witness or custody trail.',
+      'Defensive or deflecting; would leave the guest to chase the fix, and the record was vague enough that the item or damage could not be traced from it.',
+      'No workable recovery, and could not produce a usable lost & found or damage record.'
     ),
     know: L(
       'Explained the departure-clean sequence, turnover timing against arrival pressure, and the supervisor quality check, plus exactly what a lost & found or damage report must record. Knew chemical dilution and colour-coded cloth discipline.',
@@ -298,8 +279,7 @@ const DEPT_ASSESSMENT = {
     label: 'F&B Service',
     know_name: 'F&B Service Knowledge',
     practical_name: 'POS Operation & Kitchen–Service Communication',
-    incident_name: 'Allergy, Spillage & Accident Handling',
-    report_name: 'Guest Complaint & Incident Report Writing',
+    incident_name: 'Allergy / Accident Handling & Incident Report Writing',
     partners: 'the Kitchen, Front Office and Security',
     crisis_eg: 'an allergic reaction at the table or a suspected food-poisoning cluster',
     deploy_eg: 'covers forecast, outlet timings and banquet load',
@@ -311,18 +291,11 @@ const DEPT_ASSESSMENT = {
       'Could not operate the POS or communicate an order to the kitchen.'
     ),
     incident: L(
-      'Treated the allergy scenario as a medical event, not a service one — stopped service of the dish, escalated at once, secured the plate for investigation, and stayed with the guest. On the spillage scenario, made the area safe before anything else.',
-      'Sound response with the right priority on guest safety; minor gaps in escalation or evidence handling.',
-      'Grasped that it was serious and called for help, but the sequence was assembled with prompting.',
-      'Flustered; treated a medical incident as a complaint, or cleared away the evidence.',
-      'No workable response; would put a guest at real risk.'
-    ),
-    report: L(
-      'Report was complete and factual — what was ordered and served, the declared allergy or the sequence of the accident, time, witnesses, action taken, medical help summoned, follow-up owner. Kept it factual with liability in mind.',
-      'Covered every essential in clear language; a detail or two missing.',
-      'Recorded the basics but thin on sequence or on action taken; some opinion written up as fact.',
-      'Report vague or incomplete; would not stand up to a claim.',
-      'Could not produce a usable written record of the incident.'
+      'Treated the allergy scenario as a medical event, not a service one — stopped service of the dish, escalated at once, secured the plate for investigation, and stayed with the guest; made the spillage area safe before anything else. The report was complete and factual — what was ordered and served, the declared allergy or the sequence of the accident, time, witnesses, action taken, medical help summoned, follow-up owner — and written with liability in mind.',
+      'Sound response with the right priority on guest safety, and the report covered every essential in clear language; minor gaps in escalation, evidence handling or a missing detail.',
+      'Grasped that it was serious and called for help, but the sequence was assembled with prompting; the report recorded the basics and was thin on sequence or action taken, with some opinion written up as fact.',
+      'Flustered; treated a medical incident as a complaint, or cleared away the evidence. Report vague or incomplete — it would not stand up to a claim.',
+      'No workable response — would put a guest at real risk — and could not produce a usable written record of it.'
     ),
     know: L(
       'Explained the hygiene steps that run through service — hand hygiene, holding temperatures, cross-contamination and allergen declaration at the table — and knew exactly what an incident report must include.',
@@ -345,8 +318,7 @@ const DEPT_ASSESSMENT = {
     label: 'Kitchen',
     know_name: 'Food Production Knowledge',
     practical_name: 'HACCP Procedure & Communication with Service',
-    incident_name: 'Kitchen Emergency Handling (Fire, Equipment, Contamination)',
-    report_name: 'Food Safety Incident Report Writing',
+    incident_name: 'Kitchen Emergency Handling & Food Safety Incident Report Writing',
     partners: 'F&B Service, Engineering and Security',
     crisis_eg: 'a kitchen fire, a gas leak or a contamination scare that reaches guests',
     deploy_eg: 'covers forecast, menu engineering and banquet load',
@@ -358,18 +330,11 @@ const DEPT_ASSESSMENT = {
       'Could not demonstrate food safety procedure — unsafe in a working kitchen.'
     ),
     incident: L(
-      'Took the kitchen emergency in the right order — isolate the source (gas, power, product), make people safe, then escalate. Named the right extinguisher for an oil fire and knew to quarantine, not discard, suspect product.',
-      'Sound response with correct priorities; minor gaps in escalation or in isolating the source.',
-      'Grasped the basic response but needed prompting on sequence or on the right suppression method.',
-      'Flustered; would fight a fire wrongly, or discard the evidence of a contamination.',
-      'No workable response; would put the brigade and the guests at risk.'
-    ),
-    report: L(
-      'Report was complete — product and batch, supplier, temperatures recorded, the control point that failed, who was informed, product quarantined or destroyed, and corrective action. Written so an auditor could follow it.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the basics but thin on the failed control point or on corrective action.',
-      'Report vague; would not survive a food-safety audit.',
-      'Could not produce a usable food-safety record.'
+      'Took the kitchen emergency in the right order — isolate the source (gas, power, product), make people safe, then escalate. Named the right extinguisher for an oil fire and knew to quarantine, not discard, suspect product. The report was complete — product and batch, supplier, temperatures recorded, the control point that failed, who was informed, product quarantined or destroyed, corrective action — and written so an auditor could follow it.',
+      'Sound response with correct priorities, and the report covered every essential clearly; minor gaps in escalation, in isolating the source, or a missing detail.',
+      'Grasped the basic response but needed prompting on sequence or on the right suppression method; the report recorded the basics and was thin on the failed control point or on corrective action.',
+      'Flustered; would fight a fire wrongly, or discard the evidence of a contamination. Report vague — it would not survive a food-safety audit.',
+      'No workable response — would put the brigade and the guests at risk — and could not produce a usable food-safety record.'
     ),
     know: L(
       'Explained what happens in the first ten minutes of a food-safety incident or a kitchen fire — isolate, make safe, escalate, quarantine, record — and knew exactly what the incident report must contain.',
@@ -392,8 +357,7 @@ const DEPT_ASSESSMENT = {
     label: 'Engineering',
     know_name: 'Engineering & Maintenance Knowledge',
     practical_name: 'Maintenance Ticketing, Tools Handling & Radio Protocol',
-    incident_name: 'Fire Alarm & Electrical Emergency Handling',
-    report_name: 'Equipment Failure & Incident Report Writing',
+    incident_name: 'Fire / Electrical Emergency Handling & Failure Report Writing',
     partners: 'Front Office, Housekeeping and Security',
     crisis_eg: 'a power failure, a lift entrapment or a fire-panel activation',
     deploy_eg: 'the preventive-maintenance calendar and shift coverage across 24 hours',
@@ -405,18 +369,11 @@ const DEPT_ASSESSMENT = {
       'Could not work a maintenance ticket safely — would be a hazard to themselves or others.'
     ),
     incident: L(
-      'Made the electrical scenario safe before touching anything — isolated at the source, confirmed dead, and only then worked. On the fire alarm, knew the panel, the zone, how to verify a genuine alarm and when not to reset it.',
-      'Sound response with correct isolation and a clear sequence; minor gaps in escalation.',
-      'Grasped the basic response but needed prompting on isolation or on verifying the alarm zone.',
-      'Flustered; would work live, or would silence a panel without verifying the zone.',
-      'No workable response; would create a serious safety hazard.'
-    ),
-    report: L(
-      'Report was complete — asset and location, symptom, cause found, parts used, downtime, and whether it is a repeat failure needing a preventive change. Written so the next technician could pick it up cold.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the basics but thin on cause or on downtime; a repeat failure would not be visible.',
-      'Report vague; the fault history could not be reconstructed from it.',
-      'Could not produce a usable maintenance record.'
+      'Made the electrical scenario safe before touching anything — isolated at the source, confirmed dead, and only then worked. On the fire alarm, knew the panel, the zone, how to verify a genuine alarm and when not to reset it. The report was complete — asset and location, symptom, cause found, parts used, downtime, and whether it is a repeat failure needing a preventive change — written so the next technician could pick it up cold.',
+      'Sound response with correct isolation and a clear sequence, and the report covered every essential clearly; minor gaps in escalation or a missing detail.',
+      'Grasped the basic response but needed prompting on isolation or on verifying the alarm zone; the report recorded the basics and was thin on cause or downtime, so a repeat failure would not be visible.',
+      'Flustered; would work live, or would silence a panel without verifying the zone. Report vague — the fault history could not be reconstructed from it.',
+      'No workable response — would create a serious safety hazard — and could not produce a usable maintenance record.'
     ),
     know: L(
       'Explained the response to an equipment failure and to a fire emergency — isolate, make safe, escalate, restore, record — and knew exactly what a maintenance or incident report must capture.',
@@ -439,8 +396,7 @@ const DEPT_ASSESSMENT = {
     label: 'Security',
     know_name: 'Security Knowledge',
     practical_name: 'CCTV, Access Control, Visitor Management & Radio Protocol',
-    incident_name: 'Fire Alarm & Evacuation Handling',
-    report_name: 'Guest & Staff Incident Report Writing',
+    incident_name: 'Fire / Evacuation Handling & Incident Report Writing',
     partners: 'Front Office, Engineering and hotel management',
     crisis_eg: 'a fire evacuation, an intruder, a police matter or a death on the premises',
     deploy_eg: 'post coverage across 24 hours, patrol frequency and event load',
@@ -452,18 +408,11 @@ const DEPT_ASSESSMENT = {
       'Could not operate CCTV or access control, or follow radio protocol.'
     ),
     incident: L(
-      'Ran the evacuation properly — raised the alarm, worked to the assembly point, swept the assigned zone, accounted for guests and staff, and held the cordon for the fire service. Knew not to re-enter until cleared.',
-      'Sound evacuation response with a clear sequence; minor gaps in sweeping or accounting.',
-      'Knows to evacuate and where the assembly point is, but the zone sweep and roll call needed prompting.',
-      'Flustered; would evacuate without accounting for anyone, or would re-enter unsafely.',
-      'No workable evacuation response; would endanger guests and staff.'
-    ),
-    report: L(
-      'Report was complete and neutral — date, time, exact location, persons involved with identification, sequence of events, witnesses, action taken, whether police were informed. Factual throughout, written knowing it may be evidence.',
-      'Covered every essential clearly and neutrally; a detail or two missing.',
-      'Recorded the basics but thin on witnesses or sequence; some opinion written up as fact.',
-      'Report vague or coloured by opinion; would not stand up as evidence.',
-      'Could not produce a usable incident record.'
+      'Ran the evacuation properly — raised the alarm, worked to the assembly point, swept the assigned zone, accounted for guests and staff, and held the cordon for the fire service, knowing not to re-enter until cleared. The report was complete and neutral — date, time, exact location, persons involved with identification, sequence, witnesses, action taken, whether police were informed — written knowing it may become evidence.',
+      'Sound evacuation response with a clear sequence, and the report covered every essential clearly and neutrally; minor gaps in sweeping, accounting or a missing detail.',
+      'Knows to evacuate and where the assembly point is, but the zone sweep and roll call needed prompting; the report recorded the basics and was thin on witnesses or sequence, with some opinion written up as fact.',
+      'Flustered; would evacuate without accounting for anyone, or would re-enter unsafely. Report vague or coloured by opinion — it would not stand up as evidence.',
+      'No workable evacuation response — would endanger guests and staff — and could not produce a usable incident record.'
     ),
     know: L(
       'Explained the fire evacuation sequence, drew a clear line between routine patrol and incident response — patrol is prevention and presence, response is containment and evidence — and knew exactly what an incident report must include.',
@@ -486,8 +435,7 @@ const DEPT_ASSESSMENT = {
     label: 'Conveyance',
     know_name: 'Conveyance & Valet Knowledge',
     practical_name: 'Vehicle Log / Dispatch System & Radio Protocol',
-    incident_name: 'Transport Emergency Handling (Breakdown, Accident, Delay)',
-    report_name: 'Vehicle Incident & Accident Report Writing',
+    incident_name: 'Transport Emergency Handling & Vehicle Incident Report Writing',
     partners: 'Front Office, Security and hotel management',
     crisis_eg: 'a guest injured in a vehicle accident or a transport failure during a VIP movement',
     deploy_eg: 'arrival and departure movements, airport runs and event traffic',
@@ -499,18 +447,11 @@ const DEPT_ASSESSMENT = {
       'Could not operate the vehicle log or follow key-handling and radio protocol.'
     ),
     incident: L(
-      'Put the guest first on the breakdown scenario — got them safe and comfortable, arranged the replacement vehicle before troubleshooting, informed the desk so the onward booking could be protected, then dealt with the vehicle.',
-      'Sound response with the right priority on the guest; minor gaps in informing the desk.',
-      'Grasped the basic response but focused on the vehicle before the guest; needed prompting.',
-      'Flustered; would leave the guest waiting without information or an alternative.',
-      'No workable response; would strand a guest.'
-    ),
-    report: L(
-      'Report was complete — vehicle and registration, driver, date, time and location, guest details, sequence of the accident, damage and injury, third parties, police informed, insurance intimation. Factual throughout.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the basics but thin on third parties, on injury or on the insurance step.',
-      'Report vague; would not support an insurance claim.',
-      'Could not produce a usable vehicle incident record.'
+      'Put the guest first on the breakdown scenario — got them safe and comfortable, arranged the replacement vehicle before troubleshooting, informed the desk so the onward booking could be protected, then dealt with the vehicle. The report was complete and factual — vehicle and registration, driver, date, time and location, guest details, sequence of the accident, damage and injury, third parties, police informed, insurance intimation.',
+      'Sound response with the right priority on the guest, and the report covered every essential clearly; minor gaps in informing the desk or a missing detail.',
+      'Grasped the basic response but focused on the vehicle before the guest and needed prompting; the report recorded the basics and was thin on third parties, injury or the insurance step.',
+      'Flustered; would leave the guest waiting without information or an alternative. Report vague — it would not support an insurance claim.',
+      'No workable response — would strand a guest — and could not produce a usable vehicle incident record.'
     ),
     know: L(
       'Explained the steps for a breakdown and for an accident — guest safety, alternative arrangement, informing the hotel, police and insurance intimation, documentation — and knew what the vehicle incident report must contain. Clear on licence and vehicle-document validity.',
@@ -526,8 +467,7 @@ const DEPT_ASSESSMENT = {
     label: 'Stores',
     know_name: 'Stores & Inventory Knowledge',
     practical_name: 'Inventory Management System & Issuance Protocol',
-    incident_name: 'Stock Shortage & Spoilage Handling',
-    report_name: 'Inventory Discrepancy & Stock-Damage Report Writing',
+    incident_name: 'Shortage / Spoilage Handling & Inventory Discrepancy Report Writing',
     partners: 'Purchase, the Kitchen and Finance',
     crisis_eg: 'a spoilage event across a cold store or a stock loss found during audit',
     deploy_eg: 'receiving windows, issue timings and month-end stock-take',
@@ -539,18 +479,11 @@ const DEPT_ASSESSMENT = {
       'Could not operate the inventory system or follow issuance protocol.'
     ),
     incident: L(
-      'Handled the shortage without letting the kitchen stop — flagged it early with a realistic timeline, proposed a substitute or an emergency purchase, and escalated to Purchase in writing. On spoilage, quarantined and recorded before disposing.',
-      'Sound response with early escalation; minor gaps in the written trail.',
-      'Grasped the problem but escalated late or verbally only; substitution not thought through.',
-      'Would absorb the shortage silently until a department was left without stock.',
-      'No workable response; would disguise a shortage or dispose of spoilage unrecorded.'
-    ),
-    report: L(
-      'Report was complete — item, code, batch, quantity booked against quantity found, the variance and its likely cause, supplier or department involved, and the corrective action. Written so Finance could reconcile from it.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the variance but thin on cause or on corrective action.',
-      'Report vague; the discrepancy could not be reconciled from it.',
-      'Could not produce a usable discrepancy record.'
+      'Handled the shortage without letting the kitchen stop — flagged it early with a realistic timeline, proposed a substitute or an emergency purchase, and escalated to Purchase in writing; on spoilage, quarantined and recorded before disposing. The report was complete — item, code, batch, quantity booked against quantity found, the variance and its likely cause, supplier or department involved, corrective action — written so Finance could reconcile from it.',
+      'Sound response with early escalation, and the report covered every essential clearly; minor gaps in the written trail or a missing detail.',
+      'Grasped the problem but escalated late or verbally only, and substitution was not thought through; the report recorded the variance but was thin on cause or corrective action.',
+      'Would absorb the shortage silently until a department was left without stock. Report vague — the discrepancy could not be reconciled from it.',
+      'No workable response — would disguise a shortage or dispose of spoilage unrecorded — and could not produce a usable discrepancy record.'
     ),
     know: L(
       'Explained receiving, storage and issuance end to end — PO matching, quality and expiry checks, FIFO, segregation and temperature discipline, indent-based issue, and periodic stock-take — and knew what a stock discrepancy report must record.',
@@ -566,8 +499,7 @@ const DEPT_ASSESSMENT = {
     label: 'Kitchen Stewarding',
     know_name: 'Kitchen Stewarding Knowledge',
     practical_name: 'Dishwash Cycle, Chemical Dilution & Equipment Handling',
-    incident_name: 'Breakage, Chemical Spill & Machine Failure Handling',
-    report_name: 'Breakage & Chemical Consumption Report Writing',
+    incident_name: 'Chemical Spill / Machine Failure Handling & Breakage Report Writing',
     partners: 'the Kitchen, Engineering and Stores',
     crisis_eg: 'a chemical spill or burn injury, or a dishwash failure mid-service',
     deploy_eg: 'covers forecast, outlet timings and banquet load',
@@ -579,18 +511,11 @@ const DEPT_ASSESSMENT = {
       'Could not run the dishwash cycle safely — a chemical or hygiene hazard.'
     ),
     incident: L(
-      'On the chemical spill, made the area safe first — cordoned, ventilated, PPE, correct neutralising step — and knew where the safety data sheet lives. On a machine failure mid-service, switched to the manual routine and raised the ticket at once.',
-      'Sound response with the right safety priority; minor gaps in escalation.',
-      'Grasped that it was serious but needed prompting on the sequence or on the safety data sheet.',
-      'Flustered; would clean a chemical spill bare-handed, or let service stall without escalating.',
-      'No workable response; would create a serious safety hazard.'
-    ),
-    report: L(
-      'Report was complete — item and quantity broken, outlet, shift, how it happened, whether injury resulted, and chemical consumption against issue. Written so recurring breakage or over-consumption would show up.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the breakage but thin on cause or on chemical consumption.',
-      'Report vague; a recurring loss would go unnoticed.',
-      'Could not produce a usable breakage or consumption record.'
+      'On the chemical spill, made the area safe first — cordoned, ventilated, PPE, correct neutralising step — and knew where the safety data sheet lives; on a machine failure mid-service, switched to the manual routine and raised the ticket at once. The report was complete — item and quantity broken, outlet, shift, how it happened, whether injury resulted, chemical consumption against issue — written so recurring breakage or over-consumption would show up.',
+      'Sound response with the right safety priority, and the report covered every essential clearly; minor gaps in escalation or a missing detail.',
+      'Grasped that it was serious but needed prompting on the sequence or on the safety data sheet; the report recorded the breakage but was thin on cause or chemical consumption.',
+      'Flustered; would clean a chemical spill bare-handed, or let service stall without escalating. Report vague — a recurring loss would go unnoticed.',
+      'No workable response — would create a serious safety hazard — and could not produce a usable breakage or consumption record.'
     ),
     know: L(
       'Explained wash and rinse temperature standards, chemical dilution and safe storage, colour-coded segregation, waste segregation and pest-control discipline, and how stewarding supports the kitchen’s HACCP plan.',
@@ -606,8 +531,7 @@ const DEPT_ASSESSMENT = {
     label: 'Admin',
     know_name: 'Administration Knowledge',
     practical_name: 'Office Software & Internal Communication Protocol',
-    incident_name: 'Data Confidentiality & Document-Handling Incident',
-    report_name: 'Administrative Discrepancy Report Writing',
+    incident_name: 'Confidentiality Incident Handling & Discrepancy Report Writing',
     partners: 'HR, Finance and hotel management',
     crisis_eg: 'a data-confidentiality breach, a statutory inspection or a licence lapse',
     deploy_eg: 'statutory calendars, audit dates and departmental support load',
@@ -619,18 +543,11 @@ const DEPT_ASSESSMENT = {
       'Could not use office software or route internal communication.'
     ),
     incident: L(
-      'Treated the confidentiality breach seriously — contained access first, informed management immediately rather than trying to fix it quietly, preserved the trail, and knew which records carry a statutory obligation.',
-      'Sound response with prompt escalation; minor gaps in containment or in preserving the trail.',
-      'Recognised it as serious but would have delayed escalation or handled it informally.',
-      'Would try to resolve a breach quietly, or discuss confidential records with the wrong people.',
-      'No grasp of confidentiality; would be a data risk in the role.'
-    ),
-    report: L(
-      'Report was complete — what the discrepancy is, records and dates involved, who raised it, verification done, the gap identified, and the corrective and preventive action. Written so an auditor could follow it.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the discrepancy but thin on verification or on preventive action.',
-      'Report vague; the discrepancy could not be traced or closed from it.',
-      'Could not produce a usable administrative record.'
+      'Treated the confidentiality breach seriously — contained access first, informed management immediately rather than trying to fix it quietly, preserved the trail, and knew which records carry a statutory obligation. The report was complete — what the discrepancy is, records and dates involved, who raised it, verification done, the gap identified, corrective and preventive action — written so an auditor could follow it.',
+      'Sound response with prompt escalation, and the report covered every essential clearly; minor gaps in containment, in preserving the trail, or a missing detail.',
+      'Recognised it as serious but would have delayed escalation or handled it informally; the report recorded the discrepancy but was thin on verification or preventive action.',
+      'Would try to resolve a breach quietly, or discuss confidential records with the wrong people. Report vague — the discrepancy could not be traced or closed from it.',
+      'No grasp of confidentiality — a data risk in the role — and could not produce a usable administrative record.'
     ),
     know_exec: L(
       'Explained documentation, filing and record-keeping as the person accountable — retention periods and what is statutory, version and access control, an audit-ready filing structure, and how licence and contract renewals are tracked so nothing lapses.',
@@ -646,8 +563,7 @@ const DEPT_ASSESSMENT = {
     label: 'Operations',
     know_name: 'Hotel Operations Knowledge',
     practical_name: 'Morning Briefing, Occupancy-Driven Deployment & Ops Dashboard',
-    incident_name: 'Multi-Department Failure Handling',
-    report_name: 'Operations & Shift Report Writing',
+    incident_name: 'Multi-Department Failure Handling & Shift Report Writing',
     partners: 'every department head, and police / fire / medical authorities',
     crisis_eg: 'a property-wide failure — power, fire, or a mass-guest incident',
     deploy_eg: 'the occupancy forecast and the load across all departments',
@@ -659,18 +575,11 @@ const DEPT_ASSESSMENT = {
       'Could not run an operational briefing or plan deployment.'
     ),
     incident: L(
-      'Took command of the multi-department failure — established what was affected, protected life and then revenue, gave each HOD a clear task and a reporting time, and set a single point of guest communication. Escalated to the GM and to authorities at the right threshold.',
-      'Sound command with clear tasking; minor gaps in guest communication or escalation timing.',
-      'Coordinated the response but tasking was loose and guest communication left to individual desks.',
-      'Would work one department at a time while the rest of the property drifted.',
-      'No workable command of a cross-department failure.'
-    ),
-    report: L(
-      'Report was complete — occupancy and revenue for the shift, incidents with action taken and owners, out-of-order and out-of-service items, guest complaints and their resolution, and what is carried forward. Readable in two minutes by the GM.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded events but thin on action taken or on what carries forward.',
-      'Report vague; the next shift could not pick up from it.',
-      'Could not produce a usable operations record.'
+      'Took command of the multi-department failure — established what was affected, protected life and then revenue, gave each HOD a clear task and a reporting time, set a single point of guest communication, and escalated to the GM and to authorities at the right threshold. The shift report was complete — occupancy and revenue, incidents with action taken and owners, out-of-order items, guest complaints and their resolution, what carries forward — and readable in two minutes by the GM.',
+      'Sound command with clear tasking, and the report covered every essential clearly; minor gaps in guest communication, escalation timing or a missing detail.',
+      'Coordinated the response but tasking was loose and guest communication was left to individual desks; the report recorded events but was thin on action taken or on what carries forward.',
+      'Would work one department at a time while the rest of the property drifted. Report vague — the next shift could not pick up from it.',
+      'No workable command of a cross-department failure, and could not produce a usable operations record.'
     ),
     know_exec: L(
       'Explained how the departments interlock across the guest journey — where the hand-offs fail between Front Office, Housekeeping, F&B and Engineering — and how SOPs, standards audits and guest-feedback scores are used to hold the line. Talked in operating metrics.',
@@ -686,8 +595,7 @@ const DEPT_ASSESSMENT = {
     label: 'Leadership',
     know_name: 'Business & Enterprise Leadership Knowledge',
     practical_name: 'P&L Review & Departmental Performance Challenge',
-    incident_name: 'Property-Level Crisis Command',
-    report_name: 'Ownership Reporting & Escalation Note',
+    incident_name: 'Property-Level Crisis Command & Ownership Escalation Note',
     partners: 'ownership, every department head, and police / fire / medical authorities',
     crisis_eg: 'a fire, a fatality, a police matter or a reputational incident that reaches the press',
     deploy_eg: 'the annual business plan, occupancy forecast and the full establishment',
@@ -699,18 +607,11 @@ const DEPT_ASSESSMENT = {
       'Could not read a hotel P&L or run a performance review.'
     ),
     incident: L(
-      'Took command as the accountable person — protected life first, took control of external communication personally, informed ownership early with facts rather than reassurance, and preserved the record knowing it may be scrutinised.',
-      'Sound crisis command with early ownership contact; minor gaps in external communication.',
-      'Would manage the incident but delegate the external and ownership communication too far down.',
-      'Would delay informing ownership, or improvise a statement to the press.',
-      'No workable crisis command; would expose the property legally and reputationally.'
-    ),
-    report: L(
-      'Escalation note to ownership was complete and unvarnished — what happened, exposure, action taken, what is still open, and what is recommended. No burying of bad news; a clear ask and a clear decision owner.',
-      'Covered every essential clearly with a defined ask; a detail or two missing.',
-      'Reported the facts but soft on exposure or unclear on what decision is needed.',
-      'Note vague or defensive; ownership could not act on it.',
-      'Could not produce a usable report to ownership.'
+      'Took command as the accountable person — protected life first, took control of external communication personally, informed ownership early with facts rather than reassurance, and preserved the record knowing it may be scrutinised. The escalation note was complete and unvarnished — what happened, exposure, action taken, what is still open, what is recommended — with no burying of bad news, a clear ask and a clear decision owner.',
+      'Sound crisis command with early ownership contact, and the note covered every essential clearly with a defined ask; minor gaps in external communication or a missing detail.',
+      'Would manage the incident but delegate external and ownership communication too far down; the note reported the facts but was soft on exposure or unclear on what decision is needed.',
+      'Would delay informing ownership, or improvise a statement to the press. Note vague or defensive — ownership could not act on it.',
+      'No workable crisis command — would expose the property legally and reputationally — and could not produce a usable report to ownership.'
     ),
     know_exec: L(
       'Owns the commercial picture — P&L and departmental margins, rate and revenue strategy against the competition set, statutory and licensing compliance, brand standards, and people cost against establishment. Spoke about the hotel as a business, not as a set of departments.',
@@ -744,15 +645,13 @@ function buildProfile(base, variant, d) {
   const profile = `${base}_${variant}`;
   const rows = [
     { profile, key: 'practical', name: `Practical Assessment — ${d.practical_name}`, section: 'skill', weight: 10, order: 10, anchors: d.practical },
-    { profile, key: 'problem', name: d.incident_name, section: 'skill', weight: 8, order: 11, anchors: d.incident },
-    { profile, key: 'report', name: d.report_name, section: 'skill', weight: 4, order: 12, anchors: d.report },
-    { profile, key: 'groom', name: 'Grooming & Professional Presence', section: 'skill', weight: 3, order: 13, anchors: GROOM },
+    { profile, key: 'problem', name: d.incident_name, section: 'skill', weight: 10, order: 11, anchors: d.incident },
+    { profile, key: 'groom', name: 'Grooming & Professional Presence', section: 'skill', weight: 5, order: 12, anchors: GROOM },
   ];
   if (variant === 'exec') {
     rows.push(
-      { profile, key: 'deptknow', name: `${d.know_name} (Executive)`, section: 'know', weight: 6, order: 20, anchors: d.know_exec },
-      { profile, key: 'crisis', name: 'Crisis Management & Inter-Department Coordination', section: 'know', weight: 5, order: 21, anchors: CRISIS(d) },
-      { profile, key: 'deploy', name: 'Shift Scheduling, Manpower Deployment & Budgeting', section: 'know', weight: 4, order: 22, anchors: DEPLOY(d) }
+      { profile, key: 'deptknow', name: `${d.know_name} (Executive)`, section: 'know', weight: 10, order: 20, anchors: d.know_exec },
+      { profile, key: 'execmgmt', name: 'Crisis Management, Manpower Deployment & Budgeting', section: 'know', weight: 5, order: 21, anchors: EXECMGMT(d) }
     );
   } else {
     rows.push(
@@ -782,30 +681,19 @@ COMPETENCIES.push(
     ),
   },
   {
-    profile: 'generic', key: 'problem', name: '[PLACEHOLDER — HOD to replace] Incident & Emergency Handling',
-    section: 'skill', weight: 8, order: 11, is_placeholder: true,
+    profile: 'generic', key: 'problem', name: '[PLACEHOLDER — HOD to replace] Incident Handling & Report Writing',
+    section: 'skill', weight: 10, order: 11, is_placeholder: true,
     anchors: L(
-      'Handled the scenario calmly and in the right order, with clear ownership and escalation.',
-      'Sound response with a clear sequence of actions; minor gaps.',
-      'Grasped the basic response but needed prompting on sequence or escalation.',
-      'Flustered; response disordered or ownership deflected.',
-      'No workable response to the scenario.'
-    ),
-  },
-  {
-    profile: 'generic', key: 'report', name: '[PLACEHOLDER — HOD to replace] Report Writing & Documentation',
-    section: 'skill', weight: 4, order: 12, is_placeholder: true,
-    anchors: L(
-      'Report was complete and factual — time, place, persons, sequence, action taken, follow-up owner.',
-      'Covered every essential clearly; a detail or two missing.',
-      'Recorded the basics but thin on sequence or action taken.',
-      'Report vague or incomplete.',
-      'Could not produce a usable written record.'
+      'Handled the scenario calmly and in the right order, with clear ownership and escalation, and the report that followed was complete and factual — time, place, persons, sequence, action taken, follow-up owner.',
+      'Sound response with a clear sequence of actions, and the report covered every essential clearly; minor gaps or a missing detail.',
+      'Grasped the basic response but needed prompting on sequence or escalation; the report recorded the basics and was thin on sequence or action taken.',
+      'Flustered; response disordered or ownership deflected, and the report was vague or incomplete.',
+      'No workable response to the scenario, and could not produce a usable written record.'
     ),
   },
   {
     profile: 'generic', key: 'groom', name: 'Grooming & Professional Presence',
-    section: 'skill', weight: 3, order: 13, anchors: GROOM,
+    section: 'skill', weight: 5, order: 12, anchors: GROOM,
   },
   {
     profile: 'generic', key: 'deptknow', name: '[PLACEHOLDER — HOD to replace] Role / Technical Knowledge',

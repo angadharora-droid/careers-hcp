@@ -165,7 +165,9 @@ Profiles: `core` (Attitude 60%, all roles) · `<dept>_assoc` / `<dept>_exec` (Sk
 
 `dept` ∈ `fo` `hk` `fb` `kit` `eng` `sec` `val` `str` `kst` `adm` `ops` `lead`. Content is transcribed from `hotel_assessment_criteria.docx`; `_exec` applies from grade B1 up (it carries that document's crisis-management and manpower/budget questions in place of `hosaware`), `_assoc` at B2 and below. `assoc`-only: `val` `str` `kst`. `exec`-only: `adm` `ops` `lead`.
 
-Weights per profile: skills `practical 10 + problem 8 + report 4 + groom 3` = 25 · knowledge `deptknow 10 + hosaware 5` (assoc) or `deptknow 6 + crisis 5 + deploy 4` (exec) = 15.
+Every profile is **3 skills + 2 knowledge**: skills `practical 10 + problem 10 + groom 5` = 25 · knowledge `deptknow 10 + hosaware 5` (assoc) or `deptknow 10 + execmgmt 5` (exec) = 15. With the 4-competency `core` block that is 9 competencies and 100% on every scoring form.
+
+`problem` covers Section B's first two bullets together — handle the scenario, then write it up — because they are one event. `execmgmt` likewise scores the document's two `(Executive)` questions as one.
 - `GET /competencies?profile=` → `{ competencies: [{ _id, key, name, section: "att|skill|know", weight, profile, anchors: [5 strings], is_placeholder, order }] }`
 - `POST /competencies` / `PATCH /competencies/:id` / `DELETE /competencies/:id` (exactly 5 anchors enforced)
 
