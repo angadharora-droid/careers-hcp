@@ -30,7 +30,7 @@ const positionSchema = new mongoose.Schema(
     is_revenue_generating: { type: Boolean, default: false },
     is_guest_facing: { type: Boolean, default: false },
     job_description: { type: String, default: '' },            // shown on the public Career Panel
-    competency_profile: { type: String, default: null },        // 'fo_assoc' | 'fo_exec' | null → generic placeholders
+    competency_profile: { type: String, default: null },        // '<dept>_assoc' | '<dept>_exec' | null → generic placeholders
     approver: { type: String, default: 'General Manager' },
     remarks: { type: String, default: '' },
   },

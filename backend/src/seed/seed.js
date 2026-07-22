@@ -124,7 +124,7 @@ export async function seedIfEmpty() {
         is_revenue_generating: r.rev,
         is_guest_facing: r.guest,
         job_description: makeJobDescription(r),
-        competency_profile: r.fo || null,
+        competency_profile: r.prof || null,
         approver: r.grade === 'A1' ? 'Ownership' : 'General Manager',
       });
     }

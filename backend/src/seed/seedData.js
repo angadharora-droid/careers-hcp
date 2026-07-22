@@ -23,36 +23,41 @@ export const GRADES = [
 ];
 
 // CPA sanctioned strength — 26 designations, expands to 67 individual PCN seats.
-// fo: competency profile key ('fo_assoc' | 'fo_exec') for roles with real content.
+// prof: competency profile key — the department's assessment content plus the grade
+// variant. '_exec' is used from B1 upward because the assessment document reserves its
+// crisis-management and manpower/budget questions for that level; '_assoc' at B2 and
+// below. Every seated role carries one, so nothing falls back to the placeholders.
 export const ROSTER = [
-  { desig: 'General Manager', fam: 'Corporate Services', grade: 'A1', dept: 'Leadership', reports: 'Group / Ownership', count: 1, min: 150000, max: 250000, rev: true, guest: true, crit: true },
-  { desig: 'Operations Manager', fam: 'Corporate Services', grade: 'A3', dept: 'Operations', reports: 'General Manager', count: 1, min: 30000, max: 65000, rev: true, guest: true, crit: true },
-  { desig: 'Admin Head', fam: 'Administration', grade: 'A3', dept: 'Admin', reports: 'General Manager', count: 1, min: 30000, max: 65000, rev: false, guest: false, crit: true },
-  { desig: 'Executive Chef', fam: 'Kitchen', grade: 'A3', dept: 'Kitchen', reports: 'General Manager', count: 1, min: 30000, max: 65000, rev: true, guest: false, crit: true },
-  { desig: 'Front Office Executive', fam: 'Front Office', grade: 'B1', dept: 'Front Office', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: true, guest: true, crit: true, fo: 'fo_exec' },
-  { desig: 'Admin Executive', fam: 'Administration', grade: 'B1', dept: 'Admin', reports: 'Admin Head', count: 2, min: 20000, max: 27000, rev: false, guest: false, crit: false },
-  { desig: 'Security Executive', fam: 'Security', grade: 'B1', dept: 'Security', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: false, guest: false, crit: true },
-  { desig: 'F&B Executive', fam: 'F&B Service', grade: 'B1', dept: 'F&B Service', reports: 'Operations Manager', count: 2, min: 20000, max: 27000, rev: true, guest: true, crit: true },
-  { desig: 'Engineering Executive', fam: 'Engineering', grade: 'B1', dept: 'Engineering', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: false, guest: false, crit: true },
-  { desig: 'Housekeeping Executive', fam: 'Housekeeping', grade: 'B1', dept: 'Housekeeping', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: false, guest: true, crit: true },
-  { desig: 'Chef de Partie', fam: 'Kitchen', grade: 'B1', dept: 'Kitchen', reports: 'Executive Chef', count: 1, min: 22000, max: 32000, rev: true, guest: false, crit: false },
-  { desig: 'Demi Chef de Partie', fam: 'Kitchen', grade: 'B2', dept: 'Kitchen', reports: 'Chef de Partie', count: 1, min: 18000, max: 25000, rev: true, guest: false, crit: false },
-  { desig: 'Team Leader — F&B', fam: 'F&B Service', grade: 'B2', dept: 'F&B Service', reports: 'F&B Executive', count: 2, min: 15000, max: 20000, rev: true, guest: true, crit: false },
-  { desig: 'Housekeeping Supervisor', fam: 'Housekeeping', grade: 'B2', dept: 'Housekeeping', reports: 'Housekeeping Executive', count: 2, min: 15000, max: 20000, rev: false, guest: true, crit: false },
-  { desig: 'Kitchen Stewarding Supervisor', fam: 'Kitchen', grade: 'B2', dept: 'Kitchen Stewarding', reports: 'Executive Chef', count: 1, min: 15000, max: 20000, rev: false, guest: false, crit: false },
-  { desig: 'Engineering Associate', fam: 'Engineering', grade: 'C1', dept: 'Engineering', reports: 'Engineering Executive', count: 2, min: 13000, max: 18000, rev: false, guest: false, crit: false },
-  { desig: 'Guest Service Associate — F&B', fam: 'F&B Service', grade: 'C1', dept: 'F&B Service', reports: 'Team Leader — F&B', count: 12, min: 13000, max: 18000, rev: true, guest: true, crit: false },
-  { desig: 'Senior Commis', fam: 'Kitchen', grade: 'C1', dept: 'Kitchen', reports: 'Chef de Partie', count: 5, min: 15000, max: 22000, rev: true, guest: false, crit: false },
-  { desig: 'Junior Commis', fam: 'Kitchen', grade: 'C2', dept: 'Kitchen', reports: 'Senior Commis', count: 5, min: 14000, max: 18000, rev: true, guest: false, crit: false },
-  { desig: 'Guest Service Associate — Front Office', fam: 'Front Office', grade: 'C1', dept: 'Front Office', reports: 'Front Office Executive', count: 3, min: 13000, max: 18000, rev: true, guest: true, crit: false, fo: 'fo_assoc' },
-  { desig: 'Guest Service Associate — Housekeeping', fam: 'Housekeeping', grade: 'C1', dept: 'Housekeeping', reports: 'Housekeeping Supervisor', count: 9, min: 13000, max: 18000, rev: false, guest: true, crit: false },
-  { desig: 'Store Associate', fam: 'Purchase', grade: 'C1', dept: 'Stores', reports: 'Admin Head', count: 1, min: 13000, max: 18000, rev: false, guest: false, crit: false },
-  { desig: 'Security Guard', fam: 'Security', grade: 'C1', dept: 'Security', reports: 'Security Executive', count: 3, min: 13000, max: 18000, rev: false, guest: true, crit: false },
+  { desig: 'General Manager', fam: 'Corporate Services', grade: 'A1', dept: 'Leadership', reports: 'Group / Ownership', count: 1, min: 150000, max: 250000, rev: true, guest: true, crit: true, prof: 'lead_exec' },
+  { desig: 'Operations Manager', fam: 'Corporate Services', grade: 'A3', dept: 'Operations', reports: 'General Manager', count: 1, min: 30000, max: 65000, rev: true, guest: true, crit: true, prof: 'ops_exec' },
+  { desig: 'Admin Head', fam: 'Administration', grade: 'A3', dept: 'Admin', reports: 'General Manager', count: 1, min: 30000, max: 65000, rev: false, guest: false, crit: true, prof: 'adm_exec' },
+  { desig: 'Executive Chef', fam: 'Kitchen', grade: 'A3', dept: 'Kitchen', reports: 'General Manager', count: 1, min: 30000, max: 65000, rev: true, guest: false, crit: true, prof: 'kit_exec' },
+  { desig: 'Front Office Executive', fam: 'Front Office', grade: 'B1', dept: 'Front Office', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: true, guest: true, crit: true, prof: 'fo_exec' },
+  { desig: 'Admin Executive', fam: 'Administration', grade: 'B1', dept: 'Admin', reports: 'Admin Head', count: 2, min: 20000, max: 27000, rev: false, guest: false, crit: false, prof: 'adm_exec' },
+  { desig: 'Security Executive', fam: 'Security', grade: 'B1', dept: 'Security', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: false, guest: false, crit: true, prof: 'sec_exec' },
+  { desig: 'F&B Executive', fam: 'F&B Service', grade: 'B1', dept: 'F&B Service', reports: 'Operations Manager', count: 2, min: 20000, max: 27000, rev: true, guest: true, crit: true, prof: 'fb_exec' },
+  { desig: 'Engineering Executive', fam: 'Engineering', grade: 'B1', dept: 'Engineering', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: false, guest: false, crit: true, prof: 'eng_exec' },
+  { desig: 'Housekeeping Executive', fam: 'Housekeeping', grade: 'B1', dept: 'Housekeeping', reports: 'Operations Manager', count: 1, min: 20000, max: 27000, rev: false, guest: true, crit: true, prof: 'hk_exec' },
+  { desig: 'Chef de Partie', fam: 'Kitchen', grade: 'B1', dept: 'Kitchen', reports: 'Executive Chef', count: 1, min: 22000, max: 32000, rev: true, guest: false, crit: false, prof: 'kit_exec' },
+  { desig: 'Demi Chef de Partie', fam: 'Kitchen', grade: 'B2', dept: 'Kitchen', reports: 'Chef de Partie', count: 1, min: 18000, max: 25000, rev: true, guest: false, crit: false, prof: 'kit_assoc' },
+  { desig: 'Team Leader — F&B', fam: 'F&B Service', grade: 'B2', dept: 'F&B Service', reports: 'F&B Executive', count: 2, min: 15000, max: 20000, rev: true, guest: true, crit: false, prof: 'fb_assoc' },
+  { desig: 'Housekeeping Supervisor', fam: 'Housekeeping', grade: 'B2', dept: 'Housekeeping', reports: 'Housekeeping Executive', count: 2, min: 15000, max: 20000, rev: false, guest: true, crit: false, prof: 'hk_assoc' },
+  { desig: 'Kitchen Stewarding Supervisor', fam: 'Kitchen', grade: 'B2', dept: 'Kitchen Stewarding', reports: 'Executive Chef', count: 1, min: 15000, max: 20000, rev: false, guest: false, crit: false, prof: 'kst_assoc' },
+  { desig: 'Engineering Associate', fam: 'Engineering', grade: 'C1', dept: 'Engineering', reports: 'Engineering Executive', count: 2, min: 13000, max: 18000, rev: false, guest: false, crit: false, prof: 'eng_assoc' },
+  { desig: 'Guest Service Associate — F&B', fam: 'F&B Service', grade: 'C1', dept: 'F&B Service', reports: 'Team Leader — F&B', count: 12, min: 13000, max: 18000, rev: true, guest: true, crit: false, prof: 'fb_assoc' },
+  { desig: 'Senior Commis', fam: 'Kitchen', grade: 'C1', dept: 'Kitchen', reports: 'Chef de Partie', count: 5, min: 15000, max: 22000, rev: true, guest: false, crit: false, prof: 'kit_assoc' },
+  { desig: 'Junior Commis', fam: 'Kitchen', grade: 'C2', dept: 'Kitchen', reports: 'Senior Commis', count: 5, min: 14000, max: 18000, rev: true, guest: false, crit: false, prof: 'kit_assoc' },
+  { desig: 'Guest Service Associate — Front Office', fam: 'Front Office', grade: 'C1', dept: 'Front Office', reports: 'Front Office Executive', count: 3, min: 13000, max: 18000, rev: true, guest: true, crit: false, prof: 'fo_assoc' },
+  { desig: 'Guest Service Associate — Housekeeping', fam: 'Housekeeping', grade: 'C1', dept: 'Housekeeping', reports: 'Housekeeping Supervisor', count: 9, min: 13000, max: 18000, rev: false, guest: true, crit: false, prof: 'hk_assoc' },
+  { desig: 'Store Associate', fam: 'Purchase', grade: 'C1', dept: 'Stores', reports: 'Admin Head', count: 1, min: 13000, max: 18000, rev: false, guest: false, crit: false, prof: 'str_assoc' },
+  { desig: 'Security Guard', fam: 'Security', grade: 'C1', dept: 'Security', reports: 'Security Executive', count: 3, min: 13000, max: 18000, rev: false, guest: true, crit: false, prof: 'sec_assoc' },
   // abbr 'VAL': Valet shares dept+grade (FO-C1) with GSA-Front Office — a distinct
   // sub-code keeps job_code role-unique so the Career Panel can't merge the two roles.
-  { desig: 'Guest Service Associate — Valet', fam: 'Front Office', grade: 'C1', dept: 'Front Office', abbr: 'VAL', reports: 'Front Office Executive', count: 2, min: 13000, max: 18000, rev: false, guest: true, crit: false },
-  { desig: 'Bell Attendant', fam: 'Front Office', grade: 'C2', dept: 'Front Office', reports: 'Front Office Executive', count: 2, min: 12500, max: 14000, rev: false, guest: true, crit: false },
-  { desig: 'Kitchen Steward', fam: 'Kitchen', grade: 'C2', dept: 'Kitchen Stewarding', reports: 'Kitchen Stewarding Supervisor', count: 4, min: 12500, max: 14000, rev: false, guest: false, crit: false },
+  // It is assessed on the document's Conveyance (Transport / Valet) content, not on
+  // Front Office content, even though it is establishment-wise a Front Office seat.
+  { desig: 'Guest Service Associate — Valet', fam: 'Front Office', grade: 'C1', dept: 'Front Office', abbr: 'VAL', reports: 'Front Office Executive', count: 2, min: 13000, max: 18000, rev: false, guest: true, crit: false, prof: 'val_assoc' },
+  { desig: 'Bell Attendant', fam: 'Front Office', grade: 'C2', dept: 'Front Office', reports: 'Front Office Executive', count: 2, min: 12500, max: 14000, rev: false, guest: true, crit: false, prof: 'fo_assoc' },
+  { desig: 'Kitchen Steward', fam: 'Kitchen', grade: 'C2', dept: 'Kitchen Stewarding', reports: 'Kitchen Stewarding Supervisor', count: 4, min: 12500, max: 14000, rev: false, guest: false, crit: false, prof: 'kst_assoc' },
 ];
 
 // Default job descriptions so the Career Panel isn't empty on first run.
@@ -134,83 +139,640 @@ export const COMPETENCIES = [
   },
 ];
 
-// FO Skills (shared by Associate & Executive profiles — duplicated so each can be edited independently)
-const FO_SKILLS = [
-  {
-    key: 'practical', name: 'Practical Assessment (mock check-in / scenario)', section: 'skill', weight: 12, order: 10,
-    anchors: L(
-      'Handled mock check-in and an early-check-in/room-not-ready scenario smoothly; upsold naturally; professional phone manner.',
-      'Completed the mock tasks well with minor prompting.',
-      'Managed basic scenario but hesitant on upsell or problem scenario.',
-      'Struggled with the practical scenario; needed heavy guidance.',
-      'Could not perform the core front-desk task.'
-    ),
-  },
-  {
-    key: 'problem', name: 'Problem Solving', section: 'skill', weight: 8, order: 11,
-    anchors: L(
-      "Stayed calm on the 'guest shouting' scenario; proposed a clear, guest-preserving resolution with ownership.",
-      'Reasonable resolution with good composure.',
-      'Basic resolution, some composure but limited ownership.',
-      'Flustered; resolution weak or deflected blame.',
-      'No workable approach; poor conflict handling.'
-    ),
-  },
-  {
-    key: 'groom', name: 'Grooming & Professional Presence', section: 'skill', weight: 5, order: 12,
-    anchors: L(
-      'Polished, hotel-ready; excellent posture, hygiene, etiquette.',
-      'Well groomed and professional, minor improvements only.',
-      'Meets minimum hospitality expectation, needs coaching.',
-      'Grooming/body language below hospitality standard.',
-      'Appearance/conduct inconsistent with CP image.'
-    ),
-  },
-];
+/* ===== Department assessment content (hotel_assessment_criteria.docx) =====
 
-for (const profile of ['fo_assoc', 'fo_exec']) {
-  for (const s of FO_SKILLS) COMPETENCIES.push({ ...s, profile });
+   The document gives, per department, a Section B (Practical Assessment — Skills 25%)
+   and a Section C (Knowledge 15%) but no rating scale; the five behavioural anchors
+   below are written against each department's own tasks so a panellist grades what the
+   candidate actually did, not a generic "performed the core task well".
+
+   Section B tags no practical item as executive-only, so the skills block is identical
+   at every grade within a department. Section C is what splits: an associate answers
+   the two base questions, while a B1-and-above candidate answers the two '(Executive)'
+   questions — crisis management and manpower/budget — in their place. That is why the
+   exec variants carry `crisis` and `deploy` instead of `hosaware`.
+
+   Leadership, Operations and Kitchen Stewarding have no section in the document. CPA
+   has seated roles at those desks, so they are written here on the same pattern and
+   are the three profiles most worth an HOD review before a role goes live.
+
+   Weights hold to the document's split for every profile:
+     skills 25 = practical 10 + problem 8 + report 4 + groom 3
+     know  15 = deptknow 10 + hosaware 5          (associate)
+     know  15 = deptknow 6 + crisis 5 + deploy 4  (executive)                         */
+
+// Grooming and hospitality awareness are not department-specific — one wording, used
+// everywhere, so an HR edit to either lands consistently across the whole library.
+const GROOM = L(
+  'Polished and hotel-ready; excellent posture, hygiene and etiquette. Would be put in front of a guest on day one.',
+  'Well groomed and professional, minor improvements only.',
+  'Meets the minimum hospitality expectation, needs coaching.',
+  'Grooming or body language below hospitality standard.',
+  'Appearance or conduct inconsistent with the Centre Point image.'
+);
+
+const HOSAWARE = L(
+  'Strong sense of the hospitality industry, brand awareness and the guest lifecycle; knew who Centre Point is and who we compete with.',
+  'Good general awareness of the industry and the guest journey.',
+  'Average awareness — knows the trade but not the market.',
+  'Weak awareness; treats the job as generic work rather than hospitality.',
+  'No awareness of the industry or of what a hotel guest expects.'
+);
+
+// The document words its two executive questions almost identically for every
+// department, varying only the department name — these follow that, with a
+// department-specific crisis example and escalation partners.
+const CRISIS = (d) => L(
+  `Walked a crisis end-to-end — ${d.crisis_eg} — in the right order: make safe, contain, inform. Named the internal escalation chain, the point at which ${d.partners} are pulled in, and when police / fire / medical authorities are called and who speaks to them.`,
+  `Sound crisis sequence with a clear escalation chain; slight hesitation on when external authorities come in.`,
+  `Knows a crisis must be escalated and roughly to whom, but assembled the sequence only with prompting.`,
+  `Vague on crisis response; would improvise rather than follow protocol, or would delay escalation.`,
+  `No grasp of crisis management or of coordination beyond their own department.`
+);
+
+const DEPLOY = (d) => L(
+  `Explained ${d.label} rostering against ${d.deploy_eg}, how leave and absenteeism are absorbed without breaking service, and how the departmental budget is built and defended. Talked in numbers — headcount, cost per shift, overtime.`,
+  `Clear on rostering and manpower planning and broadly comfortable with the budget lines; minor gaps.`,
+  `Can build a basic roster and knows what the budget covers, but manpower and cost planning are reactive.`,
+  `Limited grasp of scheduling or budgeting; would need close supervision on both.`,
+  `No working knowledge of manpower deployment or departmental budgeting.`
+);
+
+const DEPT_ASSESSMENT = {
+  /* ---------- Front Office / Guest Service ---------- */
+  fo: {
+    label: 'Front Office',
+    know_name: 'Front Office Knowledge',
+    practical_name: 'PMS Navigation, Phone & Radio Protocol',
+    incident_name: 'Front-Desk Incident & Emergency Handling',
+    report_name: 'Incident & Complaint Report Writing',
+    partners: 'Security, Housekeeping and Engineering',
+    crisis_eg: 'a medical emergency in the lobby, a lost master key or a full evacuation',
+    deploy_eg: 'the arrival/departure peaks and the occupancy forecast',
+    practical: L(
+      'Moved through check-in, check-out and a reservation amendment in the PMS without hesitation, including a rate or room-type change; phone and radio protocol was textbook — greeting, hold, call-back, clean hand-off.',
+      'Completed the full PMS cycle with only minor prompting; phone and radio manner professional throughout.',
+      'Managed a basic check-in and check-out but slowed on reservation changes; communication protocol usable, needs coaching.',
+      'Needed step-by-step guidance through the system; phone or radio handling unclear and informal.',
+      'Could not operate the front-desk system or follow basic communication protocol.'
+    ),
+    incident: L(
+      'Took charge of the emergency — guest safety first, then escalation, then documentation. Named who to call in what order, kept the desk covered, and stayed audibly calm with other guests watching.',
+      'Handled the scenario soundly with a clear sequence of actions; minor gaps in escalation.',
+      'Grasped the basic response but needed prompting on escalation or on protecting the guest first.',
+      'Flustered; response disordered, or left the desk and the guest unattended while seeking help.',
+      'No workable response to a front-desk emergency; would leave a guest or the property at risk.'
+    ),
+    report: L(
+      'Report was complete and factual — date and time, location, persons involved, sequence of events, action taken, follow-up owner. Kept observation separate from opinion; legible and signed.',
+      'Covered every essential in clear language; a detail or two missing.',
+      'Recorded the basics but thin on sequence or on action taken; some opinion written up as fact.',
+      'Report vague or incomplete; would not hold up if the guest escalated it.',
+      'Could not produce a usable written record of the incident.'
+    ),
+    know: L(
+      'Explained the full check-in and check-out sequence including ID and registration requirements, and how a folio or room-status discrepancy is traced and corrected. Knew precisely what a guest incident report must contain.',
+      'Good command of the arrival/departure cycle and of discrepancy handling; minor gaps.',
+      'Knows the basic arrival and departure steps; vague on discrepancies or on what an incident report must include.',
+      'Limited; unsure on most front-office fundamentals.',
+      'No working front-office knowledge.'
+    ),
+    know_exec: L(
+      'Explained check-in, check-out and discrepancy resolution from the supervisor’s seat — how a folio dispute, an overbooking or a shift cash variance is investigated, corrected, and written up for the record.',
+      'Good supervisory command of the cycle and of discrepancy investigation; minor gaps.',
+      'Solid on the fundamentals but weak on investigating a discrepancy or closing a shift cleanly.',
+      'Limited; unsure on most executive-level front-office topics.',
+      'No executive front-office knowledge.'
+    ),
+  },
+
+  /* ---------- Housekeeping ---------- */
+  hk: {
+    label: 'Housekeeping',
+    know_name: 'Housekeeping Knowledge',
+    practical_name: 'Room Inspection, Room-Status System & Radio Protocol',
+    incident_name: 'Cleanliness & Maintenance Complaint Handling',
+    report_name: 'Lost & Found and Damage Report Writing',
+    partners: 'Front Office, Engineering and Security',
+    crisis_eg: 'a guest taken ill in a room, a serious in-room accident or an evacuation',
+    deploy_eg: 'the occupancy forecast, departure load and rooms-per-attendant credit',
+    practical: L(
+      'Ran a full mock inspection to a checklist — bathroom, linen, amenities, high dusting, under the bed — updated room status correctly in the system and passed a clean radio hand-off to the desk.',
+      'Inspected thoroughly and set room status correctly with minor prompting; radio manner professional.',
+      'Covered the obvious areas and can set a room status, but missed detail points; radio protocol informal.',
+      'Inspection superficial; needed guidance to update status or to use the radio correctly.',
+      'Could not inspect a room to standard or operate the room-status system.'
+    ),
+    incident: L(
+      'Owned the complaint — apologised without excuses, re-cleaned or raised it to Engineering at once, offered a room move where it was warranted, and closed the loop with the guest. Named the follow-up owner.',
+      'Sound recovery with a clear fix and follow-up; minor gaps in closing the loop.',
+      'Apologised and arranged a re-clean, but recovery was passive and follow-up left to chance.',
+      'Defensive or deflecting; would leave the guest to chase the fix.',
+      'No workable recovery; would turn a routine complaint into a lost guest.'
+    ),
+    report: L(
+      'Report was complete — item or damage description, room and exact location, date and time, finder, witness, storage reference and the release procedure. Knew that valuables and perishables are logged and held differently.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the basics but thin on location, witness or custody trail.',
+      'Report vague; the item or the damage could not be traced from it.',
+      'Could not produce a usable lost & found or damage record.'
+    ),
+    know: L(
+      'Explained the departure-clean sequence, turnover timing against arrival pressure, and the supervisor quality check, plus exactly what a lost & found or damage report must record. Knew chemical dilution and colour-coded cloth discipline.',
+      'Good command of cleaning, turnover and quality-check procedure; minor gaps.',
+      'Knows the basic cleaning routine; vague on quality checks or on report contents.',
+      'Limited; unsure on most housekeeping fundamentals.',
+      'No working housekeeping knowledge.'
+    ),
+    know_exec: L(
+      'Explained cleaning, turnover and quality-check standards from a supervisor’s seat — how rooms are credited and inspected, how a failed inspection is corrected and re-checked, and how linen and amenity par levels are controlled.',
+      'Good supervisory command of standards and of inspection follow-up; minor gaps.',
+      'Solid on the cleaning routine but weak on inspection discipline or par-level control.',
+      'Limited; unsure on most executive-level housekeeping topics.',
+      'No executive housekeeping knowledge.'
+    ),
+  },
+
+  /* ---------- Food & Beverage Service ---------- */
+  fb: {
+    label: 'F&B Service',
+    know_name: 'F&B Service Knowledge',
+    practical_name: 'POS Operation & Kitchen–Service Communication',
+    incident_name: 'Allergy, Spillage & Accident Handling',
+    report_name: 'Guest Complaint & Incident Report Writing',
+    partners: 'the Kitchen, Front Office and Security',
+    crisis_eg: 'an allergic reaction at the table or a suspected food-poisoning cluster',
+    deploy_eg: 'covers forecast, outlet timings and banquet load',
+    practical: L(
+      'Punched a full order through the POS including a modifier and a split bill, and relayed it to the kitchen the way a real pass works — clear callout, confirmed pickup, checked the dish before it left. Settlement handled cleanly.',
+      'Operated the POS confidently and communicated well with the kitchen; minor prompting.',
+      'Managed a basic order on the POS but slowed on modifiers or settlement; kitchen communication one-directional.',
+      'Needed guidance through the POS; order relay unclear enough to cause a wrong dish.',
+      'Could not operate the POS or communicate an order to the kitchen.'
+    ),
+    incident: L(
+      'Treated the allergy scenario as a medical event, not a service one — stopped service of the dish, escalated at once, secured the plate for investigation, and stayed with the guest. On the spillage scenario, made the area safe before anything else.',
+      'Sound response with the right priority on guest safety; minor gaps in escalation or evidence handling.',
+      'Grasped that it was serious and called for help, but the sequence was assembled with prompting.',
+      'Flustered; treated a medical incident as a complaint, or cleared away the evidence.',
+      'No workable response; would put a guest at real risk.'
+    ),
+    report: L(
+      'Report was complete and factual — what was ordered and served, the declared allergy or the sequence of the accident, time, witnesses, action taken, medical help summoned, follow-up owner. Kept it factual with liability in mind.',
+      'Covered every essential in clear language; a detail or two missing.',
+      'Recorded the basics but thin on sequence or on action taken; some opinion written up as fact.',
+      'Report vague or incomplete; would not stand up to a claim.',
+      'Could not produce a usable written record of the incident.'
+    ),
+    know: L(
+      'Explained the hygiene steps that run through service — hand hygiene, holding temperatures, cross-contamination and allergen declaration at the table — and knew exactly what an incident report must include.',
+      'Good command of food safety and hygiene during service; minor gaps.',
+      'Knows the basic hygiene rules; vague on allergens or on report contents.',
+      'Limited; unsure on most food-safety fundamentals.',
+      'No working food-safety knowledge — unsafe on the floor.'
+    ),
+    know_exec: L(
+      'Explained service-side food safety as the person accountable for it — how holding temperatures and allergen declarations are checked, how a hygiene failure is pulled up on the floor mid-service, and what is logged.',
+      'Good supervisory command of hygiene standards and of correcting them live; minor gaps.',
+      'Solid on the rules but weak on enforcing them across a team during service.',
+      'Limited; unsure on most executive-level food-safety topics.',
+      'No executive food-safety knowledge.'
+    ),
+  },
+
+  /* ---------- Food Production (Kitchen) ---------- */
+  kit: {
+    label: 'Kitchen',
+    know_name: 'Food Production Knowledge',
+    practical_name: 'HACCP Procedure & Communication with Service',
+    incident_name: 'Kitchen Emergency Handling (Fire, Equipment, Contamination)',
+    report_name: 'Food Safety Incident Report Writing',
+    partners: 'F&B Service, Engineering and Security',
+    crisis_eg: 'a kitchen fire, a gas leak or a contamination scare that reaches guests',
+    deploy_eg: 'covers forecast, menu engineering and banquet load',
+    practical: L(
+      'Demonstrated HACCP in practice, not in theory — receiving checks, colour-coded boards, cooling and holding temperatures, labelling and stock rotation — and ran a clean pass with service: clear callout, confirmed pickup, dish checked before it left.',
+      'Applied HACCP correctly with minor prompting; communication with service clear.',
+      'Knows the main control points and can name them, but application was inconsistent; pass communication one-directional.',
+      'Needed guidance on basic hygiene control; would let a temperature or labelling breach through.',
+      'Could not demonstrate food safety procedure — unsafe in a working kitchen.'
+    ),
+    incident: L(
+      'Took the kitchen emergency in the right order — isolate the source (gas, power, product), make people safe, then escalate. Named the right extinguisher for an oil fire and knew to quarantine, not discard, suspect product.',
+      'Sound response with correct priorities; minor gaps in escalation or in isolating the source.',
+      'Grasped the basic response but needed prompting on sequence or on the right suppression method.',
+      'Flustered; would fight a fire wrongly, or discard the evidence of a contamination.',
+      'No workable response; would put the brigade and the guests at risk.'
+    ),
+    report: L(
+      'Report was complete — product and batch, supplier, temperatures recorded, the control point that failed, who was informed, product quarantined or destroyed, and corrective action. Written so an auditor could follow it.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the basics but thin on the failed control point or on corrective action.',
+      'Report vague; would not survive a food-safety audit.',
+      'Could not produce a usable food-safety record.'
+    ),
+    know: L(
+      'Explained what happens in the first ten minutes of a food-safety incident or a kitchen fire — isolate, make safe, escalate, quarantine, record — and knew exactly what the incident report must contain.',
+      'Good command of the incident response and of report contents; minor gaps.',
+      'Knows the basics; vague on quarantine, on escalation or on report contents.',
+      'Limited; unsure on most food-safety fundamentals.',
+      'No working food-safety knowledge — unsafe in a kitchen.'
+    ),
+    know_exec: L(
+      'Explained food-safety incident and fire response as the person accountable — the HACCP plan behind it, how a recall or a quarantine decision is made and defended, supplier follow-up, and what goes to the authorities.',
+      'Good supervisory command of the HACCP plan and of incident escalation; minor gaps.',
+      'Solid on the procedure but weak on owning a recall decision or on supplier follow-up.',
+      'Limited; unsure on most executive-level food-safety topics.',
+      'No executive food-safety knowledge.'
+    ),
+  },
+
+  /* ---------- Facility (Engineering / Maintenance) ---------- */
+  eng: {
+    label: 'Engineering',
+    know_name: 'Engineering & Maintenance Knowledge',
+    practical_name: 'Maintenance Ticketing, Tools Handling & Radio Protocol',
+    incident_name: 'Fire Alarm & Electrical Emergency Handling',
+    report_name: 'Equipment Failure & Incident Report Writing',
+    partners: 'Front Office, Housekeeping and Security',
+    crisis_eg: 'a power failure, a lift entrapment or a fire-panel activation',
+    deploy_eg: 'the preventive-maintenance calendar and shift coverage across 24 hours',
+    practical: L(
+      'Picked up a ticket, diagnosed aloud, and worked through it in the right order — isolate, lock out, repair, test, close the ticket with what was actually done. Tools handled safely and put back; radio hand-off clean.',
+      'Worked the ticket competently and closed it properly with minor prompting; tool discipline good.',
+      'Can carry out the repair but records it poorly; tool handling or isolation needs coaching.',
+      'Needed guidance on isolation or on basic tool safety; tickets left open or uninformative.',
+      'Could not work a maintenance ticket safely — would be a hazard to themselves or others.'
+    ),
+    incident: L(
+      'Made the electrical scenario safe before touching anything — isolated at the source, confirmed dead, and only then worked. On the fire alarm, knew the panel, the zone, how to verify a genuine alarm and when not to reset it.',
+      'Sound response with correct isolation and a clear sequence; minor gaps in escalation.',
+      'Grasped the basic response but needed prompting on isolation or on verifying the alarm zone.',
+      'Flustered; would work live, or would silence a panel without verifying the zone.',
+      'No workable response; would create a serious safety hazard.'
+    ),
+    report: L(
+      'Report was complete — asset and location, symptom, cause found, parts used, downtime, and whether it is a repeat failure needing a preventive change. Written so the next technician could pick it up cold.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the basics but thin on cause or on downtime; a repeat failure would not be visible.',
+      'Report vague; the fault history could not be reconstructed from it.',
+      'Could not produce a usable maintenance record.'
+    ),
+    know: L(
+      'Explained the response to an equipment failure and to a fire emergency — isolate, make safe, escalate, restore, record — and knew exactly what a maintenance or incident report must capture.',
+      'Good command of failure response and of report contents; minor gaps.',
+      'Knows the basics; vague on isolation sequence or on report contents.',
+      'Limited; unsure on most maintenance fundamentals.',
+      'No working maintenance knowledge.'
+    ),
+    know_exec: L(
+      'Explained failure and fire response as the person accountable — the preventive-maintenance regime behind it, statutory inspections and AMC obligations, how downtime is minimised during occupancy, and what is escalated to authorities.',
+      'Good supervisory command of preventive maintenance and statutory obligations; minor gaps.',
+      'Solid on repairs but weak on preventive planning or on statutory compliance.',
+      'Limited; unsure on most executive-level engineering topics.',
+      'No executive engineering knowledge.'
+    ),
+  },
+
+  /* ---------- Security ---------- */
+  sec: {
+    label: 'Security',
+    know_name: 'Security Knowledge',
+    practical_name: 'CCTV, Access Control, Visitor Management & Radio Protocol',
+    incident_name: 'Fire Alarm & Evacuation Handling',
+    report_name: 'Guest & Staff Incident Report Writing',
+    partners: 'Front Office, Engineering and hotel management',
+    crisis_eg: 'a fire evacuation, an intruder, a police matter or a death on the premises',
+    deploy_eg: 'post coverage across 24 hours, patrol frequency and event load',
+    practical: L(
+      'Worked the CCTV bank purposefully — searched back to a timestamp, followed a subject across cameras, and knew what footage may be released and to whom. Access control and visitor logging were disciplined; radio protocol correct.',
+      'Competent on CCTV, access control and visitor management with minor prompting; radio protocol correct.',
+      'Can monitor cameras and log a visitor, but slow to retrieve footage; access control applied inconsistently.',
+      'Needed guidance on the system; would let an unlogged visitor through.',
+      'Could not operate CCTV or access control, or follow radio protocol.'
+    ),
+    incident: L(
+      'Ran the evacuation properly — raised the alarm, worked to the assembly point, swept the assigned zone, accounted for guests and staff, and held the cordon for the fire service. Knew not to re-enter until cleared.',
+      'Sound evacuation response with a clear sequence; minor gaps in sweeping or accounting.',
+      'Knows to evacuate and where the assembly point is, but the zone sweep and roll call needed prompting.',
+      'Flustered; would evacuate without accounting for anyone, or would re-enter unsafely.',
+      'No workable evacuation response; would endanger guests and staff.'
+    ),
+    report: L(
+      'Report was complete and neutral — date, time, exact location, persons involved with identification, sequence of events, witnesses, action taken, whether police were informed. Factual throughout, written knowing it may be evidence.',
+      'Covered every essential clearly and neutrally; a detail or two missing.',
+      'Recorded the basics but thin on witnesses or sequence; some opinion written up as fact.',
+      'Report vague or coloured by opinion; would not stand up as evidence.',
+      'Could not produce a usable incident record.'
+    ),
+    know: L(
+      'Explained the fire evacuation sequence, drew a clear line between routine patrol and incident response — patrol is prevention and presence, response is containment and evidence — and knew exactly what an incident report must include.',
+      'Good command of evacuation, patrol discipline and report contents; minor gaps.',
+      'Knows the basics; blurred the line between patrol and response, or vague on report contents.',
+      'Limited; unsure on most security fundamentals.',
+      'No working security knowledge.'
+    ),
+    know_exec: L(
+      'Explained evacuation and incident response as the person accountable — the fire drill regime, liaison with police and fire authorities, chain of custody for footage and evidence, and statutory reporting obligations.',
+      'Good supervisory command of drills, authority liaison and evidence handling; minor gaps.',
+      'Solid on procedure but weak on authority liaison or on chain of custody.',
+      'Limited; unsure on most executive-level security topics.',
+      'No executive security knowledge.'
+    ),
+  },
+
+  /* ---------- Conveyance (Transport / Valet) ---------- */
+  val: {
+    label: 'Conveyance',
+    know_name: 'Conveyance & Valet Knowledge',
+    practical_name: 'Vehicle Log / Dispatch System & Radio Protocol',
+    incident_name: 'Transport Emergency Handling (Breakdown, Accident, Delay)',
+    report_name: 'Vehicle Incident & Accident Report Writing',
+    partners: 'Front Office, Security and hotel management',
+    crisis_eg: 'a guest injured in a vehicle accident or a transport failure during a VIP movement',
+    deploy_eg: 'arrival and departure movements, airport runs and event traffic',
+    practical: L(
+      'Logged the vehicle properly — key tag, condition noted before taking custody, existing damage flagged to the guest, dispatch entry complete. Radio hand-off was clean and the key handling secure throughout.',
+      'Logged and dispatched correctly with minor prompting; radio manner professional.',
+      'Can log a vehicle but skipped a condition check or a dispatch entry; radio protocol informal.',
+      'Needed guidance through the log; would take custody without recording condition.',
+      'Could not operate the vehicle log or follow key-handling and radio protocol.'
+    ),
+    incident: L(
+      'Put the guest first on the breakdown scenario — got them safe and comfortable, arranged the replacement vehicle before troubleshooting, informed the desk so the onward booking could be protected, then dealt with the vehicle.',
+      'Sound response with the right priority on the guest; minor gaps in informing the desk.',
+      'Grasped the basic response but focused on the vehicle before the guest; needed prompting.',
+      'Flustered; would leave the guest waiting without information or an alternative.',
+      'No workable response; would strand a guest.'
+    ),
+    report: L(
+      'Report was complete — vehicle and registration, driver, date, time and location, guest details, sequence of the accident, damage and injury, third parties, police informed, insurance intimation. Factual throughout.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the basics but thin on third parties, on injury or on the insurance step.',
+      'Report vague; would not support an insurance claim.',
+      'Could not produce a usable vehicle incident record.'
+    ),
+    know: L(
+      'Explained the steps for a breakdown and for an accident — guest safety, alternative arrangement, informing the hotel, police and insurance intimation, documentation — and knew what the vehicle incident report must contain. Clear on licence and vehicle-document validity.',
+      'Good command of breakdown and accident procedure; minor gaps.',
+      'Knows the basics; vague on insurance intimation or on report contents.',
+      'Limited; unsure on most conveyance fundamentals.',
+      'No working conveyance knowledge.'
+    ),
+  },
+
+  /* ---------- Store ---------- */
+  str: {
+    label: 'Stores',
+    know_name: 'Stores & Inventory Knowledge',
+    practical_name: 'Inventory Management System & Issuance Protocol',
+    incident_name: 'Stock Shortage & Spoilage Handling',
+    report_name: 'Inventory Discrepancy & Stock-Damage Report Writing',
+    partners: 'Purchase, the Kitchen and Finance',
+    crisis_eg: 'a spoilage event across a cold store or a stock loss found during audit',
+    deploy_eg: 'receiving windows, issue timings and month-end stock-take',
+    practical: L(
+      'Received against the purchase order properly — checked quantity, quality, weight and expiry before signing, raised a short-supply note, and posted receipt and issue in the system so the physical and book stock agreed. FIFO applied without being asked.',
+      'Received and issued correctly with minor prompting; system entries accurate.',
+      'Can receive and issue but checks are cursory; system entries lag the physical movement.',
+      'Needed guidance on the system; would sign for goods without a proper check.',
+      'Could not operate the inventory system or follow issuance protocol.'
+    ),
+    incident: L(
+      'Handled the shortage without letting the kitchen stop — flagged it early with a realistic timeline, proposed a substitute or an emergency purchase, and escalated to Purchase in writing. On spoilage, quarantined and recorded before disposing.',
+      'Sound response with early escalation; minor gaps in the written trail.',
+      'Grasped the problem but escalated late or verbally only; substitution not thought through.',
+      'Would absorb the shortage silently until a department was left without stock.',
+      'No workable response; would disguise a shortage or dispose of spoilage unrecorded.'
+    ),
+    report: L(
+      'Report was complete — item, code, batch, quantity booked against quantity found, the variance and its likely cause, supplier or department involved, and the corrective action. Written so Finance could reconcile from it.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the variance but thin on cause or on corrective action.',
+      'Report vague; the discrepancy could not be reconciled from it.',
+      'Could not produce a usable discrepancy record.'
+    ),
+    know: L(
+      'Explained receiving, storage and issuance end to end — PO matching, quality and expiry checks, FIFO, segregation and temperature discipline, indent-based issue, and periodic stock-take — and knew what a stock discrepancy report must record.',
+      'Good command of the receive–store–issue cycle; minor gaps.',
+      'Knows the basic cycle; vague on FIFO discipline, stock-take or report contents.',
+      'Limited; unsure on most stores fundamentals.',
+      'No working stores knowledge.'
+    ),
+  },
+
+  /* ---------- Kitchen Stewarding (no section in the document — built on its pattern) ---------- */
+  kst: {
+    label: 'Kitchen Stewarding',
+    know_name: 'Kitchen Stewarding Knowledge',
+    practical_name: 'Dishwash Cycle, Chemical Dilution & Equipment Handling',
+    incident_name: 'Breakage, Chemical Spill & Machine Failure Handling',
+    report_name: 'Breakage & Chemical Consumption Report Writing',
+    partners: 'the Kitchen, Engineering and Stores',
+    crisis_eg: 'a chemical spill or burn injury, or a dishwash failure mid-service',
+    deploy_eg: 'covers forecast, outlet timings and banquet load',
+    practical: L(
+      'Ran the dishwash cycle to standard — scrape, pre-rinse, correct rack, wash and rinse temperatures checked, air-dried, stored inverted. Diluted chemicals to the stated ratio with PPE on, and handled glassware and pans without risking breakage.',
+      'Ran the cycle correctly with minor prompting; chemical dilution and PPE discipline good.',
+      'Knows the cycle but skipped temperature checks or eyeballed the dilution; needs coaching.',
+      'Needed guidance on the cycle; would mix chemicals without measuring or PPE.',
+      'Could not run the dishwash cycle safely — a chemical or hygiene hazard.'
+    ),
+    incident: L(
+      'On the chemical spill, made the area safe first — cordoned, ventilated, PPE, correct neutralising step — and knew where the safety data sheet lives. On a machine failure mid-service, switched to the manual routine and raised the ticket at once.',
+      'Sound response with the right safety priority; minor gaps in escalation.',
+      'Grasped that it was serious but needed prompting on the sequence or on the safety data sheet.',
+      'Flustered; would clean a chemical spill bare-handed, or let service stall without escalating.',
+      'No workable response; would create a serious safety hazard.'
+    ),
+    report: L(
+      'Report was complete — item and quantity broken, outlet, shift, how it happened, whether injury resulted, and chemical consumption against issue. Written so recurring breakage or over-consumption would show up.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the breakage but thin on cause or on chemical consumption.',
+      'Report vague; a recurring loss would go unnoticed.',
+      'Could not produce a usable breakage or consumption record.'
+    ),
+    know: L(
+      'Explained wash and rinse temperature standards, chemical dilution and safe storage, colour-coded segregation, waste segregation and pest-control discipline, and how stewarding supports the kitchen’s HACCP plan.',
+      'Good command of hygiene, chemical and waste discipline; minor gaps.',
+      'Knows the basic routine; vague on temperatures, dilution ratios or waste segregation.',
+      'Limited; unsure on most stewarding fundamentals.',
+      'No working stewarding knowledge — unsafe around chemicals.'
+    ),
+  },
+
+  /* ---------- Admin ---------- */
+  adm: {
+    label: 'Admin',
+    know_name: 'Administration Knowledge',
+    practical_name: 'Office Software & Internal Communication Protocol',
+    incident_name: 'Data Confidentiality & Document-Handling Incident',
+    report_name: 'Administrative Discrepancy Report Writing',
+    partners: 'HR, Finance and hotel management',
+    crisis_eg: 'a data-confidentiality breach, a statutory inspection or a licence lapse',
+    deploy_eg: 'statutory calendars, audit dates and departmental support load',
+    practical: L(
+      'Worked comfortably across spreadsheet, document and mail — built a tracker with formulas that held up, drafted a clean internal circular, and routed it correctly with the right people in copy and a clear action owner.',
+      'Competent across office software with minor prompting; internal communication clear and correctly routed.',
+      'Can produce basic documents but formulas or formatting need help; circulars unclear on who must act.',
+      'Needed guidance on routine software; internal communication disorganised.',
+      'Could not use office software or route internal communication.'
+    ),
+    incident: L(
+      'Treated the confidentiality breach seriously — contained access first, informed management immediately rather than trying to fix it quietly, preserved the trail, and knew which records carry a statutory obligation.',
+      'Sound response with prompt escalation; minor gaps in containment or in preserving the trail.',
+      'Recognised it as serious but would have delayed escalation or handled it informally.',
+      'Would try to resolve a breach quietly, or discuss confidential records with the wrong people.',
+      'No grasp of confidentiality; would be a data risk in the role.'
+    ),
+    report: L(
+      'Report was complete — what the discrepancy is, records and dates involved, who raised it, verification done, the gap identified, and the corrective and preventive action. Written so an auditor could follow it.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the discrepancy but thin on verification or on preventive action.',
+      'Report vague; the discrepancy could not be traced or closed from it.',
+      'Could not produce a usable administrative record.'
+    ),
+    know_exec: L(
+      'Explained documentation, filing and record-keeping as the person accountable — retention periods and what is statutory, version and access control, an audit-ready filing structure, and how licence and contract renewals are tracked so nothing lapses.',
+      'Good supervisory command of records, retention and renewal tracking; minor gaps.',
+      'Solid on filing but weak on retention obligations or on renewal tracking.',
+      'Limited; unsure on most executive-level administration topics.',
+      'No executive administration knowledge.'
+    ),
+  },
+
+  /* ---------- Operations (no section in the document — built on its pattern) ---------- */
+  ops: {
+    label: 'Operations',
+    know_name: 'Hotel Operations Knowledge',
+    practical_name: 'Morning Briefing, Occupancy-Driven Deployment & Ops Dashboard',
+    incident_name: 'Multi-Department Failure Handling',
+    report_name: 'Operations & Shift Report Writing',
+    partners: 'every department head, and police / fire / medical authorities',
+    crisis_eg: 'a property-wide failure — power, fire, or a mass-guest incident',
+    deploy_eg: 'the occupancy forecast and the load across all departments',
+    practical: L(
+      'Read the day’s pack — occupancy, arrivals, VIPs, out-of-order rooms, events — and ran a mock briefing that assigned specific, checkable actions by department. Deployment decisions were justified with numbers, not instinct.',
+      'Ran a competent briefing and deployed sensibly against the day’s load; minor prompting.',
+      'Can read the pack and brief, but actions were general and deployment was reactive.',
+      'Struggled to translate the day’s data into department actions; briefing had no owners.',
+      'Could not run an operational briefing or plan deployment.'
+    ),
+    incident: L(
+      'Took command of the multi-department failure — established what was affected, protected life and then revenue, gave each HOD a clear task and a reporting time, and set a single point of guest communication. Escalated to the GM and to authorities at the right threshold.',
+      'Sound command with clear tasking; minor gaps in guest communication or escalation timing.',
+      'Coordinated the response but tasking was loose and guest communication left to individual desks.',
+      'Would work one department at a time while the rest of the property drifted.',
+      'No workable command of a cross-department failure.'
+    ),
+    report: L(
+      'Report was complete — occupancy and revenue for the shift, incidents with action taken and owners, out-of-order and out-of-service items, guest complaints and their resolution, and what is carried forward. Readable in two minutes by the GM.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded events but thin on action taken or on what carries forward.',
+      'Report vague; the next shift could not pick up from it.',
+      'Could not produce a usable operations record.'
+    ),
+    know_exec: L(
+      'Explained how the departments interlock across the guest journey — where the hand-offs fail between Front Office, Housekeeping, F&B and Engineering — and how SOPs, standards audits and guest-feedback scores are used to hold the line. Talked in operating metrics.',
+      'Good command of inter-departmental operations and of the standards regime; minor gaps.',
+      'Understands the departments individually but weak on the hand-offs between them.',
+      'Limited; sees operations as a set of separate departments.',
+      'No working knowledge of hotel operations as a whole.'
+    ),
+  },
+
+  /* ---------- Leadership (no section in the document — built on its pattern) ---------- */
+  lead: {
+    label: 'Leadership',
+    know_name: 'Business & Enterprise Leadership Knowledge',
+    practical_name: 'P&L Review & Departmental Performance Challenge',
+    incident_name: 'Property-Level Crisis Command',
+    report_name: 'Ownership Reporting & Escalation Note',
+    partners: 'ownership, every department head, and police / fire / medical authorities',
+    crisis_eg: 'a fire, a fatality, a police matter or a reputational incident that reaches the press',
+    deploy_eg: 'the annual business plan, occupancy forecast and the full establishment',
+    practical: L(
+      'Read the P&L and the occupancy / ADR / RevPAR pack and went straight to the two lines that mattered, with a hypothesis for each. Ran a mock departmental review that was specific and evidence-based — challenged the number, agreed an action and a date.',
+      'Read the pack accurately and challenged performance credibly; minor gaps in the review.',
+      'Understands the numbers but the review stayed descriptive rather than driving a decision.',
+      'Struggled to interpret the pack or to hold a department to account for a variance.',
+      'Could not read a hotel P&L or run a performance review.'
+    ),
+    incident: L(
+      'Took command as the accountable person — protected life first, took control of external communication personally, informed ownership early with facts rather than reassurance, and preserved the record knowing it may be scrutinised.',
+      'Sound crisis command with early ownership contact; minor gaps in external communication.',
+      'Would manage the incident but delegate the external and ownership communication too far down.',
+      'Would delay informing ownership, or improvise a statement to the press.',
+      'No workable crisis command; would expose the property legally and reputationally.'
+    ),
+    report: L(
+      'Escalation note to ownership was complete and unvarnished — what happened, exposure, action taken, what is still open, and what is recommended. No burying of bad news; a clear ask and a clear decision owner.',
+      'Covered every essential clearly with a defined ask; a detail or two missing.',
+      'Reported the facts but soft on exposure or unclear on what decision is needed.',
+      'Note vague or defensive; ownership could not act on it.',
+      'Could not produce a usable report to ownership.'
+    ),
+    know_exec: L(
+      'Owns the commercial picture — P&L and departmental margins, rate and revenue strategy against the competition set, statutory and licensing compliance, brand standards, and people cost against establishment. Spoke about the hotel as a business, not as a set of departments.',
+      'Strong commercial and compliance command with minor gaps.',
+      'Solid operationally but thin on commercial strategy or on statutory compliance.',
+      'Limited; would run the property operationally without owning the business result.',
+      'No enterprise-leadership knowledge; not equipped to run a unit.'
+    ),
+  },
+};
+
+// Variants each department actually has a seated role for at CPA. A department with no
+// variant here — or a new position HR creates before its profile is written — falls
+// through to the 'generic' placeholders below.
+const PROFILE_VARIANTS = {
+  fo: ['assoc', 'exec'],
+  hk: ['assoc', 'exec'],
+  fb: ['assoc', 'exec'],
+  kit: ['assoc', 'exec'],
+  eng: ['assoc', 'exec'],
+  sec: ['assoc', 'exec'],
+  val: ['assoc'],
+  str: ['assoc'],
+  kst: ['assoc'],
+  adm: ['exec'],
+  ops: ['exec'],
+  lead: ['exec'],
+};
+
+function buildProfile(base, variant, d) {
+  const profile = `${base}_${variant}`;
+  const rows = [
+    { profile, key: 'practical', name: `Practical Assessment — ${d.practical_name}`, section: 'skill', weight: 10, order: 10, anchors: d.practical },
+    { profile, key: 'problem', name: d.incident_name, section: 'skill', weight: 8, order: 11, anchors: d.incident },
+    { profile, key: 'report', name: d.report_name, section: 'skill', weight: 4, order: 12, anchors: d.report },
+    { profile, key: 'groom', name: 'Grooming & Professional Presence', section: 'skill', weight: 3, order: 13, anchors: GROOM },
+  ];
+  if (variant === 'exec') {
+    rows.push(
+      { profile, key: 'deptknow', name: `${d.know_name} (Executive)`, section: 'know', weight: 6, order: 20, anchors: d.know_exec },
+      { profile, key: 'crisis', name: 'Crisis Management & Inter-Department Coordination', section: 'know', weight: 5, order: 21, anchors: CRISIS(d) },
+      { profile, key: 'deploy', name: 'Shift Scheduling, Manpower Deployment & Budgeting', section: 'know', weight: 4, order: 22, anchors: DEPLOY(d) }
+    );
+  } else {
+    rows.push(
+      { profile, key: 'deptknow', name: d.know_name, section: 'know', weight: 10, order: 20, anchors: d.know },
+      { profile, key: 'hosaware', name: 'Hospitality Awareness', section: 'know', weight: 5, order: 21, anchors: HOSAWARE }
+    );
+  }
+  return rows;
 }
 
+for (const [base, variants] of Object.entries(PROFILE_VARIANTS)) {
+  for (const v of variants) COMPETENCIES.push(...buildProfile(base, v, DEPT_ASSESSMENT[base]));
+}
+
+// Generic placeholder profile — the safety net for a position created before its
+// department profile exists. No seeded CPA role uses it any more.
 COMPETENCIES.push(
   {
-    profile: 'fo_assoc', key: 'foknow', name: 'Front Office Knowledge', section: 'know', weight: 10, order: 20,
-    anchors: L(
-      'Confidently explained check-in documents, difference between reservation/registration/check-in, and guest folio.',
-      'Good grasp of core FO concepts, minor gaps.',
-      'Basic understanding of the fundamentals.',
-      'Limited; unsure on most FO basics.',
-      'No relevant front-office knowledge.'
-    ),
-  },
-  {
-    profile: 'fo_assoc', key: 'hosaware', name: 'Hospitality Awareness', section: 'know', weight: 5, order: 21,
-    anchors: L(
-      'Strong sense of hospitality industry, brand awareness, guest-lifecycle understanding.',
-      'Good general awareness.', 'Average awareness.', 'Weak awareness.', 'No awareness.'
-    ),
-  },
-  {
-    profile: 'fo_exec', key: 'foknow', name: 'Front Office Knowledge (Executive)', section: 'know', weight: 10, order: 20,
-    anchors: L(
-      'Explained overbooking management and shift-closing/cash handling clearly, in addition to core FO concepts.',
-      'Good grasp incl. some supervisory concepts, minor gaps.',
-      'Basic fundamentals but weak on supervisory topics.',
-      'Limited; unsure on most executive-level FO topics.',
-      'No relevant executive front-office knowledge.'
-    ),
-  },
-  {
-    profile: 'fo_exec', key: 'hosaware', name: 'Hospitality Awareness', section: 'know', weight: 5, order: 21,
-    anchors: L(
-      'Strong industry/brand awareness and guest-lifecycle understanding.',
-      'Good general awareness.', 'Average awareness.', 'Weak awareness.', 'No awareness.'
-    ),
-  },
-  // generic placeholder profile — any role without real content yet ("HOD to replace")
-  {
     profile: 'generic', key: 'practical', name: '[PLACEHOLDER — HOD to replace] Practical / Trade Assessment',
-    section: 'skill', weight: 15, order: 10, is_placeholder: true,
+    section: 'skill', weight: 10, order: 10, is_placeholder: true,
     anchors: L(
       'Demonstrated the core practical task for this role at an expert level.',
       'Performed the core task well with minor prompting.',
@@ -220,23 +782,39 @@ COMPETENCIES.push(
     ),
   },
   {
-    profile: 'generic', key: 'groom', name: 'Grooming & Professional Presence', section: 'skill', weight: 10, order: 11,
+    profile: 'generic', key: 'problem', name: '[PLACEHOLDER — HOD to replace] Incident & Emergency Handling',
+    section: 'skill', weight: 8, order: 11, is_placeholder: true,
     anchors: L(
-      'Polished, hotel-ready; excellent posture, hygiene, etiquette.',
-      'Well groomed and professional, minor improvements only.',
-      'Meets minimum expectation, needs coaching.',
-      'Below hospitality standard.',
-      'Inconsistent with CP image.'
+      'Handled the scenario calmly and in the right order, with clear ownership and escalation.',
+      'Sound response with a clear sequence of actions; minor gaps.',
+      'Grasped the basic response but needed prompting on sequence or escalation.',
+      'Flustered; response disordered or ownership deflected.',
+      'No workable response to the scenario.'
     ),
   },
   {
-    profile: 'generic', key: 'roleknow', name: '[PLACEHOLDER — HOD to replace] Role / Technical Knowledge',
+    profile: 'generic', key: 'report', name: '[PLACEHOLDER — HOD to replace] Report Writing & Documentation',
+    section: 'skill', weight: 4, order: 12, is_placeholder: true,
+    anchors: L(
+      'Report was complete and factual — time, place, persons, sequence, action taken, follow-up owner.',
+      'Covered every essential clearly; a detail or two missing.',
+      'Recorded the basics but thin on sequence or action taken.',
+      'Report vague or incomplete.',
+      'Could not produce a usable written record.'
+    ),
+  },
+  {
+    profile: 'generic', key: 'groom', name: 'Grooming & Professional Presence',
+    section: 'skill', weight: 3, order: 13, anchors: GROOM,
+  },
+  {
+    profile: 'generic', key: 'deptknow', name: '[PLACEHOLDER — HOD to replace] Role / Technical Knowledge',
     section: 'know', weight: 10, order: 20, is_placeholder: true,
     anchors: L('Strong role-specific technical knowledge.', 'Good, minor gaps.', 'Basic.', 'Limited.', 'None.'),
   },
   {
-    profile: 'generic', key: 'hosaware', name: 'Hospitality Awareness', section: 'know', weight: 5, order: 21,
-    anchors: L('Strong industry awareness.', 'Good.', 'Average.', 'Weak.', 'None.'),
+    profile: 'generic', key: 'hosaware', name: 'Hospitality Awareness',
+    section: 'know', weight: 5, order: 21, anchors: HOSAWARE,
   }
 );
 

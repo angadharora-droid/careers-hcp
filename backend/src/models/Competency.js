@@ -4,10 +4,15 @@ import mongoose from 'mongoose';
 // FO_KNOW_* / placeholder arrays in the original artifacts.
 //
 // profile:
-//   'core'     → Attitude block, applies to EVERY role (60%)
-//   'fo_assoc' → Front Office Associate skills + knowledge (25% + 15%)
-//   'fo_exec'  → Front Office Executive skills + knowledge
-//   'generic'  → placeholder skills + knowledge used by any role without its own profile
+//   'core'      → Attitude block, applies to EVERY role (60%)
+//   '<dept>_assoc' / '<dept>_exec'
+//               → the department's skills + knowledge (25% + 15%), transcribed from
+//                 hotel_assessment_criteria.docx. dept ∈ fo | hk | fb | kit | eng |
+//                 sec | val | str | kst | adm | ops | lead. '_exec' is used from grade
+//                 B1 upward, where the document's crisis-management and manpower /
+//                 budget questions apply; '_assoc' at B2 and below.
+//   'generic'   → placeholder skills + knowledge, the fallback for a position created
+//                 before its department profile exists
 const competencySchema = new mongoose.Schema(
   {
     key: { type: String, required: true },

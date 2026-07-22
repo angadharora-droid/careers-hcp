@@ -202,7 +202,8 @@ const queue1 = await req('GET', '/interviewer/assignments', { token: t1 });
 ok('interviewer sees only assigned candidate', queue1.json.assignments.length === 1 && queue1.json.assignments[0].candidate_name === 'Priya Sharma');
 
 const detail = await req('GET', `/interviewer/applications/${app.id}`, { token: t1 });
-ok('scoring form resolves FO associate competencies (9)', detail.json.competencies.length === 9, `got ${detail.json?.competencies?.length}`);
+// 4 core attitude + 4 skills (practical, incident, report writing, grooming) + 2 knowledge
+ok('scoring form resolves FO associate competencies (10)', detail.json.competencies.length === 10, `got ${detail.json?.competencies?.length}`);
 ok('competency weights sum to 100', detail.json.competencies.reduce((s, c) => s + c.weight, 0) === 100);
 ok('round 1 is open for its interviewer', detail.json.panel.active_round === 1 && !detail.json.panel.locked_reason);
 

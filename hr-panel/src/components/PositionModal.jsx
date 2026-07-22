@@ -7,10 +7,28 @@ import { useToast } from '../context/ToastContext';
 
 const STATUSES = ['Vacant', 'Filled', 'Under Recruitment', 'Frozen', 'On Hold', 'Contract', 'Outsourced', 'Eliminated'];
 
+// '_exec' profiles carry the assessment document's crisis-management and manpower /
+// budget questions and are meant for B1 and above; '_assoc' for B2 and below.
 const PROFILE_OPTIONS = [
   { value: '', label: '— generic —' },
   { value: 'fo_assoc', label: 'fo_assoc (Front Office — Associate)' },
   { value: 'fo_exec', label: 'fo_exec (Front Office — Executive)' },
+  { value: 'hk_assoc', label: 'hk_assoc (Housekeeping — Associate)' },
+  { value: 'hk_exec', label: 'hk_exec (Housekeeping — Executive)' },
+  { value: 'fb_assoc', label: 'fb_assoc (F&B Service — Associate)' },
+  { value: 'fb_exec', label: 'fb_exec (F&B Service — Executive)' },
+  { value: 'kit_assoc', label: 'kit_assoc (Kitchen — Associate)' },
+  { value: 'kit_exec', label: 'kit_exec (Kitchen — Executive)' },
+  { value: 'eng_assoc', label: 'eng_assoc (Engineering — Associate)' },
+  { value: 'eng_exec', label: 'eng_exec (Engineering — Executive)' },
+  { value: 'sec_assoc', label: 'sec_assoc (Security — Associate)' },
+  { value: 'sec_exec', label: 'sec_exec (Security — Executive)' },
+  { value: 'val_assoc', label: 'val_assoc (Conveyance / Valet — Associate)' },
+  { value: 'str_assoc', label: 'str_assoc (Stores — Associate)' },
+  { value: 'kst_assoc', label: 'kst_assoc (Kitchen Stewarding — Associate)' },
+  { value: 'adm_exec', label: 'adm_exec (Admin — Executive)' },
+  { value: 'ops_exec', label: 'ops_exec (Operations — Executive)' },
+  { value: 'lead_exec', label: 'lead_exec (Leadership — Executive)' },
 ];
 
 function Section({ title, children }) {

@@ -53,7 +53,7 @@ SMTP_USER=hr@centrepointhospitality.in
 SMTP_PASS=app-password
 SMTP_FROM="Centre Point HR <hr@centrepointhospitality.in>"
 ```
-On first run against an empty database the server seeds the full Centre Point Amravati roster: **67 PCN seats across 26 designations**, the 13-grade corporate structure, the competency library (Attitude 60% core + Front Office skills/knowledge + generic placeholders), and demo users. `npm run seed -- --reset` wipes and reseeds.
+On first run against an empty database the server seeds the full Centre Point Amravati roster: **67 PCN seats across 26 designations**, the 13-grade corporate structure, the competency library (Attitude 60% core + per-department Skills 25% / Knowledge 15% profiles for all 12 departments, at associate and executive level, + generic placeholders as a fallback), and demo users. `npm run seed -- --reset` wipes and reseeds.
 
 ## Seeded logins
 
