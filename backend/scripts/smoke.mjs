@@ -83,8 +83,11 @@ for (const field of CURRENT_EMPLOYMENT_FIELDS) {
   });
   ok(`missing "${field}" rejected for an experienced candidate`, r.status === 400, `got ${r.status}`);
 }
-const noDocs = await req('POST', '/public/applications', { form: formOf(applicantOf()) });
-ok('application without documents rejected', noDocs.status === 400, `got ${noDocs.status}`);
+// documents are optional — an application with none is still accepted
+const noDocs = await req('POST', '/public/applications', {
+  form: formOf(applicantOf({ candidate_name: 'NoDocs Test', email: 'nodocs@example.com' })),
+});
+ok('application without documents accepted', noDocs.status === 201, `got ${noDocs.status}`);
 const badDoc = await req('POST', '/public/applications', {
   form: formOf(applicantOf(), { files: ['cv.docx'] }),
 });

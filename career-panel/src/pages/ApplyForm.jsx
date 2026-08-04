@@ -137,9 +137,6 @@ const VALIDATORS = {
   },
 };
 
-const DOCS_REQUIRED_MESSAGE =
-  'Please attach at least one document — your CV, and certificates if you have them.';
-
 /* ---------- field primitives (label + control + inline error) ---------- */
 
 function FieldShell({ label, name, required, hint, error, children }) {
@@ -427,17 +424,10 @@ export default function ApplyForm() {
       const message = validateField(name, form[name], form);
       if (message) nextErrors[name] = message;
     }
-    const missingDocs = files.length === 0;
-    if (missingDocs) setFileError(DOCS_REQUIRED_MESSAGE);
-
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       const firstInvalid = FIELD_ORDER.find((name) => nextErrors[name]);
       focusField(fieldRefs.current[firstInvalid]);
-      return;
-    }
-    if (missingDocs) {
-      focusField(dropZoneRef.current);
       return;
     }
 
@@ -710,7 +700,7 @@ export default function ApplyForm() {
             </div>
           </FormSection>
 
-          <FormSection title="Documents" required>
+          <FormSection title="Documents">
             <input
               ref={fileInputRef}
               type="file"
@@ -758,8 +748,7 @@ export default function ApplyForm() {
                   : 'Click to choose files, or drag & drop here'}
               </p>
               <p className="mt-1 text-[12px] text-muted">
-                CV and certificates · PDF only · at least 1 file · up to {MAX_FILES} files · 5 MB
-                each
+                CV and certificates (optional) · PDF only · up to {MAX_FILES} files · 5 MB each
               </p>
             </div>
 

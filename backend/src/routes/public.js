@@ -96,9 +96,6 @@ router.post('/applications', upload.array('documents', 6), async (req, res) => {
         if (missing(f)) return res.status(400).json({ error: `${f.replace(/_/g, ' ')} is required` });
       }
     }
-    if (!(req.files || []).length) {
-      return res.status(400).json({ error: 'At least one document is required' });
-    }
     if (wordCount(b.intro_note) > 50) {
       return res.status(400).json({ error: 'Brief intro must be 50 words or fewer' });
     }

@@ -80,7 +80,7 @@ Change these before any real use (HR Panel → Interviewers tab creates accounts
 ## The flow, end to end
 
 1. **HR** keeps the Position Control Register: every sanctioned seat is a PCN (`CPA-FO-C1-001`), auto-numbered server-side. Recruitment only happens against a seat that is Vacant / Under Recruitment.
-2. **Candidate** browses open roles on the Career Panel (grouped by job code — "3 openings", never seat numbers), applies with CV upload, gets a `CPH-XXXXXX` reference ID for HR correspondence. First application flips the role's Vacant seats to Under Recruitment.
+2. **Candidate** browses open roles on the Career Panel (grouped by job code — "3 openings", never seat numbers), applies (CV upload optional), gets a `CPH-XXXXXX` reference ID for HR correspondence. First application flips the role's Vacant seats to Under Recruitment.
 3. **HR** reviews the application, schedules the interview, and **appoints the panel** from registered interviewer accounts (2 members; 3-member committee for A-grades).
 4. **Interviewers** log into the Interview Panel and see *only their assigned candidates*. Each scores independently on the behavioural framework (Attitude 60 / Skills 25 / Knowledge 15, five anchored levels per competency), with evidence notes and red flags.
 5. **Panel comparison** shows per-panellist scores side by side; >15-point divergence is flagged "discuss, don't average"; any red flag routes the candidate to HR's Red Flags queue regardless of score.

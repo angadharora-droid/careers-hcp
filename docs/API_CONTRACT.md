@@ -50,7 +50,7 @@ Fields: `job_code`*, `candidate_name`*, `mobile`*, `email`*, `age`, `gender`, `q
 `expected_salary`, `willing_to_relocate` (Yes/No), `needs_accommodation` (Yes/No),
 `source` (Referral (employee) | Walk-in | Naukri / Portal | Instagram / Social | Newspaper | Consultant | Other),
 `why_join`, `intro_note` (max 50 words — also validated server-side).
-Files: `documents` (up to 6; pdf/doc/docx/jpg/png, 5 MB each).
+Files: `documents` (optional; up to 6; pdf/doc/docx/jpg/png, 5 MB each).
 → `201 { reference_id: "CPH-XXXXXX", message }`
 The reference ID identifies the application for HR correspondence and search; there is no
 candidate-facing status lookup.
