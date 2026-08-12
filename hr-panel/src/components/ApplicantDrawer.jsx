@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import DetailModal from './DetailModal';
 import ConfirmDialog from './ConfirmDialog';
 import OfferDialog from './OfferDialog';
@@ -36,6 +36,79 @@ function roleFor(i) {
   return `Panel ${i + 1}`;
 }
 
+const pickerLabel = (u) =>
+  `${u.name}${u.designation ? ` — ${u.designation}` : u.department ? ` — ${u.department}` : ''}`;
+
+// Search-first interviewer picker. Suggested names (this job's fixed panel + the
+// department's own interviewers) are offered up front; when the name HR wants is
+// not among them, typing searches every registered interviewer and catches it.
+function InterviewerPicker({ label, value, suggested, all, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const close = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const selected = [...suggested, ...all].find((u) => String(u.id) === String(value)) || null;
+  const term = q.trim().toLowerCase();
+  const match = (u) => !term
+    || [u.name, u.designation, u.department, ...(u.departments || [])]
+      .some((s) => String(s || '').toLowerCase().includes(term));
+  const suggestedIds = new Set(suggested.map((u) => String(u.id)));
+  const top = suggested.filter(match);
+  const rest = all.filter((u) => !suggestedIds.has(String(u.id))).filter(match);
+
+  const pick = (id) => { onChange(id); setQ(''); setOpen(false); };
+
+  const Group = ({ title, items }) => (
+    <>
+      <div className="px-2.5 pt-1.5 pb-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-muted">{title}</div>
+      {items.map((u) => (
+        <button
+          key={String(u.id)}
+          type="button"
+          className={`block w-full text-left px-2.5 py-1.5 text-xs hover:bg-berry-soft ${String(u.id) === String(value) ? 'font-bold' : ''}`}
+          onClick={() => pick(String(u.id))}
+        >
+          {pickerLabel(u)}
+        </button>
+      ))}
+    </>
+  );
+
+  return (
+    <div className="relative flex-1 min-w-[200px]" ref={boxRef}>
+      <input
+        className="inp w-full"
+        aria-label={label}
+        placeholder="— search & appoint interviewer —"
+        value={open ? q : (selected ? pickerLabel(selected) : '')}
+        onFocus={() => { setOpen(true); setQ(''); }}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+      />
+      {open && (
+        <div className="absolute z-20 mt-0.5 w-full max-h-56 overflow-y-auto rounded-sm border border-line bg-card shadow-lg">
+          {value && (
+            <button type="button" className="block w-full text-left px-2.5 py-1.5 text-xs italic text-muted hover:bg-berry-soft" onClick={() => pick('')}>
+              — clear this panel —
+            </button>
+          )}
+          {top.length > 0 && <Group title="Suggested — fixed panel & department" items={top} />}
+          {rest.length > 0 && <Group title={top.length ? 'Other interviewers' : 'All interviewers'} items={rest} />}
+          {top.length === 0 && rest.length === 0 && (
+            <div className="px-2.5 py-2 text-xs text-muted">No interviewer matches “{q}”.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Info({ label, children, full = false }) {
   return (
     <div className={`flex gap-2 text-xs py-1 ${full ? 'sm:col-span-2' : ''}`}>
@@ -57,6 +130,7 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
   const [app, setApp] = useState(null);
   const [positions, setPositions] = useState([]);
   const [panelRule, setPanelRule] = useState(null);
+  const [interviewers, setInterviewers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
 
@@ -106,17 +180,18 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
     setLoading(true);
     setErr(null);
     try {
-      // Eligibility comes from this job's fixed panel, not the interviewer directory:
-      // a panel may only go to the person the matrix names for it, or to one of the
-      // alternates it offers as a choice — regardless of which branch they sit in.
-      const [a, p, r] = await Promise.all([
+      // The fixed panel and the department roster rank the picker's suggestions;
+      // the full interviewer directory backs its search, so HR can appoint anyone.
+      const [a, p, r, u] = await Promise.all([
         api.get(`/applications/${applicationId}`),
         api.get('/positions'), // gate check: any open seat under this job_code
         api.get(`/applications/${applicationId}/panel-rule`),
+        api.get('/users?role=interviewer'),
       ]);
       applyApp(a.application);
       setPositions(p.positions || []);
       setPanelRule(r.rule || null);
+      setInterviewers(u.users || []);
     } catch (e) {
       setErr(e.message);
     } finally {
@@ -421,54 +496,60 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
           <SectionHeading>Interview panel</SectionHeading>
           <p className="mini mt-0.5">
             Grade {app.grade} runs {app.rounds || app.panel_size} interview panel{(app.rounds || app.panel_size) > 1 ? 's' : ''}, in order.
-            Anyone the fixed matrix names for this job can take either panel, whichever branch they belong to.
+            Suggestions come from the job's fixed panel and the {app.department} team — type to search every registered interviewer.
           </p>
           <div className="panel-box">
             {!panelRule && (
               <div className="mini mb-1.5">
-                No fixed panel is defined for {app.unit_code} / grade {app.grade} / {app.department}, so nobody is
-                eligible to appoint. Add it to the panel matrix first.
+                No fixed panel is defined for {app.unit_code} / grade {app.grade} / {app.department} —
+                search and appoint the panellists by name.
               </div>
             )}
-            {panelSel.map((sel, i) => {
-              const assignment = (app.panel_assignments || []).find((a) => a.round === i + 1);
-              // Everyone the matrix names anywhere on this job — every panel's
-              // interviewer and alternates, de-duplicated — offered on every panel.
-              const options = [];
+            {(() => {
+              // Directory entries, normalised for the picker.
+              const directory = interviewers.map((u) => ({
+                id: String(u.id), name: u.name, designation: u.designation,
+                department: u.department, departments: u.departments || [],
+              }));
+              // Suggested = everyone the matrix names anywhere on this job, plus every
+              // interviewer whose department (home or extra) is the job's department.
+              const deptKey = String(app.department || '').trim().toLowerCase();
+              const suggested = [];
+              const suggest = (u) => {
+                if (u && !suggested.some((o) => String(o.id) === String(u.id))) suggested.push(u);
+              };
               for (const slot of panelRule?.rounds || []) {
                 for (const u of [slot.interviewer, ...(slot.alternates || [])]) {
-                  if (u && !options.some((o) => String(o._id) === String(u._id))) options.push(u);
+                  if (u) suggest({ id: String(u._id), name: u.name, designation: u.designation, department: u.department });
                 }
               }
-              // A panel already scored keeps its panellist even if the matrix has since
-              // changed, so it must stay selectable or the form could not be re-saved.
-              if (assignment?.status === 'Scored' && assignment.interviewer
-                  && !options.some((u) => String(u._id) === String(assignment.interviewer.id))) {
-                options.push({ _id: assignment.interviewer.id, name: assignment.interviewer.name, designation: assignment.interviewer.designation });
+              for (const u of directory) {
+                if ([u.department, ...u.departments].some((d) => String(d || '').trim().toLowerCase() === deptKey)) suggest(u);
               }
-              return (
-                <div key={i} className="flex items-center gap-2 mb-1.5 flex-wrap">
-                  <span className="mini min-w-[150px]">{roleFor(i)}</span>
-                  <select
-                    className="inp flex-1 min-w-[200px] w-auto"
-                    aria-label={roleFor(i)}
-                    value={sel}
-                    disabled={options.length === 0}
-                    onChange={(e) => setPanelSel((arr) => arr.map((v, j) => (j === i ? e.target.value : v)))}
-                  >
-                    <option value="">
-                      {options.length ? '— appoint interviewer —' : '— nobody assigned to this panel —'}
-                    </option>
-                    {options.map((u) => (
-                      <option key={String(u._id)} value={String(u._id)}>
-                        {u.name}{u.designation ? ` — ${u.designation}` : u.department ? ` — ${u.department}` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {assignment && <AssignmentChip status={assignment.status} />}
-                </div>
-              );
-            })}
+              return panelSel.map((sel, i) => {
+                const assignment = (app.panel_assignments || []).find((a) => a.round === i + 1);
+                // A panel already scored keeps its panellist even if the account has
+                // since left the directory — it must stay resolvable to re-save the form.
+                const all = [...directory];
+                if (assignment?.status === 'Scored' && assignment.interviewer
+                    && !all.some((u) => String(u.id) === String(assignment.interviewer.id))) {
+                  all.push({ id: String(assignment.interviewer.id), name: assignment.interviewer.name, designation: assignment.interviewer.designation });
+                }
+                return (
+                  <div key={i} className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="mini min-w-[150px]">{roleFor(i)}</span>
+                    <InterviewerPicker
+                      label={roleFor(i)}
+                      value={sel}
+                      suggested={suggested}
+                      all={all}
+                      onChange={(id) => setPanelSel((arr) => arr.map((v, j) => (j === i ? id : v)))}
+                    />
+                    {assignment && <AssignmentChip status={assignment.status} />}
+                  </div>
+                );
+              });
+            })()}
             <ErrorBox error={panelErr} />
             <button type="button" className="btn btn-sm mt-1" onClick={savePanel} disabled={panelBusy}>
               {panelBusy ? 'Saving…' : 'Save panel'}

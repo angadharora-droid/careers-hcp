@@ -303,45 +303,13 @@ router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
   if (users.length !== ids.length) {
     return res.status(400).json({ error: 'All panellists must be registered interviewer accounts' });
   }
-  const nameOf = new Map(users.map((u) => [String(u._id), u.name]));
   const existing = await PanelAssignment.find({ application_id: app._id });
 
-  /* Eligibility is per JOB, not per panel: anyone the fixed matrix names anywhere on
-     this job — any panel's interviewer or alternate — may take any of its panels. The
-     matrix still decides who is involved at all, and those people are frequently from
-     another unit, which is fine. This is the guard for anything reaching the API
-     directly; the HR dropdown offers the same set. */
-  const rule = await resolvePanelRule(app.unit_code, app.grade, app.department);
-  if (!rule) {
-    return res.status(400).json({
-      error: `No fixed panel is defined for ${app.unit_code} / grade ${app.grade} / ${app.department}, so nobody is eligible to appoint. Add it to the panel matrix first.`,
-    });
-  }
-  await rule.populate([
-    { path: 'rounds.interviewer_user_id', select: 'name' },
-    { path: 'rounds.alternates', select: 'name' },
-  ]);
-  const eligible = [];
-  for (const s of rule.rounds) {
-    for (const u of [s.interviewer_user_id, ...s.alternates]) {
-      if (u && !eligible.some((e) => String(e._id) === String(u._id))) eligible.push(u);
-    }
-  }
-  for (const s of slots) {
-    // A panel already scored keeps its panellist even if the matrix has changed since.
-    // The lock governs new appointments; it must not retroactively invalidate a
-    // completed interview.
-    const held = existing.find((e) => e.round === s.round);
-    if (held?.status === 'Scored' && String(held.interviewer_user_id) === String(s.interviewer_user_id)) continue;
-    if (!eligible.some((u) => String(u._id) === String(s.interviewer_user_id))) {
-      const who = nameOf.get(String(s.interviewer_user_id)) || 'That panellist';
-      return res.status(400).json({
-        error: eligible.length
-          ? `${who} is not on the panel for this job. Eligible: ${eligible.map((u) => u.name).join(', ')}.`
-          : `The fixed panel for ${app.unit_code} / grade ${app.grade} / ${app.department} names nobody.`,
-      });
-    }
-  }
+  /* Any registered interviewer account may be appointed. The fixed matrix and the
+     department roster only rank the picker's SUGGESTIONS — HR can search the whole
+     directory when the name it wants is not among them. The guards that matter
+     stay: registered interviewer accounts only (above), and scored rounds are
+     immutable (below). */
 
   for (const ex of existing) {
     if (!roundNos.includes(ex.round)) {

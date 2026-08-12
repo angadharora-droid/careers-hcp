@@ -6,6 +6,20 @@ import { requireAuth, requireRole } from '../middleware/auth.js';
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
 
+// Extra departments: trimmed, de-duplicated (case-insensitively), and never
+// repeating the home department — membership itself already covers that one.
+function cleanDepartments(list, primary = '') {
+  const seen = new Set(String(primary).trim() ? [String(primary).trim().toLowerCase()] : []);
+  const out = [];
+  for (const d of Array.isArray(list) ? list : []) {
+    const t = String(d).trim();
+    if (!t || seen.has(t.toLowerCase())) continue;
+    seen.add(t.toLowerCase());
+    out.push(t);
+  }
+  return out;
+}
+
 // GET /api/users?role=interviewer — interviewer directory for panel appointment.
 // Matches anyone HOLDING that role, so dual-role staff appear in both directories.
 router.get('/', async (req, res) => {
@@ -18,13 +32,14 @@ router.get('/', async (req, res) => {
 // Accepts `roles: ['hr_admin','interviewer']`, or a single `role` for older clients.
 router.post('/', async (req, res) => {
   try {
-    const { name, email, password, role, roles, department, designation } = req.body || {};
+    const { name, email, password, role, roles, department, departments, designation } = req.body || {};
     if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password required' });
     if (String(password).length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
     const wanted = (Array.isArray(roles) && roles.length ? roles : [role])
       .filter((r) => ROLES.includes(r));
     const user = await User.create({
       name, email, department, designation,
+      departments: cleanDepartments(departments, department),
       roles: wanted.length ? [...new Set(wanted)] : ['interviewer'],
       password_hash: await bcrypt.hash(password, 10),
     });
@@ -40,7 +55,7 @@ router.patch('/:id', async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ error: 'Account not found' });
-    const { name, email, password, role, roles, department, designation } = req.body || {};
+    const { name, email, password, role, roles, department, departments, designation } = req.body || {};
 
     if (name !== undefined) {
       if (!String(name).trim()) return res.status(400).json({ error: 'Name cannot be empty' });
@@ -51,6 +66,7 @@ router.patch('/:id', async (req, res) => {
       user.email = String(email).trim().toLowerCase();
     }
     if (department !== undefined) user.department = String(department).trim();
+    if (departments !== undefined) user.departments = cleanDepartments(departments, department !== undefined ? department : user.department);
     if (designation !== undefined) user.designation = String(designation).trim();
 
     if (roles !== undefined || role !== undefined) {

@@ -6,7 +6,10 @@ import PageHeader from '../components/PageHeader';
 import Modal from '../components/Modal';
 import { UserPlus, Users } from '../components/Icons';
 
-const EMPTY_FORM = { name: '', email: '', department: '', designation: '', password: '', role: 'interviewer' };
+const EMPTY_FORM = { name: '', email: '', department: '', departments: '', designation: '', password: '', role: 'interviewer' };
+
+// "Also in departments" is typed comma-separated; the server trims and de-duplicates.
+const splitDepartments = (s) => String(s || '').split(',').map((d) => d.trim()).filter(Boolean);
 
 const ROLE_LABEL = {
   interviewer: 'Interviewer',
@@ -45,7 +48,8 @@ function EditAccountModal({ user, onClose, onSaved }) {
   };
   const [form, setForm] = useState({
     name: user.name || '', email: user.email || '',
-    department: user.department || '', designation: user.designation || '',
+    department: user.department || '', departments: (user.departments || []).join(', '),
+    designation: user.designation || '',
     role: roleOf(user), password: '',
   });
   const [err, setErr] = useState(null);
@@ -60,7 +64,8 @@ function EditAccountModal({ user, onClose, onSaved }) {
     try {
       const body = {
         name: form.name.trim(), email: form.email.trim(),
-        department: form.department.trim(), designation: form.designation.trim(),
+        department: form.department.trim(), departments: splitDepartments(form.departments),
+        designation: form.designation.trim(),
         roles: form.role === 'both' ? ['interviewer', 'hr_admin'] : [form.role],
       };
       if (form.password) body.password = form.password;
@@ -99,6 +104,10 @@ function EditAccountModal({ user, onClose, onSaved }) {
           <div>
             <label className="lbl" htmlFor="ea-dept">Department</label>
             <input id="ea-dept" className="inp" value={form.department} onChange={set('department')} />
+          </div>
+          <div>
+            <label className="lbl" htmlFor="ea-depts">Also in Departments</label>
+            <input id="ea-depts" className="inp" value={form.departments} onChange={set('departments')} placeholder="comma-separated, e.g. Corporate, Front Office" />
           </div>
           <div>
             <label className="lbl" htmlFor="ea-desig">Designation</label>
@@ -159,6 +168,7 @@ export default function InterviewersPage() {
         name: form.name.trim(),
         email: form.email.trim(),
         department: form.department.trim(),
+        departments: splitDepartments(form.departments),
         designation: form.designation.trim(),
         password: form.password,
         roles: form.role === 'both' ? ['interviewer', 'hr_admin'] : [form.role],
@@ -185,6 +195,7 @@ export default function InterviewersPage() {
         <div className="infobar">
           Panel appointment in the applicant drawer picks from the <b>interviewer</b> accounts below — panellists sign in to the Interview Panel with these logins and score independently.
           Use <b>Edit</b> to correct a name, email, department or role, or to reset a password.
+          <b>Also in Departments</b> lists extra departments a person interviews for, so they surface in those departments&rsquo; panel suggestions too.
         </div>
         <ErrorBox error={err} onRetry={load} />
         {loading ? (
@@ -205,7 +216,14 @@ export default function InterviewersPage() {
                     <td className="font-bold">{u.name}</td>
                     <td>{u.email}</td>
                     <td><RoleChips roles={u.roles} role={u.role} /></td>
-                    <td>{u.department || '—'}</td>
+                    <td>
+                      {u.department || (u.departments?.length ? '' : '—')}
+                      {(u.departments || []).map((d) => (
+                        <span key={d} className="inline-block ml-1 px-1.5 py-0.5 rounded-sm bg-beige text-[11px]">
+                          +{d}
+                        </span>
+                      ))}
+                    </td>
                     <td>{u.designation || '—'}</td>
                     <td className="text-right">
                       <button type="button" className="btn btn-sm btn-ghost" onClick={() => setEditing(u)}>
@@ -243,6 +261,10 @@ export default function InterviewersPage() {
             <div>
               <label className="lbl">Department</label>
               <input className="inp" value={form.department} onChange={set('department')} />
+            </div>
+            <div>
+              <label className="lbl">Also in Departments</label>
+              <input className="inp" value={form.departments} onChange={set('departments')} placeholder="comma-separated, e.g. Corporate, Front Office" />
             </div>
             <div>
               <label className="lbl">Designation</label>

@@ -15,7 +15,10 @@ const userSchema = new mongoose.Schema(
       required: true,
       validate: { validator: (v) => v.length > 0, message: 'A user needs at least one role' },
     },
-    department: { type: String, default: '' }, // for interviewers
+    department: { type: String, default: '' }, // home department, for interviewers
+    // Extra departments this person also serves on panels for — a Leadership chair
+    // who interviews for Corporate lists Corporate here and shows up in its picker.
+    departments: { type: [String], default: [] },
     designation: { type: String, default: '' },
     password_hash: { type: String, required: true },
   },
@@ -38,6 +41,7 @@ userSchema.methods.toSafeJSON = function () {
     role: this.role,   // primary role
     roles: this.roles,
     department: this.department,
+    departments: this.departments || [],
     designation: this.designation,
   };
 };

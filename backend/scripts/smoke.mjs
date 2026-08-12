@@ -171,8 +171,8 @@ ok('round 2 of a C1 interview is the shared HR recruiter',
   rulePreview.json.rule?.rounds?.[1]?.interviewer?.email === 'recruiter@cpgh.in',
   rulePreview.json.rule?.rounds?.[1]?.interviewer?.email);
 
-// appoint panel — rounds, not simultaneous slots. Appointment is locked to the fixed
-// panel, so the picks must come from the rule itself, not from the interviewer directory.
+// appoint panel — rounds, not simultaneous slots. The fixed panel only ranks the
+// picker's suggestions; ANY registered interviewer may be appointed via search.
 const users = await req('GET', '/users?role=interviewer', { token: hr });
 const slotOf = (n) => rulePreview.json.rule.rounds.find((r) => r.round === n).interviewer;
 const i1 = { id: slotOf(1)._id, email: slotOf(1).email };
@@ -187,9 +187,30 @@ const offPanel = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,
   body: { assignments: [{ interviewer_user_id: notOnPanel.id, round: 1 }] },
 });
-ok('interviewer outside the fixed panel is rejected', offPanel.status === 400, `got ${offPanel.status}`);
-ok('rejection names who is eligible instead',
-  /not on the panel for this job/.test(offPanel.json?.error || ''), offPanel.json?.error);
+ok('interviewer outside the fixed panel can be appointed (searchable directory)',
+  offPanel.status === 200, JSON.stringify(offPanel.json));
+
+// …but only registered interviewer accounts qualify
+const hrOnly = paragIsHr.json.users.find((u) => !(u.roles || []).includes('interviewer'));
+if (hrOnly) {
+  const badAcct = await req('POST', `/applications/${app.id}/assign-panel`, {
+    token: hr,
+    body: { assignments: [{ interviewer_user_id: hrOnly.id, round: 1 }] },
+  });
+  ok('non-interviewer account still rejected from panels', badAcct.status === 400, `got ${badAcct.status}`);
+}
+
+// extra departments: a person added to another department is stored and served back,
+// duplicates of the home department are dropped
+const extra = (notOnPanel.department || '').toLowerCase() === 'front office' ? 'Kitchen' : 'Front Office';
+const extraDept = await req('PATCH', `/users/${notOnPanel.id}`, {
+  token: hr,
+  body: { departments: [extra, notOnPanel.department, extra] },
+});
+ok('extra departments saved (deduped, home dept dropped)',
+  extraDept.status === 200 && JSON.stringify(extraDept.json.user.departments) === JSON.stringify([extra]),
+  JSON.stringify(extraDept.json?.user?.departments));
+await req('PATCH', `/users/${notOnPanel.id}`, { token: hr, body: { departments: [] } }); // restore
 
 const assign = await req('POST', `/applications/${app.id}/assign-panel`, {
   token: hr,
