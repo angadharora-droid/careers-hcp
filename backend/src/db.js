@@ -16,4 +16,11 @@ export async function connectDB() {
   }
   await mongoose.connect(uri);
   console.log(`MongoDB connected: ${mongoose.connection.name}`);
+
+  // Databases seeded before the panel refactor still carry a unique
+  // (application_id, interviewer_user_id) index, which forbids one interviewer
+  // holding two rounds and makes applyPanelRule throw E11000. syncIndexes drops
+  // whatever the schema no longer declares and builds what it does.
+  const PanelAssignment = (await import('./models/PanelAssignment.js')).default;
+  await PanelAssignment.syncIndexes();
 }
