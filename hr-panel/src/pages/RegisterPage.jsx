@@ -7,7 +7,9 @@ import { ErrorBox, Empty, TableSkeleton } from '../components/LoadState';
 import { StatusPill, FlagPill } from '../components/Badges';
 import PositionModal from '../components/PositionModal';
 import PageHeader from '../components/PageHeader';
-import { Plus, Search, X, ArrowUpDown, ChevronUp, ChevronDown, Edit, Table, Download } from '../components/Icons';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { Plus, Search, X, ArrowUpDown, ChevronUp, ChevronDown, Edit, Trash, Table, Download } from '../components/Icons';
+import { useToast } from '../context/ToastContext';
 
 const STATUSES = ['Vacant', 'Filled', 'Under Recruitment', 'Frozen', 'On Hold', 'Contract', 'Outsourced', 'Eliminated'];
 
@@ -77,6 +79,7 @@ function FilterChip({ label, onClear }) {
 
 export default function RegisterPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const toast = useToast();
 
   const [positions, setPositions] = useState([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -96,6 +99,8 @@ export default function RegisterPage() {
 
   // null = closed, 'new' = add, object = edit
   const [modal, setModal] = useState(null);
+  const [toDelete, setToDelete] = useState(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const debounce = useRef(null);
 
@@ -149,6 +154,23 @@ export default function RegisterPage() {
     setModal(null);
     loadFiltered({ q, dept, grade, status });
     loadMeta();
+  }
+
+  async function deletePosition() {
+    const p = toDelete;
+    if (!p) return;
+    setDeleteBusy(true);
+    try {
+      await api.del(`/positions/${p.id}`);
+      toast(`Position ${p.pcn} deleted`);
+      loadFiltered({ q, dept, grade, status });
+      loadMeta();
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setDeleteBusy(false);
+      setToDelete(null);
+    }
   }
 
   function toggleSort(key) {
@@ -317,10 +339,22 @@ export default function RegisterPage() {
                         </span>
                       </td>
                       <td>
-                        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setModal(p)}>
-                          <Edit size={13} />
-                          Edit
-                        </button>
+                        <span className="flex gap-1.5">
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setModal(p)}>
+                            <Edit size={13} />
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-red btn-sm"
+                            onClick={() => setToDelete(p)}
+                            disabled={!!p.occupant_name}
+                            title={p.occupant_name ? 'Separate the occupant before deleting this seat' : 'Delete this position'}
+                          >
+                            <Trash size={13} />
+                            Delete
+                          </button>
+                        </span>
                       </td>
                     </tr>
                   ))
@@ -337,6 +371,24 @@ export default function RegisterPage() {
           grades={grades}
           onClose={() => setModal(null)}
           onSaved={afterWrite}
+        />
+      )}
+
+      {toDelete && (
+        <ConfirmDialog
+          title="Delete position?"
+          body={
+            <>
+              Permanently delete seat <b className="font-mono">{toDelete.pcn}</b> ({toDelete.designation})?
+              It will disappear from the register and the public careers site.
+              For a seat with recruitment history, use Eliminate in the edit dialog instead.
+            </>
+          }
+          confirmLabel="Delete"
+          tone="danger"
+          busy={deleteBusy}
+          onCancel={() => setToDelete(null)}
+          onConfirm={deletePosition}
         />
       )}
     </div>

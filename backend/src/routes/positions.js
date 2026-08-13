@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import Position, { POSITION_STATUSES } from '../models/Position.js';
+import Application from '../models/Application.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached } from '../utils/helpers.js';
 
@@ -83,6 +84,23 @@ router.post('/:id/eliminate', async (req, res) => {
   p.status = 'Eliminated';
   await p.save();
   res.json({ position: decorate(p) });
+});
+
+// DELETE /api/positions/:id — hard-remove a seat created in error.
+// Seats with history (occupant or linked applications) must use eliminate instead,
+// so selection/offer records never point at a missing position.
+router.delete('/:id', async (req, res) => {
+  const p = await Position.findById(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Position not found' });
+  if (p.occupant_name) {
+    return res.status(400).json({ error: 'Cannot delete a filled position — separate the occupant first' });
+  }
+  const linked = await Application.countDocuments({ position_id: p._id });
+  if (linked > 0) {
+    return res.status(400).json({ error: `Cannot delete — ${linked} application(s) reference this seat. Use Eliminate instead.` });
+  }
+  await p.deleteOne();
+  res.json({ ok: true });
 });
 
 export default router;
