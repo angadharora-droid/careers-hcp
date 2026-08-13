@@ -149,7 +149,7 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
       {position ? (
         <p className="pcn">{position.pcn}</p>
       ) : (
-        <p className="hint">PCN auto-generated as CPA-DEPT-GRADE-SERIAL on save.</p>
+        <p className="hint">PCN auto-generated as CPA-DEPT-GRADE-SERIAL on save. The Careers site lists roles by designation, so seats sharing a department and grade still advertise separately.</p>
       )}
 
       <Section title="Identity">

@@ -289,7 +289,7 @@ function SuccessScreen({ role }) {
 /* ---------- apply form ---------- */
 
 export default function ApplyForm() {
-  const { job_code } = useParams();
+  const { slug } = useParams();
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -315,14 +315,14 @@ export default function ApplyForm() {
     setLoading(true);
     setLoadError('');
     setClosed(false);
-    getPosition(job_code)
+    getPosition(slug)
       .then((data) => setRole(data.role))
       .catch((e) => {
         if (e.status === 404) setClosed(true);
         else setLoadError(e.message);
       })
       .finally(() => setLoading(false));
-  }, [job_code]);
+  }, [slug]);
 
   useEffect(() => {
     load();
@@ -432,7 +432,9 @@ export default function ApplyForm() {
     }
 
     const fd = new FormData();
-    fd.append('job_code', job_code);
+    // The application targets a role by its name — job_code can be shared by
+    // two roles in the same department + grade.
+    fd.append('designation', role.designation);
     Object.entries(form).forEach(([key, value]) => {
       const v = String(value).trim();
       if (v !== '') fd.append(key, v);
@@ -458,7 +460,7 @@ export default function ApplyForm() {
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
       <Link
-        to={`/jobs/${encodeURIComponent(job_code)}`}
+        to={`/jobs/${encodeURIComponent(slug)}`}
         className="inline-flex items-center gap-2 min-h-[44px] sm:min-h-0 font-button text-[11px] uppercase tracking-[2px] text-berry hover:text-berry-dark mb-4 transition-colors duration-200"
       >
         <ArrowLeftIcon size={14} />

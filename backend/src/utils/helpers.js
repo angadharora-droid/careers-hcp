@@ -95,6 +95,14 @@ export async function applyPanelRule(app, { assignedBy = null, replace = false }
   return { applied, rule };
 }
 
+// The public Career Panel identifies a role by its NAME (designation), never by
+// job_code — the PCN scheme is fixed as UNIT-DEPT-GRADE-SERIAL, so two different
+// roles in the same department and grade legitimately share a job_code
+// (Admin Executive and Purchase Executive both sit under CPA-ADM-B1).
+// This slug is the role's stable public key/URL segment.
+export const roleSlugOf = (designation) =>
+  String(designation).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
 // PCN generation is server-side and atomic so concurrent HR users can't collide.
 // Format: UNIT-DEPT-GRADE-SERIAL, e.g. CPA-FO-C1-001
 export async function nextPCN(unitAbbr, deptAbbr, grade) {

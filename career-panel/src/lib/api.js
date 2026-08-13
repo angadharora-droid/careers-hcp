@@ -31,9 +31,9 @@ export function getPositions() {
   return request('/public/positions');
 }
 
-/** GET /public/positions/:job_code → { role } (404 if not open) */
-export function getPosition(jobCode) {
-  return request(`/public/positions/${encodeURIComponent(jobCode)}`);
+/** GET /public/positions/:slug → { role } (404 if not open) */
+export function getPosition(slug) {
+  return request(`/public/positions/${encodeURIComponent(slug)}`);
 }
 
 /** POST /public/applications — multipart/form-data → { reference_id, message } */

@@ -30,7 +30,9 @@ router.get('/', async (req, res) => {
   res.json({ positions: positions.map(decorate) });
 });
 
-// POST /api/positions — PCN auto-generated server-side (UNIT-DEPT-GRADE-SERIAL)
+// POST /api/positions — PCN auto-generated server-side (UNIT-DEPT-GRADE-SERIAL).
+// The scheme is fixed: seats of different designations in the same department and
+// grade share a job_code; the Career Panel lists roles by designation, not code.
 router.post('/', async (req, res) => {
   try {
     const b = req.body || {};
@@ -41,6 +43,7 @@ router.post('/', async (req, res) => {
     const pcn = await nextPCN(unitAbbr, deptAbbrOf(b.department), b.grade);
     const position = await Position.create({
       ...b,
+      designation: String(b.designation).trim(),
       pcn,
       job_code: jobCodeOf(pcn),
       status: b.status && POSITION_STATUSES.includes(b.status) ? b.status : 'Vacant',

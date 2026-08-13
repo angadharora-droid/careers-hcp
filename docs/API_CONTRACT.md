@@ -28,9 +28,14 @@ Accounts written before multi-role are migrated automatically on boot (`roles: [
 ## Public (Career Panel — NO auth)
 
 ### `GET /public/positions` → `{ roles: [Role] }`
-Role = open roles grouped by job_code (never seat-level PCNs):
+Role = open roles grouped by **designation** (the advertised position name — never
+seat-level PCNs). The PCN scheme is fixed as UNIT-DEPT-GRADE-SERIAL, so two roles in
+the same department + grade can share a `job_code` (e.g. Admin Executive and Purchase
+Executive both under `CPA-ADM-B1`); `job_code` is informational only. `slug` is the
+role's stable public key/URL segment, derived from the designation:
 ```json
 {
+  "slug": "guest-service-associate-front-office",
   "job_code": "CPA-FO-C1", "designation": "Guest Service Associate — Front Office",
   "department": "Front Office", "job_family": "Front Office",
   "grade_label": "Associate", "unit": "Centre Point Amravati",
@@ -42,10 +47,11 @@ Role = open roles grouped by job_code (never seat-level PCNs):
 }
 ```
 
-### `GET /public/positions/:job_code` → `{ role }` (404 if not open)
+### `GET /public/positions/:slug` → `{ role }` (404 if not open)
+`job_code` is accepted as a legacy fallback; with shared codes it resolves to the first matching role.
 
 ### `POST /public/applications` — **multipart/form-data**
-Fields: `job_code`*, `candidate_name`*, `mobile`*, `email`*, `age`, `gender`, `qualification`,
+Fields: `designation`* (the role name — job_code cannot identify a role), `candidate_name`*, `mobile`*, `email`*, `age`, `gender`, `qualification`,
 `total_experience_years`, `current_designation`, `years_in_current_firm`, `current_salary`,
 `expected_salary`, `willing_to_relocate` (Yes/No), `needs_accommodation` (Yes/No),
 `source` (Referral (employee) | Walk-in | Naukri / Portal | Instagram / Social | Newspaper | Consultant | Other),
@@ -97,7 +103,7 @@ Body: `{ stage, rejection_reason?, interview_date?, date_of_joining?, offered_sa
 Server-enforced rules (surface the returned `error` to the user):
 - `Rejected` requires `rejection_reason`, which must be one of the standard reasons: `Frequent job changes / no stability`, `Negative attitude or poor professionalism`, `Weak communication skills`, `Not suitable for hotel culture / team fit`, `Lack of required skills or knowledge`.
 - `Interview Scheduled`: also writes the standing interview panel onto the application (see *Interview rounds*).
-- `Selected`: requires every round scored (`rounds`) — override with `allow_partial_panel:true` only if ≥1 score — AND a seat with that job_code in Vacant/Under Recruitment. Atomically fills the seat (status→Filled, occupant recorded). Response also has `filled_pcn`. Optional `date_of_joining` (ISO `YYYY-MM-DD`) and `offered_salary` (monthly, number) are stored as the offer terms.
+- `Selected`: requires every round scored (`rounds`) — override with `allow_partial_panel:true` only if ≥1 score — AND a seat of that role (matched on job_code **and** designation, since a job_code can be shared by two roles) in Vacant/Under Recruitment. Atomically fills the seat (status→Filled, occupant recorded). Response also has `filled_pcn`. Optional `date_of_joining` (ISO `YYYY-MM-DD`) and `offered_salary` (monthly, number) are stored as the offer terms.
 - Moving a Selected candidate to another stage releases their seat back to Under Recruitment.
 
 ### Offer letter (HR)

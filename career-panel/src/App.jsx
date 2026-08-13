@@ -15,8 +15,8 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route path="/" element={<JobList />} />
-            <Route path="/jobs/:job_code" element={<JobDetail />} />
-            <Route path="/jobs/:job_code/apply" element={<ApplyForm />} />
+            <Route path="/jobs/:slug" element={<JobDetail />} />
+            <Route path="/jobs/:slug/apply" element={<ApplyForm />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>

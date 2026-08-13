@@ -30,7 +30,7 @@ function Fact({ icon: IconComponent, label, value }) {
 }
 
 export default function JobDetail() {
-  const { job_code } = useParams();
+  const { slug } = useParams();
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -40,14 +40,14 @@ export default function JobDetail() {
     setLoading(true);
     setError('');
     setClosed(false);
-    getPosition(job_code)
+    getPosition(slug)
       .then((data) => setRole(data.role))
       .catch((e) => {
         if (e.status === 404) setClosed(true);
         else setError(e.message);
       })
       .finally(() => setLoading(false));
-  }, [job_code]);
+  }, [slug]);
 
   useEffect(() => {
     load();
@@ -63,17 +63,17 @@ export default function JobDetail() {
     return () => {
       live = false;
     };
-  }, [job_code]);
+  }, [slug]);
 
   const related = useMemo(() => {
     if (!allRoles || !role) return [];
-    const rest = allRoles.filter((r) => r.job_code !== role.job_code);
+    const rest = allRoles.filter((r) => r.slug !== role.slug);
     const sameDept = rest.filter((r) => r.department === role.department);
     const others = rest.filter((r) => r.department !== role.department);
     return [...sameDept, ...others].slice(0, 3);
   }, [allRoles, role]);
 
-  const applyTo = `/jobs/${encodeURIComponent(job_code)}/apply`;
+  const applyTo = `/jobs/${encodeURIComponent(slug)}/apply`;
 
   return (
     <div className="pb-28 lg:pb-10">
@@ -190,7 +190,7 @@ export default function JobDetail() {
                 </div>
                 <div className="flex flex-col gap-4">
                   {related.map((r, i) => (
-                    <JobCard key={r.job_code} role={r} index={i} as="h3" />
+                    <JobCard key={r.slug} role={r} index={i} as="h3" />
                   ))}
                 </div>
               </section>

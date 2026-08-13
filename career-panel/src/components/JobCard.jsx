@@ -6,7 +6,9 @@ import { ArrowRightIcon } from './Icons';
 // The entire row is clickable (stretched link); "View & Apply" stays as the visible affordance.
 export default function JobCard({ role, index = 0, as: TitleTag = 'h4' }) {
   const meta = [role.department, friendlyLevel(role.grade_label)].filter(Boolean).join('  ·  ');
-  const href = `/jobs/${encodeURIComponent(role.job_code)}`;
+  // Roles are identified by their name (slug) — job_code can be shared by two
+  // roles in the same department + grade, so it never keys navigation.
+  const href = `/jobs/${encodeURIComponent(role.slug)}`;
 
   return (
     <article

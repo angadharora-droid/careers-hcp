@@ -39,7 +39,7 @@ const health = await req('GET', '/health');
 ok('health endpoint', health.status === 200 && health.json.ok);
 
 const pub = await req('GET', '/public/positions');
-ok('public roles grouped by job_code (26 roles)', pub.status === 200 && pub.json.roles.length === 26, `got ${pub.json?.roles?.length}`);
+ok('public roles grouped by designation (26 roles)', pub.status === 200 && pub.json.roles.length === 26, `got ${pub.json?.roles?.length}`);
 const foRole = pub.json.roles.find((r) => r.designation === 'Guest Service Associate — Front Office');
 ok('FO associate role open with 3 openings', foRole && foRole.openings === 3);
 ok('public payload hides PCN/budget/occupant', foRole && !('pcn' in foRole) && !('budgeted_salary' in foRole) && !('occupant_name' in foRole));
@@ -49,7 +49,7 @@ ok('public payload hides salary band', foRole && !('salary_min' in foRole) && !(
 // complete payload and omit exactly one thing.
 const CURRENT_EMPLOYMENT_FIELDS = ['current_designation', 'years_in_current_firm', 'current_salary'];
 const applicantOf = (over = {}) => ({
-  job_code: foRole.job_code, candidate_name: 'Priya Sharma', mobile: '9876543210',
+  designation: foRole.designation, candidate_name: 'Priya Sharma', mobile: '9876543210',
   email: 'priya@example.com', age: 24, gender: 'Female', qualification: 'BHM',
   total_experience_years: 2, current_designation: 'Front Desk Associate',
   years_in_current_firm: 1.5, current_salary: 14000, expected_salary: 16000,
@@ -68,7 +68,7 @@ ok('50-word intro cap enforced server-side', capped.status === 400);
 
 // public application — mandatory fields
 for (const field of [
-  'candidate_name', 'mobile', 'email', 'age', 'gender', 'qualification',
+  'designation', 'candidate_name', 'mobile', 'email', 'age', 'gender', 'qualification',
   'total_experience_years', 'expected_salary', 'willing_to_relocate',
   'needs_accommodation', 'worked_at_cph_before', 'source', 'why_join', 'intro_note',
 ]) {
@@ -316,6 +316,37 @@ ok('send-offer without SMTP returns email_configured:false', offerMail.status ==
 // PCN generation: new position gets next serial atomically
 const newPos = await req('POST', '/positions', { token: hr, body: { designation: 'Guest Service Associate — Front Office', department: 'Front Office', grade: 'C1', job_family: 'Front Office', salary_min: 13000, salary_max: 18000, budgeted_salary: 18000 } });
 ok('new PCN server-generated with next serial', newPos.status === 201 && /^CPA-FO-C1-\d{3}$/.test(newPos.json.position.pcn), newPos.json?.position?.pcn);
+
+// The PCN/job_code scheme is fixed (UNIT-DEPT-GRADE-SERIAL): a second designation
+// in the same dept+grade SHARES the job_code, but the Careers site lists roles by
+// NAME, so the two must never merge into one card.
+const purchase = await req('POST', '/positions', { token: hr, body: { designation: 'Purchase Executive', department: 'Admin', grade: 'B1', salary_min: 15000, salary_max: 21500, budgeted_salary: 21500 } });
+ok('new designation in same dept+grade keeps the fixed PCN scheme (shared job_code)',
+  purchase.status === 201 && /^CPA-ADM-B1-\d{3}$/.test(purchase.json.position.pcn) && purchase.json.position.job_code === 'CPA-ADM-B1',
+  purchase.json?.position?.pcn);
+const purchase2 = await req('POST', '/positions', { token: hr, body: { designation: 'Purchase Executive', department: 'Admin', grade: 'B1' } });
+ok('second Purchase Executive seat shares the code too',
+  purchase2.status === 201 && purchase2.json.position.job_code === 'CPA-ADM-B1',
+  purchase2.json?.position?.job_code);
+
+const pubAfter = await req('GET', '/public/positions');
+const adminCard = pubAfter.json.roles.find((r) => r.designation === 'Admin Executive');
+const purchaseCard = pubAfter.json.roles.find((r) => r.designation === 'Purchase Executive');
+ok('careers lists Purchase Executive as its own card (2 openings)', purchaseCard?.openings === 2, JSON.stringify(purchaseCard));
+ok('Admin Executive card not inflated by the shared job_code (2 openings)', adminCard?.openings === 2, JSON.stringify(adminCard));
+const bySlug = await req('GET', `/public/positions/${purchaseCard?.slug}`);
+ok('role detail resolves by name slug', bySlug.status === 200 && bySlug.json.role?.designation === 'Purchase Executive', purchaseCard?.slug);
+
+// applying to Purchase Executive must not drag Admin Executive into recruitment
+const purchaseApp = await req('POST', '/public/applications', {
+  form: formOf(applicantOf({ designation: 'Purchase Executive', candidate_name: 'Purchase Applicant', email: 'purchase@example.com' }), { files: ['cv.pdf'] }),
+});
+ok('application to Purchase Executive accepted', purchaseApp.status === 201, JSON.stringify(purchaseApp.json));
+const admB1 = await req('GET', '/positions?q=CPA-ADM-B1', { token: hr });
+const purStatuses = admB1.json.positions.filter((p) => p.designation === 'Purchase Executive').map((p) => p.status);
+const admStatuses = admB1.json.positions.filter((p) => p.designation === 'Admin Executive').map((p) => p.status);
+ok('only Purchase Executive seats flip to Under Recruitment', purStatuses.length === 2 && purStatuses.every((s) => s === 'Under Recruitment'), JSON.stringify(purStatuses));
+ok('Admin Executive seats stay Vacant despite the shared job_code', admStatuses.length === 2 && admStatuses.every((s) => s === 'Vacant'), JSON.stringify(admStatuses));
 
 // dashboard
 const dash = await req('GET', '/dashboard/summary', { token: hr });

@@ -441,7 +441,7 @@ export default function JobList() {
                   </div>
                   <div className="flex flex-col gap-4">
                     {list.map((role, i) => (
-                      <JobCard key={role.job_code} role={role} index={i} />
+                      <JobCard key={role.slug} role={role} index={i} />
                     ))}
                   </div>
                 </section>
