@@ -1,33 +1,13 @@
 import { Router } from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import Position from '../models/Position.js';
 import Application from '../models/Application.js';
 import Grade from '../models/Grade.js';
 import {
   RECRUITABLE_STATUSES, wordCount, makeReferenceId, roleSlugOf,
 } from '../utils/helpers.js';
+import { documentUpload, saveCandidateDocuments, deleteCandidateDocuments } from '../utils/uploads.js';
 
 const router = Router();
-
-const UPLOAD_DIR = path.resolve('uploads');
-fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-const storage = multer.diskStorage({
-  destination: UPLOAD_DIR,
-  filename: (_req, file, cb) => {
-    const safe = file.originalname.replace(/[^A-Za-z0-9._-]/g, '_').slice(-80);
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e6)}-${safe}`);
-  },
-});
-const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024, files: 6 },
-  fileFilter: (_req, file, cb) => {
-    const ok = /\.pdf$/i.test(file.originalname);
-    cb(ok ? null : new Error('Only PDF files are allowed'), ok);
-  },
-});
 
 // Public projection: NEVER expose PCN seat codes, salary bands, budgeted
 // salary, occupants, scores, interviewer identities, or other applicants' data.
@@ -92,7 +72,7 @@ const REQUIRED_FIELDS = [
 const CURRENT_EMPLOYMENT_FIELDS = ['current_designation', 'years_in_current_firm', 'current_salary'];
 
 // POST /api/public/applications — multipart/form-data, files under "documents"
-router.post('/applications', upload.array('documents', 6), async (req, res) => {
+router.post('/applications', documentUpload.array('documents', 6), async (req, res) => {
   try {
     const b = req.body || {};
     const missing = (f) => !String(b[f] ?? '').trim();
@@ -121,34 +101,44 @@ router.post('/applications', upload.array('documents', 6), async (req, res) => {
     // Under Recruitment (recruitment activity has started).
     await Position.updateMany({ designation: desigRx, status: 'Vacant' }, { status: 'Under Recruitment' });
 
-    const app = await Application.create({
-      reference_id: makeReferenceId(),
-      job_code: seat.job_code,
-      designation: seat.designation,
-      department: seat.department,
-      grade: seat.grade,
-      job_family: seat.job_family,
-      competency_profile: seat.competency_profile,
-      unit: seat.unit,
-      candidate_name: b.candidate_name.trim(),
-      age: b.age ? Number(b.age) : undefined,
-      gender: b.gender,
-      mobile: b.mobile.trim(),
-      email: b.email.trim(),
-      qualification: b.qualification,
-      total_experience_years: b.total_experience_years ? Number(b.total_experience_years) : undefined,
-      current_designation: b.current_designation,
-      years_in_current_firm: b.years_in_current_firm ? Number(b.years_in_current_firm) : undefined,
-      current_salary: b.current_salary ? Number(b.current_salary) : undefined,
-      expected_salary: b.expected_salary ? Number(b.expected_salary) : undefined,
-      willing_to_relocate: b.willing_to_relocate,
-      needs_accommodation: b.needs_accommodation,
-      worked_at_cph_before: b.worked_at_cph_before,
-      source: b.source,
-      why_join: b.why_join,
-      intro_note: b.intro_note,
-      documents: (req.files || []).map((f) => ({ filename: f.filename, original_name: f.originalname })),
-    });
+    // Documents go into MongoDB before the application so its records never point
+    // at bytes that failed to store; cleaned up again if the application fails.
+    const documents = await saveCandidateDocuments(req.files);
+
+    let app;
+    try {
+      app = await Application.create({
+        reference_id: makeReferenceId(),
+        job_code: seat.job_code,
+        designation: seat.designation,
+        department: seat.department,
+        grade: seat.grade,
+        job_family: seat.job_family,
+        competency_profile: seat.competency_profile,
+        unit: seat.unit,
+        candidate_name: b.candidate_name.trim(),
+        age: b.age ? Number(b.age) : undefined,
+        gender: b.gender,
+        mobile: b.mobile.trim(),
+        email: b.email.trim(),
+        qualification: b.qualification,
+        total_experience_years: b.total_experience_years ? Number(b.total_experience_years) : undefined,
+        current_designation: b.current_designation,
+        years_in_current_firm: b.years_in_current_firm ? Number(b.years_in_current_firm) : undefined,
+        current_salary: b.current_salary ? Number(b.current_salary) : undefined,
+        expected_salary: b.expected_salary ? Number(b.expected_salary) : undefined,
+        willing_to_relocate: b.willing_to_relocate,
+        needs_accommodation: b.needs_accommodation,
+        worked_at_cph_before: b.worked_at_cph_before,
+        source: b.source,
+        why_join: b.why_join,
+        intro_note: b.intro_note,
+        documents,
+      });
+    } catch (err) {
+      await deleteCandidateDocuments(documents);
+      throw err;
+    }
     res.status(201).json({
       reference_id: app.reference_id,
       message: 'Application received. Save your reference ID for any correspondence with HR.',

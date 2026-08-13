@@ -145,6 +145,27 @@ const apps = await req('GET', '/applications?q=Priya', { token: hr });
 const app = apps.json.applications[0];
 ok('HR sees application with panel_size 2', app && app.panel_size === 2);
 ok('uploaded document stored on application', app && app.documents.length === 1 && app.documents[0].original_name === 'cv.pdf', JSON.stringify(app?.documents));
+
+// documents live in MongoDB (not local disk) — they must download back intact
+const docRes = await fetch(`${API}/files/${encodeURIComponent(app.documents[0].filename)}`, {
+  headers: { Authorization: `Bearer ${hr}` },
+});
+const docText = docRes.ok ? await docRes.text() : '';
+ok('uploaded CV downloads back from the database', docRes.status === 200 && docText.includes('%PDF-1.4 smoke-test document'), `got ${docRes.status}`);
+
+// a file that no longer exists (pre-database uploads lost on redeploy) explains itself
+const gone = await req('GET', '/files/1700000000000-000000-gone.pdf', { token: hr });
+ok('missing document returns a clear 404', gone.status === 404 && /resend/i.test(gone.json?.error || ''), JSON.stringify(gone.json));
+
+// HR can attach a document the candidate sent directly (e.g. a re-sent CV)
+const attach = await req('POST', `/applications/${app.id}/documents`, {
+  token: hr, form: formOf({}, { files: ['resent-cv.pdf'] }),
+});
+ok('HR attaches a re-sent document', attach.status === 200 && attach.json.application?.documents?.length === 2, JSON.stringify(attach.json));
+const attachBad = await req('POST', `/applications/${app.id}/documents`, {
+  token: hr, form: formOf({}, { files: ['cv.docx'] }),
+});
+ok('HR attach rejects non-PDF', attachBad.status === 400, `got ${attachBad.status}`);
 ok('worked-at-CPH answer stored on application', app && app.worked_at_cph_before === 'No', `got ${app?.worked_at_cph_before}`);
 
 // rejection requires reason

@@ -12,6 +12,7 @@ import {
 } from '../utils/helpers.js';
 import { buildOfferLetter } from '../utils/offerLetter.js';
 import { isEmailConfigured, sendMail } from '../utils/mailer.js';
+import { documentUpload, saveCandidateDocuments, deleteCandidateDocuments } from '../utils/uploads.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -93,7 +94,28 @@ router.delete('/:id', requireRole('hr_admin'), async (req, res) => {
   if (!app) return res.status(404).json({ error: 'Application not found' });
   await PanelAssignment.deleteMany({ application_id: app._id });
   await PanelScore.deleteMany({ application_id: app._id });
+  await deleteCandidateDocuments(app.documents);
   res.json({ ok: true });
+});
+
+// POST /api/applications/:id/documents — multipart, files under "documents".
+// Lets HR attach documents a candidate sent directly (e.g. a CV resent after the
+// original upload was lost from local disk in a pre-database-storage redeploy).
+router.post('/:id/documents', requireRole('hr_admin'), documentUpload.array('documents', 6), async (req, res) => {
+  try {
+    const app = await Application.findById(req.params.id);
+    if (!app) return res.status(404).json({ error: 'Application not found' });
+    if (!req.files?.length) return res.status(400).json({ error: 'Attach at least one PDF' });
+    if (app.documents.length + req.files.length > 6) {
+      return res.status(400).json({ error: `An application holds at most 6 documents (this one has ${app.documents.length})` });
+    }
+    const added = await saveCandidateDocuments(req.files);
+    app.documents.push(...added);
+    await app.save();
+    res.json({ application: await withDerived(app) });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 /* ===== HR: stage transitions (server-side recruitment gate) ===== */

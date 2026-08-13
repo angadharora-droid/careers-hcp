@@ -56,7 +56,9 @@ Fields: `designation`* (the role name — job_code cannot identify a role), `can
 `expected_salary`, `willing_to_relocate` (Yes/No), `needs_accommodation` (Yes/No),
 `source` (Referral (employee) | Walk-in | Naukri / Portal | Instagram / Social | Newspaper | Consultant | Other),
 `why_join`, `intro_note` (max 50 words — also validated server-side).
-Files: `documents` (optional; up to 6; pdf/doc/docx/jpg/png, 5 MB each).
+Files: `documents` (optional; up to 6; PDF only, 5 MB each). Bytes are stored in
+MongoDB (`CandidateDocument`), so documents persist across redeploys exactly like
+the application record.
 → `201 { reference_id: "CPH-XXXXXX", message }`
 The reference ID identifies the application for HR correspondence and search; there is no
 candidate-facing status lookup.
@@ -206,6 +208,14 @@ Every profile is **3 skills + 2 knowledge**: skills `practical 10 + problem 10 +
 
 ## Files
 `GET /files/:filename` with Bearer token → uploaded document (HR/interviewer only).
+Served from MongoDB (`CandidateDocument`); the local `uploads/` folder is checked only
+as a legacy fallback for files uploaded before database storage. A file found in
+neither returns a 404 whose `error` explains the document was lost to a redeploy and
+should be re-requested from the candidate.
+
+`POST /applications/:id/documents` (hr_admin) — **multipart/form-data**, files under
+`documents` (PDF only, 5 MB each, max 6 per application). Attaches documents HR
+received directly (e.g. a re-sent CV) → `{ application }`.
 
 ## Scoring model (identical to the artifacts)
 - Weights: Attitude 60 (Guest 20, Culture 15, Comm 15, Team 10) · Skills 25 · Knowledge 15.

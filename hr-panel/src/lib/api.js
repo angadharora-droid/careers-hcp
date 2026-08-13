@@ -50,6 +50,22 @@ export const api = {
   del: (path) => request(path, { method: 'DELETE' }),
 };
 
+// Attach documents HR received directly (e.g. a re-sent CV) to an application.
+// multipart/form-data, so it bypasses the JSON `request` helper.
+export async function uploadDocuments(applicationId, files) {
+  const fd = new FormData();
+  files.forEach((f) => fd.append('documents', f));
+  const res = await fetch(`${API}/applications/${applicationId}/documents`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: fd,
+  });
+  let data = null;
+  try { data = await res.json(); } catch { /* empty */ }
+  if (!res.ok) throw new Error((data && data.error) || 'Upload failed');
+  return data;
+}
+
 // Uploaded documents need the Authorization header, so fetch as a blob and
 // hand the browser an object URL instead of a plain <a href>.
 export async function downloadDocument(filename, originalName) {

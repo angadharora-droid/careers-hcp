@@ -4,7 +4,7 @@ import ConfirmDialog from './ConfirmDialog';
 import OfferDialog from './OfferDialog';
 import { ErrorBox, Skeleton, Loading } from './LoadState';
 import { AssignmentChip, RecChip, StageBadge } from './Badges';
-import { api, downloadDocument, previewDocument } from '../lib/api';
+import { api, downloadDocument, previewDocument, uploadDocuments } from '../lib/api';
 import { inr, fmtDate } from '../lib/format';
 import { useToast } from '../context/ToastContext';
 import {
@@ -158,6 +158,8 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
   const [partialConfirm, setPartialConfirm] = useState(null); // { count, needed } | null
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [attachBusy, setAttachBusy] = useState(false);
+  const attachInputRef = useRef(null);
 
   const applyApp = useCallback((application) => {
     setApp(application);
@@ -303,6 +305,22 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
       await previewDocument(doc.filename, doc.original_name);
     } catch (e) {
       toast(`Could not preview document: ${e.message}`, 'error');
+    }
+  }
+
+  async function attachDocs(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ''; // allow re-selecting the same file next time
+    if (!files.length) return;
+    setAttachBusy(true);
+    try {
+      const data = await uploadDocuments(app.id, files);
+      applyApp(data.application);
+      toast(`${files.length} document${files.length > 1 ? 's' : ''} attached`);
+    } catch (err2) {
+      toast(`Could not attach: ${err2.message}`, 'error');
+    } finally {
+      setAttachBusy(false);
     }
   }
 
@@ -488,6 +506,25 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
             ) : (
               <p className="mini">No documents uploaded with this application.</p>
             )}
+            <input
+              ref={attachInputRef}
+              type="file"
+              accept="application/pdf,.pdf"
+              multiple
+              hidden
+              onChange={attachDocs}
+            />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm mt-1"
+              onClick={() => attachInputRef.current?.click()}
+              disabled={attachBusy}
+            >
+              {attachBusy ? 'Attaching…' : 'Attach PDF'}
+            </button>
+            <p className="mini mt-1">
+              For documents the candidate sent directly — e.g. a re-sent CV. PDF only, up to 5 MB each.
+            </p>
           </div>
         </section>
 
