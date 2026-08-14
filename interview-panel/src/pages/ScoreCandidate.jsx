@@ -369,6 +369,31 @@ export default function ScoreCandidate() {
           </div>
         </div>
 
+        {/* CV & documents — always visible, never behind the profile collapse. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="font-button text-[11px] uppercase tracking-[1.5px] text-muted font-medium">
+            CV / Documents
+          </span>
+          {docCount > 0 ? (
+            app.documents.map((doc) => (
+              <button
+                key={doc.filename}
+                onClick={() => handleDownload(doc)}
+                className="inline-flex items-center gap-2 border border-line rounded-sm px-3 py-2 max-w-full text-[12.5px] text-body hover:border-berry hover:text-berry cursor-pointer transition duration-150 ease-out active:scale-[0.99]"
+              >
+                <IconFileText size={15} className="shrink-0 text-muted" />
+                <span className="truncate font-medium max-w-[220px]">
+                  {doc.original_name || doc.filename}
+                </span>
+                <IconDownload size={15} className="shrink-0" />
+                <span className="sr-only">Download</span>
+              </button>
+            ))
+          ) : (
+            <span className="text-[12.5px] text-muted">None on file</span>
+          )}
+        </div>
+
         <div className="mt-4 pt-2 border-t border-line">
           <button
             type="button"
@@ -376,15 +401,7 @@ export default function ScoreCandidate() {
             onClick={() => setProfileOpen((v) => !v)}
             className="w-full min-h-[40px] flex items-center justify-between gap-2 font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted hover:text-berry cursor-pointer transition-colors duration-150"
           >
-            <span>
-              Candidate profile
-              {docCount > 0 && (
-                <span className="tabular-nums">
-                  {' '}
-                  · {docCount} document{docCount === 1 ? '' : 's'}
-                </span>
-              )}
-            </span>
+            <span>Candidate profile</span>
             <IconChevronDown
               size={16}
               className={`shrink-0 transition-transform duration-200 ${
@@ -412,32 +429,6 @@ export default function ScoreCandidate() {
                   <Field label="Why join Centre Point" value={app.why_join} />
                 </div>
               )}
-              <div className="mt-3">
-                <div className="font-button text-[11px] uppercase tracking-[1.5px] text-muted font-medium mb-1.5">
-                  Documents
-                </div>
-                {docCount > 0 ? (
-                  <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {app.documents.map((doc) => (
-                      <li key={doc.filename}>
-                        <button
-                          onClick={() => handleDownload(doc)}
-                          className="w-full flex items-center gap-2.5 border border-line rounded-sm px-3 py-2.5 min-h-[44px] text-[12.5px] text-body hover:border-berry hover:text-berry cursor-pointer transition duration-150 ease-out active:scale-[0.99]"
-                        >
-                          <IconFileText size={16} className="shrink-0 text-muted" />
-                          <span className="flex-1 text-left truncate font-medium">
-                            {doc.original_name || doc.filename}
-                          </span>
-                          <IconDownload size={16} className="shrink-0" />
-                          <span className="sr-only">Download</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <div className="text-[13px] text-muted">No documents uploaded</div>
-                )}
-              </div>
             </div>
           )}
         </div>
