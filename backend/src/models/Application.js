@@ -9,6 +9,7 @@ export const REJECTION_REASONS = [
   'Weak communication skills',
   'Not suitable for hotel culture / team fit',
   'Lack of required skills or knowledge',
+  'Over budget',
 ];
 
 // Candidates apply to a job_code (role). A specific PCN seat is assigned on SELECTION,

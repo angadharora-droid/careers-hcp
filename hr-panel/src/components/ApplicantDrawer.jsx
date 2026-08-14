@@ -20,6 +20,7 @@ const REJECTION_REASONS = [
   'Weak communication skills',
   'Not suitable for hotel culture / team fit',
   'Lack of required skills or knowledge',
+  'Over budget',
 ];
 
 const STAGE_BUTTONS = [
