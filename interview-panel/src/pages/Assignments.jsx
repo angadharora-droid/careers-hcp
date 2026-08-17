@@ -20,6 +20,42 @@ const FILTERS = [
   { key: 'all', label: 'All' },
 ];
 
+const selectCls =
+  'px-3 py-2 min-h-[40px] border border-line rounded-sm text-[16px] sm:text-[13px] bg-beige/40 text-ink '
+  + 'transition-colors duration-150 focus:border-berry cursor-pointer max-w-full';
+
+/* interview_date is a free-text field in the HR panel ("e.g. 02 Jul 2026, 11:00 AM"),
+   so it arrives in whatever shape HR typed. Only values that resolve to a real date
+   become month/date options — anything else still shows on its card, it just can't
+   be filtered on. */
+function parsedDate(value) {
+  const s = String(value || '').trim();
+  if (!s) return null;
+  // Numeric forms are handled before falling back to the engine: it reads
+  // YYYY-MM-DD as UTC midnight (which lands on the previous day west of GMT) and
+  // doesn't understand DD/MM/YYYY at all — the form HR is most likely to type.
+  // Day-first, per the en-IN convention used everywhere else in these panels.
+  const iso = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (iso) return ymd(iso[1], iso[2], iso[3]);
+  const dmy = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dmy) return ymd(dmy[3], dmy[2], dmy[1]);
+  const d = new Date(s); // "17 Aug 2026", "02 Jul 2026, 11:00 AM", …
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+function ymd(year, month, day) {
+  const m = Number(month);
+  const d = Number(day);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return new Date(Number(year), m - 1, d);
+}
+const pad = (n) => String(n).padStart(2, '0');
+const monthKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+const dayKey = (d) => `${monthKey(d)}-${pad(d.getDate())}`;
+const monthLabel = (d) => d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+
+// Distinct values, sorted, ready for a <select>.
+const uniqueSorted = (values) => [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
+
 function SkeletonCard() {
   return (
     <div className="bg-card border border-line rounded-sm p-5 mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -38,6 +74,10 @@ export default function Assignments() {
   const [assignments, setAssignments] = useState(null);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [dept, setDept] = useState('');
+  const [job, setJob] = useState('');
+  const [month, setMonth] = useState('');
+  const [day, setDay] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -50,18 +90,56 @@ export default function Assignments() {
     };
   }, [reloadKey]);
 
+  const all = assignments || [];
+  const anyFilter = Boolean(dept || job || month || day);
+
+  /* Department / job / month / date narrow the queue; the Pending-Scored chips then
+     work inside that selection, so their counts describe what you are looking at. */
+  const scoped = useMemo(() => all.filter((a) => {
+    if (dept && a.department !== dept) return false;
+    if (job && a.designation !== job) return false;
+    if (month || day) {
+      const d = parsedDate(a.interview_date);
+      if (!d) return false;
+      if (month && monthKey(d) !== month) return false;
+      if (day && dayKey(d) !== day) return false;
+    }
+    return true;
+  }), [assignments, dept, job, month, day]);
+
+  /* Job options follow the chosen department and dates follow the chosen month, so
+     the dropdowns never offer a combination that returns nothing. Departments and
+     months stay complete — they are the two axes people switch between most. */
+  const options = useMemo(() => {
+    const inDept = dept ? all.filter((a) => a.department === dept) : all;
+    const dated = all.map((a) => parsedDate(a.interview_date)).filter(Boolean);
+    const inMonth = month ? dated.filter((d) => monthKey(d) === month) : dated;
+    const byKey = (entries) => [...new Map(entries).entries()].sort((x, y) => x[0].localeCompare(y[0]));
+    return {
+      departments: uniqueSorted(all.map((a) => a.department)),
+      jobs: uniqueSorted(inDept.map((a) => a.designation)),
+      months: byKey(dated.map((d) => [monthKey(d), monthLabel(d)])),
+      days: byKey(inMonth.map((d) => [dayKey(d), formatDate(d)])),
+    };
+  }, [assignments, dept, month]);
+
   const counts = useMemo(() => {
-    const list = assignments || [];
-    const scored = list.filter((a) => a.status === 'Scored').length;
-    return { pending: list.length - scored, scored, all: list.length };
-  }, [assignments]);
+    const scored = scoped.filter((a) => a.status === 'Scored').length;
+    return { pending: scoped.length - scored, scored, all: scoped.length };
+  }, [scoped]);
 
   const visible = useMemo(() => {
-    const list = assignments || [];
-    if (filter === 'pending') return list.filter((a) => a.status !== 'Scored');
-    if (filter === 'scored') return list.filter((a) => a.status === 'Scored');
-    return list;
-  }, [assignments, filter]);
+    if (filter === 'pending') return scoped.filter((a) => a.status !== 'Scored');
+    if (filter === 'scored') return scoped.filter((a) => a.status === 'Scored');
+    return scoped;
+  }, [scoped, filter]);
+
+  function clearFilters() {
+    setDept('');
+    setJob('');
+    setMonth('');
+    setDay('');
+  }
 
   /* One interviewer can hold more than one round on the same candidate — the panel
      sheet deliberately puts the same person in rounds 1 and 3 — and the API returns
@@ -101,7 +179,7 @@ export default function Assignments() {
         </>
       )}
 
-      {assignments !== null && counts.all === 0 && (
+      {assignments !== null && all.length === 0 && (
         <EmptyState
           icon={<IconClipboardList size={22} />}
           title="No candidates assigned yet"
@@ -111,8 +189,64 @@ export default function Assignments() {
         </EmptyState>
       )}
 
-      {assignments !== null && counts.all > 0 && (
+      {assignments !== null && all.length > 0 && (
         <>
+          <div className="flex items-end gap-2 flex-wrap mb-3">
+            <label className="flex flex-col gap-1">
+              <span className="font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted">
+                Department
+              </span>
+              <select
+                className={selectCls}
+                value={dept}
+                onChange={(e) => { setDept(e.target.value); setJob(''); }}
+              >
+                <option value="">All departments</option>
+                {options.departments.map((d) => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted">
+                Job
+              </span>
+              <select className={selectCls} value={job} onChange={(e) => setJob(e.target.value)}>
+                <option value="">All jobs</option>
+                {options.jobs.map((j) => <option key={j} value={j}>{j}</option>)}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted">
+                Month
+              </span>
+              <select
+                className={selectCls}
+                value={month}
+                onChange={(e) => { setMonth(e.target.value); setDay(''); }}
+              >
+                <option value="">All months</option>
+                {options.months.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </label>
+
+            <label className="flex flex-col gap-1">
+              <span className="font-button text-[11px] font-medium uppercase tracking-[1.5px] text-muted">
+                Interview date
+              </span>
+              <select className={selectCls} value={day} onChange={(e) => setDay(e.target.value)}>
+                <option value="">All dates</option>
+                {options.days.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+              </select>
+            </label>
+
+            {anyFilter && (
+              <button className={`${btnGhost} ${btnSm} min-h-[40px]`} onClick={clearFilters}>
+                Clear filters
+              </button>
+            )}
+          </div>
+
           <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
             <div className="flex gap-1.5 flex-wrap" role="group" aria-label="Filter assignments">
               {FILTERS.map((f) => {
@@ -136,10 +270,26 @@ export default function Assignments() {
             <span className="text-[11.5px] text-muted tabular-nums">
               Showing {groups.length} candidate{groups.length === 1 ? '' : 's'} · {visible.length} of{' '}
               {counts.all} panel{counts.all === 1 ? '' : 's'}
+              {anyFilter && ` (filtered from ${all.length})`}
             </span>
           </div>
 
-          {visible.length === 0 && (
+          {visible.length === 0 && scoped.length === 0 && (
+            <EmptyState
+              icon={<IconClipboardList size={22} />}
+              title="No assignments match these filters"
+              action={
+                <button className={`${btnGhost} ${btnSm}`} onClick={clearFilters}>
+                  Clear filters
+                </button>
+              }
+            >
+              Nothing in your queue matches that combination — try widening the department,
+              job or date.
+            </EmptyState>
+          )}
+
+          {visible.length === 0 && scoped.length > 0 && (
             <EmptyState
               icon={<IconClipboardList size={22} />}
               title={filter === 'pending' ? 'Nothing pending' : 'Nothing scored yet'}
