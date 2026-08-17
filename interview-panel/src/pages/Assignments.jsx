@@ -63,6 +63,21 @@ export default function Assignments() {
     return list;
   }, [assignments, filter]);
 
+  /* One interviewer can hold more than one round on the same candidate — the panel
+     sheet deliberately puts the same person in rounds 1 and 3 — and the API returns
+     one row per round. Group them onto a single card so a candidate appears once,
+     with each of my panels listed on it. */
+  const groups = useMemo(() => {
+    const byApp = new Map();
+    for (const a of visible) {
+      const key = String(a.application_id);
+      if (!byApp.has(key)) byApp.set(key, { key, candidate: a, rounds: [] });
+      byApp.get(key).rounds.push(a);
+    }
+    for (const g of byApp.values()) g.rounds.sort((x, y) => x.round - y.round);
+    return [...byApp.values()];
+  }, [visible]);
+
   function retry() {
     setError('');
     setAssignments(null);
@@ -119,7 +134,8 @@ export default function Assignments() {
               })}
             </div>
             <span className="text-[11.5px] text-muted tabular-nums">
-              Showing {visible.length} of {counts.all}
+              Showing {groups.length} candidate{groups.length === 1 ? '' : 's'} · {visible.length} of{' '}
+              {counts.all} panel{counts.all === 1 ? '' : 's'}
             </span>
           </div>
 
@@ -139,14 +155,27 @@ export default function Assignments() {
             </EmptyState>
           )}
 
-          {visible.map((a, i) => {
+          {groups.map((g, i) => {
+            const a = g.candidate;
             const scheduled = a.stage === 'Interview Scheduled';
-            const scored = a.status === 'Scored';
-            // Panels run in order — this one waits until the earlier panels are in.
-            const waiting = !scored && a.unlocked === false;
+            const multi = g.rounds.length > 1;
+            // Panels run in order — a round waits until the earlier panels are in.
+            const stateOf = (r) => {
+              if (r.status === 'Scored') return 'scored';
+              if (r.unlocked === false) return 'waiting';
+              return scheduled ? 'ready' : 'unscheduled';
+            };
+            const blockers = (r) => (r.blocked_by?.length ? r.blocked_by : [r.round - 1]);
+            const blockedText = (r) => {
+              const b = blockers(r);
+              return `panel${b.length > 1 ? 's' : ''} ${b.join(', ')}`;
+            };
+            const actionable = g.rounds.filter((r) => stateOf(r) !== 'unscheduled');
+            const anyUnscheduled = g.rounds.some((r) => stateOf(r) === 'unscheduled');
+            const open = (r) => navigate(`/score/${a.application_id}?round=${r.round}`);
             return (
               <div
-                key={a.id}
+                key={g.key}
                 className="bg-card border border-line rounded-sm p-5 mb-3 flex flex-wrap items-center justify-between gap-3 rise-in"
                 style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}
               >
@@ -173,36 +202,48 @@ export default function Assignments() {
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <IconUsers size={14} className="shrink-0" />
-                      My panel: <b className="text-ink font-semibold">{a.panel_role}</b>
+                      My panel{multi ? 's' : ''}:{' '}
+                      <b className="text-ink font-semibold">
+                        {g.rounds.map((r) => r.panel_role).join(', ')}
+                      </b>
                     </span>
-                    {waiting && (
+                    {!multi && stateOf(g.rounds[0]) === 'waiting' && (
                       <span className="text-brand-amber font-semibold">
-                        Waiting for panel {a.round - 1}
+                        Waiting for {blockedText(g.rounds[0])}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="shrink-0">
-                  {scored ? (
-                    <button
-                      className={`${btnGhost} ${btnSm}`}
-                      onClick={() => navigate(`/score/${a.application_id}`)}
-                    >
-                      Review / edit my score
-                    </button>
-                  ) : waiting ? (
-                    <button className={`${btnGhost} ${btnSm}`} disabled title={`Panel ${a.round} opens once panel ${a.round - 1} has been scored`}>
-                      Panel {a.round} locked
-                    </button>
-                  ) : scheduled ? (
-                    <button
-                      className={`${btnPrimary} ${btnSm}`}
-                      onClick={() => navigate(`/score/${a.application_id}`)}
-                    >
-                      Score candidate
-                    </button>
-                  ) : (
+                <div className="shrink-0 flex flex-col items-stretch gap-1.5">
+                  {actionable.map((r) => {
+                    const state = stateOf(r);
+                    if (state === 'scored') {
+                      return (
+                        <button key={r.id} className={`${btnGhost} ${btnSm}`} onClick={() => open(r)}>
+                          {multi ? `Review panel ${r.round}` : 'Review / edit my score'}
+                        </button>
+                      );
+                    }
+                    if (state === 'waiting') {
+                      return (
+                        <button
+                          key={r.id}
+                          className={`${btnGhost} ${btnSm}`}
+                          disabled
+                          title={`Panel ${r.round} opens once ${blockedText(r)} ${blockers(r).length > 1 ? 'have' : 'has'} been scored`}
+                        >
+                          Panel {r.round} locked
+                        </button>
+                      );
+                    }
+                    return (
+                      <button key={r.id} className={`${btnPrimary} ${btnSm}`} onClick={() => open(r)}>
+                        {multi ? `Score panel ${r.round}` : 'Score candidate'}
+                      </button>
+                    );
+                  })}
+                  {anyUnscheduled && (
                     <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted">
                       <IconLock size={14} className="shrink-0" />
                       Scoring unlocks when HR schedules the interview

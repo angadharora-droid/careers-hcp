@@ -61,24 +61,31 @@ router.get('/assignments', async (req, res) => {
 
   res.json({
     assignments: live
-      .map((a) => ({
-        id: a._id,
-        application_id: a.application_id._id,
-        round: a.round,
-        panel_role: a.panel_role,
-        status: a.status, // Pending | Scored
-        // false while an earlier round is still outstanding
-        unlocked: [...Array(a.round - 1).keys()]
-          .every((i) => (doneByApp.get(String(a.application_id._id)) || new Set()).has(i + 1)),
-        assigned_at: a.assigned_at,
-        candidate_name: a.application_id.candidate_name,
-        designation: a.application_id.designation,
-        job_code: a.application_id.job_code,
-        grade: a.application_id.grade,
-        department: a.application_id.department,
-        stage: a.application_id.stage,
-        interview_date: a.application_id.interview_date,
-      })),
+      .map((a) => {
+        // Every earlier round still outstanding — round 3 can be held up by 1 AND 2,
+        // so the queue names them all rather than guessing at round - 1.
+        const done = doneByApp.get(String(a.application_id._id)) || new Set();
+        const blockedBy = [];
+        for (let n = 1; n < a.round; n++) if (!done.has(n)) blockedBy.push(n);
+        return {
+          id: a._id,
+          application_id: a.application_id._id,
+          round: a.round,
+          panel_role: a.panel_role,
+          status: a.status, // Pending | Scored
+          // false while an earlier round is still outstanding
+          unlocked: blockedBy.length === 0,
+          blocked_by: blockedBy,
+          assigned_at: a.assigned_at,
+          candidate_name: a.application_id.candidate_name,
+          designation: a.application_id.designation,
+          job_code: a.application_id.job_code,
+          grade: a.application_id.grade,
+          department: a.application_id.department,
+          stage: a.application_id.stage,
+          interview_date: a.application_id.interview_date,
+        };
+      }),
   });
 });
 

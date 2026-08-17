@@ -149,6 +149,24 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
   }
 
   if (stage === 'Selected') {
+    /* Already Selected and holding the same seat? Then this is an offer edit, not a
+       fresh selection. Falling through would claim a SECOND seat and strand the
+       first as Filled with no application pointing at it — nothing can ever release
+       it again, and the register shows the occupant twice. */
+    if (app.stage === 'Selected' && app.position_id
+        && (!position_id || String(position_id) === String(app.position_id))) {
+      if (date_of_joining !== undefined) app.date_of_joining = String(date_of_joining || '').trim();
+      if (offered_salary !== undefined && offered_salary !== null && offered_salary !== '') {
+        app.offered_salary = Number(offered_salary);
+      }
+      await app.save();
+      const held = await Position.findById(app.position_id);
+      return res.json({ application: await withDerived(app), filled_pcn: held?.pcn || app.pcn });
+    }
+    // Moving an existing selection to a different seat — the old one is freed below,
+    // once the new claim and the application save have both gone through.
+    const previousSeatId = app.stage === 'Selected' ? app.position_id : null;
+
     // Gate 1: every round must have been scored (2 or 3 depending on grade).
     const rounds = await roundsForGrade(app.grade);
     const scores = await PanelScore.find({ application_id: app._id });
@@ -197,6 +215,12 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
         status: 'Under Recruitment', occupant_name: '', vacant_since: null,
       });
       return res.status(500).json({ error: 'Selection failed, position rolled back: ' + err.message });
+    }
+    // Hand back the seat this candidate used to hold, so they never occupy two.
+    if (previousSeatId && String(previousSeatId) !== String(seat._id)) {
+      await Position.findByIdAndUpdate(previousSeatId, {
+        status: 'Under Recruitment', occupant_name: '', vacant_since: null,
+      });
     }
     return res.json({ application: await withDerived(app), filled_pcn: seat.pcn });
   }

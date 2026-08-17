@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { api, downloadDocument } from '../lib/api';
 import { formatDate, recommendationFor } from '../lib/format';
 import { useToast } from '../context/ToastContext';
@@ -127,6 +127,12 @@ export default function ScoreCandidate() {
   const { applicationId } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
+  // One interviewer may hold two rounds on the same candidate (the panel sheet puts
+  // the same person in rounds 1 and 3). ?round= says WHICH one this form is for —
+  // without it the server falls back to the lowest unscored round, so the Panel 3
+  // card would silently open the Panel 1 form.
+  const [searchParams] = useSearchParams();
+  const roundParam = searchParams.get('round');
 
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -149,7 +155,7 @@ export default function ScoreCandidate() {
     let alive = true;
     setLoading(true);
     setError('');
-    api(`/interviewer/applications/${applicationId}`)
+    api(`/interviewer/applications/${applicationId}${roundParam ? `?round=${encodeURIComponent(roundParam)}` : ''}`)
       .then((d) => {
         if (!alive) return;
         setData(d);
@@ -170,7 +176,7 @@ export default function ScoreCandidate() {
     return () => {
       alive = false;
     };
-  }, [applicationId, reloadKey]);
+  }, [applicationId, roundParam, reloadKey]);
 
   const comps = data?.competencies || [];
   const levels = data?.levels || [];
@@ -305,6 +311,9 @@ export default function ScoreCandidate() {
       const res = await api(`/interviewer/applications/${applicationId}/score`, {
         method: 'POST',
         body: {
+          // Pin the submission to the round this form was resolved for, so an
+          // interviewer holding two rounds can't overwrite the wrong one.
+          round: data?.panel?.active_round ?? undefined,
           competency_selections: comps.map((c) => ({ key: c.key, level_index: sel[c.key] })),
           evidence_notes: evidence.trim(),
           strengths: strengths.trim(),

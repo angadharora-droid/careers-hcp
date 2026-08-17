@@ -1,3 +1,6 @@
 node_modules/
 .env
 uploads/
+# Database dumps: candidate PII, password hashes and CV bytes. Never commit.
+backups/
+filled-seats-backup-*.json

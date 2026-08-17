@@ -10,7 +10,10 @@
     "seed": "node src/seed/seed.js",
     "sync": "node src/seed/sync.js",
     "import-panel": "node src/seed/importPanel.js",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "backup": "node scripts/backup.mjs",
+    "restore": "node scripts/restore.mjs",
+    "audit-seats": "node scripts/auditFilledSeats.mjs"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
