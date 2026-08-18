@@ -136,8 +136,13 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
     if (!reason) {
       return res.status(400).json({ error: 'Rejection reason is required' });
     }
-    if (!REJECTION_REASONS.includes(reason)) {
-      return res.status(400).json({ error: `Rejection reason must be one of: ${REJECTION_REASONS.join('; ')}` });
+    // Either a standard reason, or "Other: <free text>" written by HR.
+    const isOther = /^Other:\s*\S/.test(reason);
+    if (!REJECTION_REASONS.includes(reason) && !isOther) {
+      return res.status(400).json({ error: `Rejection reason must be one of: ${REJECTION_REASONS.join('; ')} — or "Other: <reason>"` });
+    }
+    if (reason.length > 300) {
+      return res.status(400).json({ error: 'Rejection reason must be 300 characters or fewer' });
     }
     app.rejection_reason = reason;
   }

@@ -177,6 +177,11 @@ const rejBad = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, 
 ok('non-standard rejection reason blocked', rejBad.status === 400);
 const rejStd = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Rejected', rejection_reason: 'Weak communication skills' } });
 ok('standard rejection reason accepted', rejStd.status === 200 && rejStd.json.application.rejection_reason === 'Weak communication skills');
+await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Applied' } });
+const rejOther = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Rejected', rejection_reason: 'Other: Candidate withdrew from the process' } });
+ok('"Other: <text>" rejection reason accepted', rejOther.status === 200 && rejOther.json.application.rejection_reason === 'Other: Candidate withdrew from the process');
+const rejOtherEmpty = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Rejected', rejection_reason: 'Other:   ' } });
+ok('"Other:" with no text blocked', rejOtherEmpty.status === 400);
 await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Applied' } }); // restore for the rest of the flow
 
 // selection gate: no scores yet

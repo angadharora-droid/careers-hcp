@@ -103,7 +103,7 @@ All compose; omitting a param leaves that dimension unfiltered. → `{ applicati
 ### Stage change — `PATCH /applications/:id/stage`
 Body: `{ stage, rejection_reason?, interview_date?, date_of_joining?, offered_salary?, position_id?, allow_partial_panel? }`
 Server-enforced rules (surface the returned `error` to the user):
-- `Rejected` requires `rejection_reason`, which must be one of the standard reasons: `Frequent job changes / no stability`, `Negative attitude or poor professionalism`, `Weak communication skills`, `Not suitable for hotel culture / team fit`, `Lack of required skills or knowledge`, `Over budget`.
+- `Rejected` requires `rejection_reason`, which must be one of the standard reasons: `Frequent job changes / no stability`, `Negative attitude or poor professionalism`, `Weak communication skills`, `Not suitable for hotel culture / team fit`, `Lack of required skills or knowledge`, `Over budget` — or a free-text reason in the form `Other: <text>` (non-empty text, ≤300 chars total). Any other value is a 400.
 - `Interview Scheduled`: also writes the standing interview panel onto the application (see *Interview rounds*).
 - `Selected`: requires every round scored (`rounds`) — override with `allow_partial_panel:true` only if ≥1 score — AND a seat of that role (matched on job_code **and** designation, since a job_code can be shared by two roles) in Vacant/Under Recruitment. Atomically fills the seat (status→Filled, occupant recorded). Response also has `filled_pcn`. Optional `date_of_joining` (ISO `YYYY-MM-DD`) and `offered_salary` (monthly, number) are stored as the offer terms.
 - Moving a Selected candidate to another stage releases their seat back to Under Recruitment.

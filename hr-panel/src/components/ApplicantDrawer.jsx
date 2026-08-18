@@ -13,7 +13,8 @@ import {
 
 const RECRUITABLE = ['Vacant', 'Under Recruitment'];
 
-// Must match REJECTION_REASONS in backend/src/models/Application.js — the server rejects anything else.
+// Must match REJECTION_REASONS in backend/src/models/Application.js — besides these,
+// the server only accepts a free-text reason sent as "Other: <text>".
 const REJECTION_REASONS = [
   'Frequent job changes / no stability',
   'Negative attitude or poor professionalism',
@@ -22,6 +23,8 @@ const REJECTION_REASONS = [
   'Lack of required skills or knowledge',
   'Over budget',
 ];
+const OTHER_REASON = 'Other';
+const OTHER_PREFIX = /^Other:\s*/;
 
 const STAGE_BUTTONS = [
   { stage: 'Applied', label: 'Applied' },
@@ -148,6 +151,7 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
 
   const [selStage, setSelStage] = useState('Applied');
   const [rejectionReason, setRejectionReason] = useState('');
+  const [rejectionOther, setRejectionOther] = useState(''); // free text when reason is "Other"
   const [interviewDate, setInterviewDate] = useState('');
   const [stageErr, setStageErr] = useState(null);
   const [stageBusy, setStageBusy] = useState(false);
@@ -174,7 +178,15 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
       byRound.get(i + 1) ? String(byRound.get(i + 1)) : ''
     ));
     setSelStage(application.stage);
-    setRejectionReason(application.rejection_reason || '');
+    // "Other: <text>" splits back into the Other option + its free-text box.
+    const storedReason = application.rejection_reason || '';
+    if (OTHER_PREFIX.test(storedReason)) {
+      setRejectionReason(OTHER_REASON);
+      setRejectionOther(storedReason.replace(OTHER_PREFIX, ''));
+    } else {
+      setRejectionReason(storedReason);
+      setRejectionOther('');
+    }
     setInterviewDate(application.interview_date || '');
     setScoresDetail(null); // refetched lazily if the detail section is open
   }, []);
@@ -249,8 +261,16 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
       setStageErr('Rejection reason is required');
       return;
     }
+    if (selStage === 'Rejected' && rejectionReason === OTHER_REASON && !rejectionOther.trim()) {
+      setStageErr('Please write the rejection reason');
+      return;
+    }
     const body = { stage: selStage };
-    if (selStage === 'Rejected') body.rejection_reason = rejectionReason.trim();
+    if (selStage === 'Rejected') {
+      body.rejection_reason = rejectionReason === OTHER_REASON
+        ? `Other: ${rejectionOther.trim()}`
+        : rejectionReason.trim();
+    }
     if (selStage === 'Interview Scheduled') body.interview_date = interviewDate.trim();
     if (allowPartial) body.allow_partial_panel = true;
     setStageBusy(true);
@@ -728,13 +748,25 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
               onChange={(e) => setRejectionReason(e.target.value)}
             >
               <option value="">— select reason —</option>
-              {rejectionReason && !REJECTION_REASONS.includes(rejectionReason) && (
+              {rejectionReason && rejectionReason !== OTHER_REASON && !REJECTION_REASONS.includes(rejectionReason) && (
                 <option value={rejectionReason}>{rejectionReason} (legacy)</option>
               )}
               {REJECTION_REASONS.map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
+              <option value={OTHER_REASON}>Other…</option>
             </select>
+            {rejectionReason === OTHER_REASON && (
+              <textarea
+                className="inp mt-1.5"
+                rows={2}
+                maxLength={290}
+                value={rejectionOther}
+                onChange={(e) => setRejectionOther(e.target.value)}
+                placeholder="Write the rejection reason…"
+                aria-label="Other rejection reason"
+              />
+            )}
           </div>
         )}
         {selStage === 'Interview Scheduled' && (

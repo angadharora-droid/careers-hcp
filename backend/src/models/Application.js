@@ -2,7 +2,8 @@ import mongoose from 'mongoose';
 
 export const STAGES = ['Applied', 'Interview Scheduled', 'Selected', 'Rejected', 'On Hold'];
 
-// Standard rejection reasons — the only values accepted on Rejected transitions.
+// Standard rejection reasons. Rejected transitions accept one of these or a
+// free-text reason in the form "Other: <text>" (validated in routes/applications.js).
 export const REJECTION_REASONS = [
   'Frequent job changes / no stability',
   'Negative attitude or poor professionalism',
