@@ -9,7 +9,7 @@ import PageHeader from '../components/PageHeader';
 import ApplicantDrawer from '../components/ApplicantDrawer';
 import {
   Search, ArrowLeft, Printer, Download, ClipboardList, ClipboardCheck,
-  AlertTriangle, CheckCircle, Flag, X, Users, Inbox, Check,
+  AlertTriangle, CheckCircle, Flag, X, Inbox, Check,
 } from '../components/Icons';
 import { useToast } from '../context/ToastContext';
 

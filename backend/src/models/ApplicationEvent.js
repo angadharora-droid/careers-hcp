@@ -17,6 +17,7 @@ export const EVENT_TYPES = [
   'approval',   // Section B approval record saved
   'move',       // pushed to a different role
   'document',   // documents attached by HR
+  'edit',       // candidate / register fields changed by hand
 ];
 
 const applicationEventSchema = new mongoose.Schema(

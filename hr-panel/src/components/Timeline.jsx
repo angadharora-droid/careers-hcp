@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { ErrorBox, Spinner } from './LoadState';
 import {
-  Inbox, Users, Check, CheckCircle, FileText, Shuffle, Mail, ClipboardCheck, Clock,
+  Inbox, Users, Check, CheckCircle, FileText, Shuffle, Mail, ClipboardCheck, Clock, Pencil, AlertCircle,
 } from './Icons';
 
 /* The application's history, oldest first. Compiled server-side from three
@@ -22,6 +22,7 @@ const MARKERS = {
   approval: { icon: CheckCircle, tone: 'green', label: 'Approval' },
   move: { icon: Shuffle, tone: 'amber', label: 'Move' },
   document: { icon: FileText, tone: 'muted', label: 'Document' },
+  edit: { icon: Pencil, tone: 'muted', label: 'Edit' },
 };
 
 // Stage rows say what they became, so the marker colour follows the outcome
@@ -94,6 +95,16 @@ export default function Timeline({ applicationId }) {
   if (!items.length) return <p className="mini py-2">Nothing recorded yet.</p>;
 
   return (
+    <>
+    {/* Stage moves were not logged before this application was worked, so its
+        history shows the milestones that were timestamped, not every step. */}
+    {data?.reconstructed && (
+      <p className="mini flex items-start gap-1.5 mb-2.5 pb-2 border-b border-line">
+        <AlertCircle size={12} className="mt-px shrink-0" />
+        Part of this history is reconstructed from the panel, offer and document records.
+        Stage changes made before activity logging began were never stored and cannot be shown.
+      </p>
+    )}
     <ol className="relative pl-7">
       {/* the spine */}
       <span aria-hidden="true" className="absolute left-[11px] top-1.5 bottom-3 w-px bg-line" />
@@ -144,5 +155,6 @@ export default function Timeline({ applicationId }) {
         </li>
       )}
     </ol>
+    </>
   );
 }

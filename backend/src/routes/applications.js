@@ -6,6 +6,7 @@ import PanelAssignment from '../models/PanelAssignment.js';
 import PanelScore from '../models/PanelScore.js';
 import ApplicationComment from '../models/ApplicationComment.js';
 import ApplicationEvent, { recordEvent } from '../models/ApplicationEvent.js';
+import CandidateDocument from '../models/CandidateDocument.js';
 import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
@@ -18,6 +19,28 @@ import { documentUpload, saveCandidateDocuments, deleteCandidateDocuments } from
 
 const router = Router();
 router.use(requireAuth);
+
+/* Field keys as a person would name them, for the timeline's edit entries.
+   Anything not listed falls back to its key with the underscores knocked out,
+   which reads well enough for the rarer fields. */
+const FIELD_LABELS = {
+  current_employer: 'Current / last employer',
+  relevant_hotel_experience_years: 'Relevant hotel experience',
+  notice_period: 'Notice period',
+  remarks: 'Remarks',
+  candidate_name: 'Candidate name',
+  total_experience_years: 'Total experience',
+  current_salary: 'Current salary',
+  expected_salary: 'Expected salary',
+  current_designation: 'Current designation',
+  years_in_current_firm: 'Years in current firm',
+  intro_note: 'Brief intro',
+  why_join: 'Why join',
+  worked_at_cph_before: 'Worked at CPH before',
+  willing_to_relocate: 'Willing to relocate',
+  needs_accommodation: 'Needs accommodation',
+};
+const fieldLabel = (k) => FIELD_LABELS[k] || String(k).replace(/_/g, ' ');
 
 async function withDerived(app) {
   const [scores, assignments, rounds, commentCount, seat] = await Promise.all([
@@ -92,8 +115,25 @@ router.patch('/:id', requireRole('hr_admin'), async (req, res) => {
   if (b.intro_note !== undefined && wordCount(b.intro_note) > 50) {
     return res.status(400).json({ error: 'Brief intro must be 50 words or fewer' });
   }
+  /* Which fields this edit actually changes, captured before the assign — the
+     register's Section A cells write through here, so "who changed the remarks"
+     has to be answerable. Unchanged keys are dropped so a re-save of the same
+     value does not litter the timeline. */
+  const changed = Object.keys(b).filter((k) => {
+    const before = app[k];
+    const after = b[k];
+    if (before == null && after == null) return false;
+    return String(before ?? '') !== String(after ?? '');
+  });
+
   Object.assign(app, b);
   await app.save();
+  if (changed.length) {
+    await recordEvent(app._id, 'edit', 'Candidate details edited', {
+      actor: req.user,
+      detail: changed.map(fieldLabel).join(', '),
+    });
+  }
   res.json({ application: await withDerived(app) });
 });
 
@@ -538,6 +578,10 @@ router.post('/:id/apply-panel-rule', requireRole('hr_admin'), async (req, res) =
       error: `No fixed panel is defined for ${app.unit_code} / grade ${app.grade} / ${app.department}. Assign the panel manually.`,
     });
   }
+  await recordEvent(app._id, 'panel', `Standing panel re-applied — ${applied} round(s)`, {
+    actor: req.user,
+    detail: (req.body || {}).replace ? 'Unscored manual picks overwritten' : '',
+  });
   res.json({ application: await withDerived(app), rounds_applied: applied });
 });
 
@@ -738,18 +782,131 @@ router.get('/:id/timeline', async (req, res) => {
   const app = await readableApplication(req, req.params.id);
   if (!app) return res.status(404).json({ error: 'Application not found' });
 
-  const [events, scores, assignments] = await Promise.all([
+  const docNames = (app.documents || []).map((d) => d.filename).filter(Boolean);
+  const [events, scores, assignments, docs] = await Promise.all([
     ApplicationEvent.find({ application_id: app._id }).sort('at'),
     PanelScore.find({ application_id: app._id }, 'round total_score panelist_name red_flags submitted_at').sort('submitted_at'),
-    PanelAssignment.find({ application_id: app._id }).populate('interviewer_user_id', 'name'),
+    PanelAssignment.find({ application_id: app._id }).populate('assigned_by', 'name'),
+    docNames.length
+      ? CandidateDocument.find({ filename: { $in: docNames } }, 'filename original_name created_at')
+      : [],
   ]);
   const rounds = await roundsForGrade(app.grade);
+
+  /* An application worked before the action log existed has no stored events, so
+     its history is RECONSTRUCTED from the records that were already being kept:
+     panel assignments, the move history, the offer-sent stamp and the document
+     rows all carry their own timestamps.
+
+     A derived entry is dropped when a stored event of the same kind sits within a
+     few seconds of it — the two describe the same action, and an application that
+     straddles the upgrade must not show it twice. */
+  const DEDUPE_MS = 10000;
+  const covered = (type, at) => events.some(
+    (e) => e.type === type && Math.abs(new Date(e.at) - new Date(at)) < DEDUPE_MS
+  );
+
+  const derived = [];
+
+  // Panel appointments — assigned_at/assigned_by have always been recorded.
+  const byMoment = new Map();
+  for (const a of assignments) {
+    if (!a.assigned_at) continue;
+    // Rounds laid down together share one appointment; group them into one entry.
+    const bucket = Math.floor(new Date(a.assigned_at).getTime() / DEDUPE_MS);
+    if (!byMoment.has(bucket)) byMoment.set(bucket, []);
+    byMoment.get(bucket).push(a);
+  }
+  for (const group of byMoment.values()) {
+    const at = group[0].assigned_at;
+    if (covered('panel', at)) continue;
+    const auto = group.every((a) => a.auto_assigned);
+    derived.push({
+      type: 'panel',
+      summary: `${auto ? 'Standing panel appointed' : 'Interview panel appointed by hand'} — ${group.length} round(s)`,
+      detail: `Round ${group.map((a) => a.round).sort((x, y) => x - y).join(', ')}`,
+      actor_name: group[0].assigned_by?.name || '',
+      actor_role: group[0].assigned_by ? 'hr_admin' : '',
+      at,
+      derived: true,
+    });
+  }
+
+  // Role moves — move_history has always carried who and when.
+  for (const m of app.move_history || []) {
+    if (!m.moved_at || covered('move', m.moved_at)) continue;
+    derived.push({
+      type: 'move',
+      summary: `Moved to ${app.designation}`,
+      detail: m.note || '',
+      from: `${m.from_designation} (${m.from_job_code})`,
+      to: `${app.designation} (${app.job_code})`,
+      actor_name: m.moved_by_name || '',
+      actor_role: m.moved_by_name ? 'hr_admin' : '',
+      at: m.moved_at,
+      derived: true,
+    });
+  }
+
+  // Offer letter emailed — the stamp was kept, though not who sent it.
+  if (app.offer_sent_at && !covered('offer', app.offer_sent_at)) {
+    derived.push({
+      type: 'offer',
+      summary: 'Offer letter emailed',
+      detail: app.offer_sent_to || '',
+      actor_name: '',
+      at: app.offer_sent_at,
+      derived: true,
+    });
+  }
+
+  /* Documents — the bytes carry their own upload time. The CV that came WITH the
+     application is written moments before the application row itself, so it would
+     otherwise appear above "Application received"; those are part of applying, not
+     a later attachment, and belong on the applied entry instead. */
+  const appliedAt = new Date(app.applied_on).getTime();
+  const attachedLater = docs.filter((d) => d.created_at && new Date(d.created_at).getTime() > appliedAt + DEDUPE_MS);
+  for (const d of attachedLater) {
+    if (covered('document', d.created_at)) continue;
+    derived.push({
+      type: 'document',
+      summary: 'Document attached',
+      detail: d.original_name || d.filename,
+      actor_name: '',
+      at: d.created_at,
+      derived: true,
+    });
+  }
+
+  /* The approval was signed off on a date HR typed in, not at a moment we
+     recorded — so it is placed on that date and marked as a recorded date rather
+     than a captured action. */
+  const ap = app.approval || {};
+  if (ap.approval_date && !events.some((e) => e.type === 'approval')) {
+    derived.push({
+      type: 'approval',
+      summary: 'Approval recorded',
+      detail: [
+        ap.recommended_by ? `Recommended by ${ap.recommended_by}` : null,
+        ap.salary_approved_by ? `Salary approved by ${ap.salary_approved_by}` : null,
+      ].filter(Boolean).join(' · '),
+      actor_name: ap.salary_approved_by || '',
+      at: new Date(`${ap.approval_date}T00:00:00`),
+      derived: true,
+    });
+  }
 
   const items = [
     {
       type: 'applied',
       summary: 'Application received',
-      detail: [app.source ? `via ${app.source}` : null, `for ${app.designation}`].filter(Boolean).join(' · '),
+      detail: [
+        app.source ? `via ${app.source}` : null,
+        `for ${app.designation}`,
+        docs.length - attachedLater.length > 0
+          ? `${docs.length - attachedLater.length} document(s) submitted`
+          : null,
+      ].filter(Boolean).join(' · '),
       actor_name: app.candidate_name,
       at: app.applied_on,
     },
@@ -774,13 +931,17 @@ router.get('/:id/timeline', async (req, res) => {
       actor_role: 'interviewer',
       at: sc.submitted_at,
     })),
-  ].filter((i) => i.at);
+    ...derived,
+  ].filter((i) => i.at && !Number.isNaN(new Date(i.at).getTime()));
 
   items.sort((a, b) => new Date(a.at) - new Date(b.at));
 
   res.json({
     timeline: items,
-    // What the timeline is heading towards, so the client can show the open end.
+    /* Stage changes were never stored before the action log, so an application
+       worked before then shows its milestones but not every move between them.
+       The client says so rather than implying the history is complete. */
+    reconstructed: derived.length > 0 || !events.some((e) => e.type === 'stage'),
     current: {
       stage: app.stage,
       rounds,

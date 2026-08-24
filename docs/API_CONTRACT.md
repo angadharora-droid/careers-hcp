@@ -69,11 +69,46 @@ candidate-facing status lookup.
 - `GET /positions?dept=&grade=&status=&q=` → `{ positions: [Position] }`
   Position includes all schema fields plus `id`, `days_vacant` (null unless status=Vacant), `sla_breached`.
   Statuses: `Vacant | Filled | Under Recruitment | Frozen | On Hold | Contract | Outsourced | Eliminated`.
-- `POST /positions` `{ designation*, department*, grade*, job_family, reports_to, cost_centre, salary_min, salary_max, budgeted_salary, replacement_sla_days, is_critical, is_revenue_generating, is_guest_facing, job_description, competency_profile, approver, remarks, status? }` → `201 { position }` — **PCN is generated server-side** (`CPA-DEPT-GRADE-###`).
+- `POST /positions` `{ designation*, department*, grade*, job_family, reports_to, cost_centre, salary_min, salary_max, replacement_sla_days, is_critical, is_revenue_generating, is_guest_facing, job_description, competency_profile, approver, remarks, status? }` → `201 { position }` — **PCN is generated server-side** (`CPA-DEPT-GRADE-###`).
 - `PATCH /positions/:id` (any fields above; pcn/job_code immutable) → `{ position }`
-- `GET /positions/occupants` → `{ occupants: [{ name, seats: [{ id, pcn, job_code, designation, department, grade, budgeted_salary, application|null }], seat_count, unlinked_count }], totals: { filled_seats, occupants, multi_seat_occupants, unlinked_seats } }` — every Filled seat grouped by occupant; `application` is the Selected application holding the seat (`{ id, reference_id, date_of_joining, offered_salary, applied_on }`), null for seats seeded Filled or stranded by a double-select.
+- `GET /positions/occupants` → `{ occupants: [Occupant], totals }` — every Filled seat grouped by the person holding it.
+  Each seat carries `{ id, pcn, job_code, designation, department, grade, salary_min, salary_max, days_to_fill, filled_on, application|null }`.
+  `application` is the Selected application holding the seat, and carries the whole occupant record:
+  `{ id, reference_id, date_of_joining, offered_salary, applied_on, band_standing, joining_status, email, mobile,
+  qualification, total_experience_years, relevant_hotel_experience_years, current_employer, source, notice_period,
+  documents, offer_sent_at, employee_code, recommended_by, salary_approved_by, approval_date, offer_issued_date }`.
+  It is `null` for seats seeded Filled or stranded by a double-select.
+  `joining_status` ∈ `Joined` · `Awaiting joining` · `Joining date not set` — Selected commits the seat, joining occupies it.
+  `totals`: `{ filled_seats, occupants, multi_seat_occupants, unlinked_seats, selected_total, awaiting_joining, joined, over_band }`.
 - `POST /positions/:id/hand-back` → `{ position }` — releases a Filled seat with no Selected application behind it (status → Under Recruitment, occupant cleared). 400 if the seat is not Filled or a live selection holds it.
 - `POST /positions/:id/eliminate` → `{ position }` (400 if seat has an occupant)
+
+### Salary band (there is no separate budget)
+
+A position carries a sanctioned band, `salary_min` / `salary_max`. The old `budgeted_salary`
+field is **gone** — it could drift out of step with the band it was supposed to sit inside,
+and every question it answered is answered better by the band. `salary_max` must be at least
+`salary_min`.
+
+An actual offer is judged against that band as `band_standing`:
+
+| Value | Meaning |
+| --- | --- |
+| `Within band` | at or between min and max |
+| `Under band` | below `salary_min` |
+| `Over band` | above `salary_max` |
+| `null` | no band on file (both ends 0), or no offer yet — distinct from "inside the band" |
+
+It appears on `GET /applications/:id` (with `salary_band: { min, max }`), on each occupant seat,
+and on Section B of the Application Register.
+
+### Time to fill
+
+`Position.filled_on` and `Position.days_to_fill` are stamped when a selection claims the seat,
+measured from `vacant_since` — which the same update clears, so the elapsed days are **recorded**
+rather than recomputed. Releasing a seat clears both and restarts `vacant_since`, so a refill is
+measured afresh. The dashboard averages them (`avg_days_to_fill`, with `filled_measured` giving
+the number of seats the average stands on).
 
 ### Applications
 - `GET /applications?stage=&q=&red_flag=true` → `{ applications: [Application] }`
@@ -93,6 +128,8 @@ Application (HR view) includes candidate fields plus:
   "date_of_joining": "", "offered_salary": null, "offer_sent_at": null, "offer_sent_to": "",
   "applied_on": "…",
   "current_employer": "", "relevant_hotel_experience_years": null, "notice_period": "", "remarks": "",
+  "comment_count": 0, "salary_band": { "min": 22000, "max": 28000 }, "band_standing": "Within band",
+  "move_history": [{ "from_job_code", "from_designation", "from_stage", "moved_by_name", "note", "moved_at" }],
   "approval": { "recommended_by": "", "salary_approved_by": "", "approval_date": "", "offer_issued_date": "", "employee_code": "", "closed_by": "" },
   "documents": [{ "filename": "…", "original_name": "cv.pdf" }],
   "rounds": 2,
@@ -121,6 +158,50 @@ Server-enforced rules (surface the returned `error` to the user):
 - `POST /applications/:id/send-offer` — Body `{ to? }` (defaults to the candidate's email). Emails the letter via server SMTP; on success records `offer_sent_at`/`offer_sent_to` and returns `{ application, sent_to }`. If SMTP is unconfigured, returns 400 with `{ error, email_configured: false }` so the client can fall back to a `mailto:` hand-off. Requires the same Selected + offer-terms gate as the letter.
 
 SMTP is configured with `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_SECURE` (`true`/`false`), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in `backend/.env`. Without them, letter preview/print still works; only server-side emailing is disabled.
+
+### Comments — `\*/applications/:id/comments` (HR **and** the candidate's panellists)
+
+One shared thread per application. HR and the interviewers appointed to that candidate both
+post and both read; anyone else gets a 404. Comments are not scores — nothing here feeds the
+recommendation.
+
+- `GET /applications/:id/comments` → `{ comments: [{ id, author: { id, name, role, designation }, body, created_at }] }`, oldest first.
+- `POST /applications/:id/comments` `{ body }` → `201 { comment }`. Body is required and ≤2000 chars. `author.role` is the hat the poster was wearing (`hr_admin` for a dual-role user posting from the HR panel).
+- `DELETE /applications/:id/comments/:commentId` → `{ ok: true }`. The author can delete their own; HR can delete any.
+
+`comment_count` rides along on every Application payload.
+
+### Timeline — `GET /applications/:id/timeline` (HR **and** the candidate's panellists)
+
+→ `{ timeline: [Item], current: { stage, rounds, rounds_scored, panel_appointed, awaiting } }`
+
+Three sources are merged so nothing has to be trusted to stay in step with anything else:
+
+| Source | Contributes |
+| --- | --- |
+| the application itself | the `applied` entry, which always exists |
+| `PanelScore.submitted_at` | one `score` entry per round, as actually submitted |
+| `ApplicationEvent` | `stage` · `panel` · `offer` · `approval` · `move` · `document` — the HR actions nothing else records |
+
+Each item is `{ type, summary, detail, from, to, actor_name, actor_role, at }`, sorted oldest
+first. `current.awaiting` names the open end (`"Round 2 of 3"`) or is `null`. Applications that
+predate the event log still show a real timeline from the first two sources. Event writes are
+fire-and-forget: a timeline entry never fails the action it describes.
+
+### Move to another role — `POST /applications/:id/move` (HR)
+
+Body: `{ job_code, designation, note? }` → `{ application, moved_to: { job_code, designation, grade } }`
+
+The candidate applied to the wrong post, or reads better elsewhere. Server-enforced:
+
+- **Refused once any round is scored** — those scores were made on the old role's scorecard, and another grade or department runs a different one. Reject and re-apply instead.
+- **Refused for a Selected candidate** — move them out of Selected first, which releases their seat.
+- The target must have a seat in Vacant / Under Recruitment.
+
+On success the whole role snapshot (`job_code`, `designation`, `department`, `grade`, `job_family`,
+`competency_profile`, `unit`) is taken from the target seat, any panel appointed for the old role
+is dropped, and the application returns to `Applied` with its interview date and rejection cleared.
+`reference_id` is **kept** (control point 1) and the old role is appended to `move_history`.
 
 ### Application Register (HR)
 
@@ -212,9 +293,11 @@ scored can be neither removed nor reassigned. → `{ application }`
 ```json
 {
   "positions_total": 67, "by_status": { "Vacant": 67, "Filled": 0, … },
-  "budget_total": 1234000, "avg_days_vacant": 20, "sla_breached_count": 9,
+  "band_min_total": 980000, "band_max_total": 1234000,
+  "avg_days_to_fill": 34, "filled_measured": 12,
+  "avg_days_vacant": 20, "sla_breached_count": 9,
   "aging_vacancies": [{ "pcn", "job_code", "designation", "department", "grade", "is_critical", "days_vacant", "replacement_sla_days", "sla_breached" }],
-  "departments": [{ "department", "total", "filled", "under_recruitment", "vacant", "frozen_or_hold", "budgeted_salary" }],
+  "departments": [{ "department", "total", "filled", "under_recruitment", "vacant", "frozen_or_hold", "band_min", "band_max" }],
   "applications_total": 0, "pipeline": { "Applied": 0, … }, "red_flag_queue_count": 0
 }
 ```
