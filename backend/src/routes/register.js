@@ -12,25 +12,13 @@ router.use(requireAuth, requireRole('hr_admin'));
 /* The Application Register is the auditable paper form behind the pipeline:
    one register per vacant post (job_code + designation), Section A tracking every
    applicant, Section B recording who recommended and approved the selection, and
-   Section C listing the control points the register exists to enforce.
+   Section C carrying the sign-off.
 
    Everything here is COMPILED from positions, applications, panel assignments and
    panel scores — the register holds no pipeline state of its own, so it can never
    drift from what Applications shows. The only stored register fields are HR's own
    annotations (remarks, employer, notice period, relevant experience) and the
    Section B approval authorities. */
-
-// Section C of the sample format, verbatim — displayed on the register and
-// enforced by the gates noted against each one.
-export const CONTROL_POINTS = [
-  'Every application must receive a unique Application ID.',
-  'No applicant should be interviewed unless entered in this register.',
-  'Screening, interview outcome and the reason for rejection must be recorded.',
-  'The register must identify the interviewer, recommender and approving authority.',
-  'No offer letter should be issued before position and salary approval.',
-  "The selected candidate's Application ID must link the assessment, approval note, offer letter and employee code.",
-  "Applications received after vacancy closure should be marked 'Talent Pool' or 'Post Closed'.",
-];
 
 /* ===== Section A derivations =====
    Screening / interview status / final decision are three different questions the
@@ -72,8 +60,8 @@ function finalDecisionOf(app, scores, rounds) {
   return 'Pending';
 }
 
-/* Control point 7: applications that arrive once the post is no longer taking
-   candidates must be marked, not silently left looking live.
+/* Applications that arrive once the post is no longer taking candidates must be
+   marked, not silently left looking live.
      Talent Pool — arrived AFTER the post closed; keep on file for a future vacancy.
      Post Closed — arrived before closure but still undecided when the last seat went. */
 function registerFlagOf(app, dateClosed) {
@@ -179,7 +167,7 @@ router.get('/posts', async (_req, res) => {
 
 /* ===== GET /api/register?job_code=&designation= =====
    The register itself: header block, Section A rows, Section B selection records,
-   Section C control points. */
+   Section C sign-off. */
 router.get('/', async (req, res) => {
   const job_code = String(req.query.job_code || '').trim();
   const designation = String(req.query.designation || '').trim();
@@ -215,6 +203,14 @@ router.get('/', async (req, res) => {
   const assignBy = byApp(assignments);
   const scoreBy = byApp(scores);
 
+  /* The post's sanctioned band, taken at its widest across the seats under it.
+     Section A judges what candidates currently earn and what they expect against
+     this, which is the cheapest screening signal the register has. */
+  const lows = seats.map((p) => p.salary_min).filter((n) => n > 0);
+  const highs = seats.map((p) => p.salary_max).filter((n) => n > 0);
+  const bandMin = lows.length ? Math.min(...lows) : 0;
+  const bandMax = highs.length ? Math.max(...highs) : 0;
+
   const selectedApps = apps.filter((a) => a.stage === 'Selected');
   const { date_opened, date_closed } = periodOf(seats, selectedApps);
   const open = seats.filter((p) => RECRUITABLE_STATUSES.includes(p.status)).length;
@@ -248,6 +244,9 @@ router.get('/', async (req, res) => {
       current_designation: app.current_designation || '',
       current_salary: app.current_salary ?? null,
       expected_salary: app.expected_salary ?? null,
+      // Where each sits against the post's band — null when no band is on file.
+      current_salary_standing: bandStanding(app.current_salary, bandMin, bandMax),
+      expected_salary_standing: bandStanding(app.expected_salary, bandMin, bandMax),
       notice_period: app.notice_period || '',
       screening: screeningOf(app, asg),
       interview_status: interviewStatusOf(app, asg, scs, rounds),
@@ -313,6 +312,7 @@ router.get('/', async (req, res) => {
       seats_total: seats.length,
       open_vacancies: open,
       vacancies: open + selectedApps.length,
+      salary_band: { min: bandMin, max: bandMax },
       register_owner: 'People & Culture',
       date_opened: iso(date_opened),
       date_closed: iso(date_closed),
@@ -320,7 +320,6 @@ router.get('/', async (req, res) => {
     },
     rows,
     selection,
-    control_points: CONTROL_POINTS,
   });
 });
 

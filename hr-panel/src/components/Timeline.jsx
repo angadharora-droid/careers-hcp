@@ -10,8 +10,8 @@ import {
    an application that predates the action log still shows a real timeline rather
    than an empty one.
 
-   Read-only by design: this is the audit trail the Application Register leans on
-   for control point 3, not somewhere to edit the past. */
+   Read-only by design: this is the audit trail the Application Register leans on,
+   not somewhere to edit the past. */
 
 const MARKERS = {
   applied: { icon: Inbox, tone: 'blue', label: 'Applied' },

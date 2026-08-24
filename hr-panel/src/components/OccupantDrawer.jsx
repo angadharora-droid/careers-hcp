@@ -166,8 +166,8 @@ export default function OccupantDrawer({ group, onClose }) {
               </div>
               {!(a.recommended_by && a.salary_approved_by && a.approval_date) && (
                 <p className="mini mt-1.5">
-                  Complete this on the Application Register, Section B — control point 4 asks the register to
-                  identify the interviewer, recommender and approving authority.
+                  Complete this on the Application Register, Section B, so the record identifies the
+                  interviewer, recommender and approving authority.
                 </p>
               )}
             </section>

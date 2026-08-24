@@ -64,8 +64,8 @@ const applicationSchema = new mongoose.Schema(
     offer_sent_to: { type: String, default: '' },
     applied_on: { type: Date, default: Date.now },
     /* Every time HR pushes this application to a different role, the role it came
-       from is recorded here. The reference_id never changes, so control point 1
-       (one unique Application ID per application) survives the move. */
+       from is recorded here. The reference_id never changes, so an application
+       keeps its one unique ID across the move. */
     move_history: [{
       from_job_code: String,
       from_designation: String,

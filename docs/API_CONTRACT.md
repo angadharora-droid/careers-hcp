@@ -214,15 +214,15 @@ The candidate applied to the wrong post, or reads better elsewhere. Server-enfor
 On success the whole role snapshot (`job_code`, `designation`, `department`, `grade`, `job_family`,
 `competency_profile`, `unit`) is taken from the target seat, any panel appointed for the old role
 is dropped, and the application returns to `Applied` with its interview date and rejection cleared.
-`reference_id` is **kept** (control point 1) and the old role is appended to `move_history`.
+`reference_id` is **kept** and the old role is appended to `move_history`.
 
 ### Application Register (HR)
 
 The recruitment control format, kept **separately for each vacant post** (`job_code` +
 `designation`). Section A tracks every applicant, Section B records the selection and its
-approval chain, Section C lists the mandatory control points. Everything except HR's own
-annotations is compiled from positions, applications, panel assignments and panel scores,
-so the register cannot drift from the pipeline.
+approval chain, and Section C carries the sign-off. Everything except HR's own annotations
+is compiled from positions, applications, panel assignments and panel scores, so the register
+cannot drift from the pipeline.
 
 - `GET /register/posts` → `{ posts: [Post] }` — the picker: every post with a sanctioned seat or an application behind it.
 ```json
@@ -236,19 +236,25 @@ zero the moment the post is filled. `date_opened` is the earliest a seat went va
 `date_closed` stays `null` while any seat is recruitable, then becomes the moment the last
 seat was taken.
 
-- `GET /register?job_code=&designation=` → `{ header, rows, selection, control_points }`
+- `GET /register?job_code=&designation=` → `{ header, rows, selection }`
   `job_code` is required (400 without it); `designation` narrows to one post where a job code
   is shared by two roles. 404 when no seat or application matches.
 
-`rows` (Section A) carry the sample format's columns, with three **derived** ones that
-satisfy control point 3 — they follow the pipeline and are not separately editable:
+`rows` (Section A) carry the sample format's columns, with three **derived** ones that follow
+the pipeline and are not separately editable:
 
 | Field | Derivation |
 | --- | --- |
 | `screening` | `Shortlisted` once a panel is appointed or an interview date is set; `Not shortlisted` if rejected before that; else `On hold` / `Pending` |
 | `interview_status` | `N.A.` with no panel · `Round N scheduled` · `Did not attend` (rejected/parked with nothing scored) · `Round N cleared` · `Both/All rounds cleared` |
 | `final_decision` | `Selected` · `Rejected` · `On hold` · `Final pending` (all rounds scored, HR yet to call it) · `Pending` |
-| `register_flag` | Control point 7 — `Talent Pool` (arrived after closure) · `Post Closed` (undecided when the last seat went) · `""` |
+| `register_flag` | `Talent Pool` (arrived after closure) · `Post Closed` (undecided when the last seat went) · `""` |
+
+`header.salary_band` is `{ min, max }`, the widest band across the post's seats. Each row also
+carries `current_salary_standing` and `expected_salary_standing` — the same `Within band` /
+`Under band` / `Over band` / `null` reading applied to what the candidate earns now and what
+they are asking for, which is the cheapest screening signal the register has. Band edges are
+inclusive.
 
 Rows also carry `sr`, `application_id` (the `reference_id`), `date` (`dd-mm-yy`), the candidate
 fields, `rounds`/`rounds_scored`/`panel_average`/`any_red_flags`, `interviewers` and `pcn`.
@@ -261,8 +267,8 @@ the six authority fields are stored and written through the endpoint below.
 - `PATCH /applications/:id/approval` → `{ application }`
   Body: `{ recommended_by?, salary_approved_by?, approval_date?, offer_issued_date?, employee_code?, closed_by? }`.
   Dates are ISO `YYYY-MM-DD`. Only valid while the candidate is `Selected`. Server-enforced:
-  - **Control point 5** — `offer_issued_date` requires `salary_approved_by`, `approval_date` and a set `offered_salary`, and cannot predate `approval_date`.
-  - **Control point 6** — `employee_code` requires `offer_issued_date`.
+  - `offer_issued_date` requires `salary_approved_by`, `approval_date` and a set `offered_salary`, and cannot predate `approval_date`.
+  - `employee_code` requires `offer_issued_date`.
 
 ### Interview rounds
 

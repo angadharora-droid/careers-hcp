@@ -427,7 +427,7 @@ router.post('/:id/send-offer', requireRole('hr_admin'), async (req, res) => {
 // PATCH /api/applications/:id/approval
 // { recommended_by?, salary_approved_by?, approval_date?, offer_issued_date?,
 //   employee_code?, closed_by? }
-// Records who recommended, who approved the salary and when — control point 4.
+// Records who recommended, who approved the salary and when.
 router.patch('/:id/approval', requireRole('hr_admin'), async (req, res) => {
   const app = await Application.findById(req.params.id);
   if (!app) return res.status(404).json({ error: 'Application not found' });
@@ -458,23 +458,23 @@ router.patch('/:id/approval', requireRole('hr_admin'), async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 
-  /* Control point 5: no offer letter before position AND salary approval. The seat
+  /* No offer letter before position AND salary approval. The seat
      is already proven by stage Selected (it claimed a PCN); the salary approval is
      what this record adds, so an offer issue date cannot predate it. */
   if (next.offer_issued_date) {
     if (!next.salary_approved_by || !next.approval_date) {
       return res.status(400).json({
-        error: 'Control point 5: record the salary approving authority and approval date before entering an offer issued date.',
+        error: 'Record the salary approving authority and approval date before entering an offer issued date.',
       });
     }
     if (app.offered_salary == null) {
-      return res.status(400).json({ error: 'Control point 5: set the offered salary before entering an offer issued date.' });
+      return res.status(400).json({ error: 'Set the offered salary before entering an offer issued date.' });
     }
     if (next.offer_issued_date < next.approval_date) {
-      return res.status(400).json({ error: 'Control point 5: the offer cannot be issued before the approval date.' });
+      return res.status(400).json({ error: 'The offer cannot be issued before the approval date.' });
     }
   }
-  // Control point 6: the employee code closes the loop from application to hire,
+  // The employee code closes the loop from application to hire,
   // so it only exists once an offer has actually gone out.
   if (next.employee_code && !next.offer_issued_date) {
     return res.status(400).json({ error: 'Record the offer issued date before the employee code.' });
@@ -684,7 +684,7 @@ router.delete('/:id/comments/:commentId', async (req, res) => {
 
 // POST /api/applications/:id/move  { job_code, designation, note? }
 // The candidate applied to the wrong role, or is a better fit elsewhere. The
-// application ID is KEPT (control point 1) and the old role is recorded in
+// application ID is KEPT and the old role is recorded in
 // move_history, so the register still shows where the candidate came from.
 router.post('/:id/move', requireRole('hr_admin'), async (req, res) => {
   const app = await Application.findById(req.params.id);

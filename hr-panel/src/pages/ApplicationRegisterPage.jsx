@@ -10,13 +10,13 @@ import ApplicantDrawer from '../components/ApplicantDrawer';
 import {
   Search, ArrowLeft, Printer, Download, ClipboardList, ClipboardCheck,
   AlertTriangle, CheckCircle, Flag, X, Inbox, Check,
+  ArrowUpDown, ChevronUp, ChevronDown,
 } from '../components/Icons';
 import { useToast } from '../context/ToastContext';
 
 /* The Application Register — the recruitment control format kept separately for
    each vacant post. Section A tracks every applicant against that post, Section B
-   records the selection and its approval chain, Section C lists the control points
-   the register exists to enforce.
+   records the selection and its approval chain, and Section C carries the sign-off.
 
    Everything except HR's own annotations is compiled server-side from positions,
    applications and panel scores, so the register cannot disagree with the pipeline.
@@ -40,7 +40,7 @@ const DECISION_STYLES = {
   Pending: 'bg-brand-blue/10 text-brand-blue',
 };
 
-// Control point 7 — applications that arrived after the post stopped taking them.
+// Applications that arrived after the post stopped taking them.
 const FLAG_STYLES = {
   'Talent Pool': 'bg-[#1f6b82]/10 text-[#1f6b82]',
   'Post Closed': 'bg-footer text-cream',
@@ -58,7 +58,9 @@ const REGISTER_CSV = [
   { header: 'Relevant Hotel Exp.', value: (r) => (r.relevant_hotel_experience_years == null ? '' : `${r.relevant_hotel_experience_years} yrs`) },
   { header: 'Current / Last Employer', value: (r) => r.current_employer },
   { header: 'Current Salary', value: (r) => r.current_salary ?? '' },
+  { header: 'Current vs Band', value: (r) => r.current_salary_standing || '' },
   { header: 'Expected Salary', value: (r) => r.expected_salary ?? '' },
+  { header: 'Expected vs Band', value: (r) => r.expected_salary_standing || '' },
   { header: 'Notice Period', value: (r) => r.notice_period },
   { header: 'Screening', value: (r) => r.screening },
   { header: 'Interview Status', value: (r) => r.interview_status },
@@ -80,6 +82,121 @@ function regDate(d) {
   if (Number.isNaN(x.getTime())) return String(d);
   const p = (n) => String(n).padStart(2, '0');
   return `${p(x.getDate())}-${p(x.getMonth() + 1)}-${x.getFullYear()}`;
+}
+
+/* ===== Sorting =====
+   The register is kept in the order applications arrived, and `Sr.` is the
+   permanent serial that order assigned — so sorting reorders the ROWS on screen
+   without ever renumbering them. Clearing the sort returns to register order. */
+
+const SORTS = {
+  date: { get: (r) => new Date(r.applied_on).getTime() },
+  candidate_name: { get: (r) => r.candidate_name || '', string: true },
+  qualification: { get: (r) => r.qualification || '', string: true },
+  total_experience_years: { get: (r) => r.total_experience_years },
+  relevant_hotel_experience_years: { get: (r) => r.relevant_hotel_experience_years },
+  current_employer: { get: (r) => r.current_employer || '', string: true },
+  current_salary: { get: (r) => r.current_salary },
+  expected_salary: { get: (r) => r.expected_salary },
+};
+
+function sortRows(rows, sort) {
+  if (!sort.key) return rows;
+  const { get, string } = SORTS[sort.key];
+  return [...rows].sort((a, b) => {
+    const va = get(a);
+    const vb = get(b);
+    // Blanks sink to the bottom whichever way the column is pointing — a row with
+    // no notice period recorded is not "the lowest", it is simply unfilled.
+    const aEmpty = va == null || va === '';
+    const bEmpty = vb == null || vb === '';
+    if (aEmpty && bEmpty) return 0;
+    if (aEmpty) return 1;
+    if (bEmpty) return -1;
+    const cmp = string ? String(va).localeCompare(String(vb)) : va - vb;
+    return cmp * sort.dir;
+  });
+}
+
+function SortHeader({ id, sort, onSort, className = '', title, children }) {
+  const active = sort.key === id;
+  const IconCmp = !active ? ArrowUpDown : sort.dir === 1 ? ChevronUp : ChevronDown;
+  return (
+    <th
+      className={className}
+      aria-sort={active ? (sort.dir === 1 ? 'ascending' : 'descending') : 'none'}
+    >
+      <button
+        type="button"
+        className={`inline-flex items-center gap-1 uppercase tracking-[1.5px] font-medium cursor-pointer transition-colors duration-150 hover:text-berry ${active ? 'text-berry' : ''}`}
+        onClick={() => onSort(id)}
+        title={title || (active
+          ? (sort.dir === 1 ? 'Sorted lowest first — click for highest first' : 'Sorted highest first — click to clear')
+          : 'Sort lowest first')}
+      >
+        {children}
+        <IconCmp size={11} className={active ? 'text-berry' : 'text-muted/70'} />
+      </button>
+    </th>
+  );
+}
+
+/* ===== What a candidate earns and expects, against the post's band =====
+   The same three-way reading as a hired salary, but it means something different
+   on each column, so the cell carries a tooltip rather than relying on colour
+   alone (colour is never the only carrier of the meaning). */
+
+const SALARY_TONES = {
+  'Within band': 'text-brand-green',
+  'Under band': 'text-brand-amber',
+  'Over band': 'text-brand-red',
+};
+
+const SALARY_TITLES = {
+  current: {
+    'Within band': 'Currently earning inside the sanctioned band — a lateral move',
+    'Under band': 'Currently earning below the band — this post is a step up',
+    'Over band': 'Currently earning above the band — this post is a pay cut, so check retention',
+  },
+  expected: {
+    'Within band': 'Expectation sits inside the sanctioned band — affordable',
+    'Under band': 'Expecting below the band — cheap, but check the fit is right',
+    'Over band': 'Expecting more than the band allows — needs a rethink or an approval',
+  },
+};
+
+function SalaryCell({ value, standing, kind }) {
+  if (value == null) return <span className="mini">—</span>;
+  return (
+    <span
+      className={`whitespace-nowrap font-medium ${SALARY_TONES[standing] || ''}`}
+      title={SALARY_TITLES[kind][standing] || 'No salary band is set for this post'}
+    >
+      {inr(value)}
+      {standing && (
+        <span className="sr-only"> — {standing}</span>
+      )}
+    </span>
+  );
+}
+
+// Legend, so the colours are explained once rather than guessed at.
+function SalaryLegend({ band: b }) {
+  if (!b || (!b.min && !b.max)) {
+    return (
+      <span className="mini">
+        No salary band is set for this post, so current and expected salaries are shown uncoloured.
+      </span>
+    );
+  }
+  return (
+    <span className="mini flex items-center gap-x-3 gap-y-1 flex-wrap">
+      <span>Salaries against the sanctioned band <b>{band(b.min, b.max)}</b>:</span>
+      <span className="text-brand-green font-medium">within</span>
+      <span className="text-brand-amber font-medium">under</span>
+      <span className="text-brand-red font-medium">over</span>
+    </span>
+  );
 }
 
 /* ===== Inline register cell — saves on blur, reverts on failure ===== */
@@ -187,7 +304,7 @@ function SectionNav({ counts }) {
   const items = [
     { href: '#section-a', label: 'A · Applications', n: counts.rows },
     { href: '#section-b', label: 'B · Selection & approval', n: counts.selection },
-    { href: '#section-c', label: 'C · Control points', n: null },
+    { href: '#section-c', label: 'C · Sign-off', n: null },
   ];
   return (
     <nav aria-label="Register sections" className="flex gap-1.5 flex-wrap mb-4 no-print">
@@ -232,7 +349,7 @@ function PostPicker({ posts, loading, err, onRetry, onOpen }) {
       <div className="infobar">
         <b>One register per vacant post.</b> The Application Register is maintained separately for each
         post/designation, so pick the post whose applicants you want to track. Every application against that
-        job code appears in Section A with its own Application ID — control point 1.
+        job code appears in Section A under its own Application ID.
       </div>
 
       <div className="flex gap-2 flex-wrap items-center mb-3">
@@ -414,7 +531,7 @@ function SelectionRecord({ record, onSaved }) {
     }
   }
 
-  // Control point 5, shown before it is hit rather than only on save.
+  // Flagged before the save is attempted, rather than only on rejection.
   const salaryMissing = record.recommended_salary == null;
   const approvalMissing = !form.salary_approved_by || !form.approval_date;
   const offerBlocked = salaryMissing || approvalMissing;
@@ -463,7 +580,7 @@ function SelectionRecord({ record, onSaved }) {
                 </span>
               ))
             ) : (
-              <span className="mini">no panel recorded — control point 4</span>
+              <span className="mini">no panel recorded</span>
             )}
           </DerivedRow>
 
@@ -482,11 +599,11 @@ function SelectionRecord({ record, onSaved }) {
                 {f.key === 'offer_issued_date' && offerBlocked && (
                   <div className="mini text-brand-amber mt-1 flex items-start gap-1.5">
                     <AlertTriangle size={12} className="mt-px" />
-                    Control point 5 — {salaryMissing ? 'the offered salary' : 'the salary approving authority and approval date'} must be recorded before an offer is issued.
+                    {salaryMissing ? 'The offered salary' : 'The salary approving authority and approval date'} must be recorded before an offer is issued.
                   </div>
                 )}
                 {f.key === 'employee_code' && !form.offer_issued_date && (
-                  <div className="mini mt-1">Available once the offer issued date is recorded (control point 6).</div>
+                  <div className="mini mt-1">Available once the offer issued date is recorded.</div>
                 )}
               </td>
             </tr>
@@ -519,7 +636,7 @@ function SelectionRecord({ record, onSaved }) {
           <span className="mini">
             {record.approval_complete
               ? 'Approval chain complete.'
-              : 'Fill in the recommender and approving authority — control point 4.'}
+              : 'Fill in the recommender and approving authority.'}
           </span>
         )}
       </div>
@@ -527,7 +644,7 @@ function SelectionRecord({ record, onSaved }) {
   );
 }
 
-/* ===== Section C — control points and sign-off ===== */
+/* ===== Section C — sign-off ===== */
 
 function SignatureBox({ role }) {
   return (
@@ -544,53 +661,18 @@ function SignatureBox({ role }) {
   );
 }
 
-/* Which control points this register can actually evidence right now. The list is
-   the policy; the tick is whether the data behind it is there yet. */
-function controlPointState(rows, selection) {
-  const sel = selection[0];
-  return [
-    rows.length > 0 && rows.every((r) => r.application_id),
-    rows.every((r) => r.interview_status === 'N.A.' || r.application_id),
-    rows.every((r) => r.final_decision !== 'Rejected' || r.rejection_reason),
-    Boolean(sel && sel.interviewer_names?.length && sel.recommended_by && sel.salary_approved_by),
-    !sel || !sel.offer_issued_date || Boolean(sel.approval_date && sel.salary_approved_by),
-    Boolean(sel && sel.pcn && sel.application_id),
-    true, // flagged automatically — nothing for HR to do
-  ];
-}
-
-function ControlPoints({ points, rows, selection }) {
-  const state = controlPointState(rows, selection);
-  const met = state.filter(Boolean).length;
+function SignOff() {
   return (
     <div className="card" id="section-c">
-      <div className="card-h">
-        C. Mandatory Control Points
-        <span className="r tabular-nums">{met} of {points.length} evidenced</span>
-      </div>
-      <ol className="grid grid-cols-1 lg:grid-cols-2 gap-x-3 border-y border-line divide-y divide-line lg:divide-y-0 mb-5">
-        {points.map((p, i) => (
-          <li key={p} className="flex gap-2.5 px-1 py-2 text-[12.5px] text-body lg:border-b lg:border-line">
-            <span
-              className={`w-[18px] h-[18px] shrink-0 mt-px rounded-sm grid place-items-center text-[10px] font-bold tabular-nums ${
-                state[i] ? 'bg-brand-green/12 text-brand-green' : 'bg-beige text-muted'
-              }`}
-              title={state[i] ? 'Evidenced by this register' : 'Not yet evidenced'}
-            >
-              {state[i] ? <Check size={11} /> : i + 1}
-            </span>
-            <span className={state[i] ? '' : 'text-body'}>{p}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="card-h">C. Sign-off</div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <SignatureBox role="Prepared / Updated By" />
         <SignatureBox role="Reviewed By" />
         <SignatureBox role="Approved By" />
       </div>
       <p className="mini mt-3">
-        This format follows the unit's approved recruitment policy. Screening, interview outcome and rejection
-        reasons in Section A are read from the pipeline, so the register and the applicant record can never disagree.
+        Screening, interview outcome and rejection reasons in Section A are read from the pipeline, so the
+        register and the applicant record can never disagree.
       </p>
     </div>
   );
@@ -616,6 +698,8 @@ export default function ApplicationRegisterPage() {
   // Section A view state — which funnel tile is active, and the name/ID search.
   const [funnel, setFunnel] = useState('');
   const [rowQ, setRowQ] = useState('');
+  // null key = register order, the order the applications arrived in.
+  const [sort, setSort] = useState({ key: null, dir: 1 });
 
   const loadPosts = useCallback(async () => {
     setPostsErr(null);
@@ -648,7 +732,7 @@ export default function ApplicationRegisterPage() {
   useEffect(() => { loadPosts(); }, [loadPosts]);
   useEffect(() => { loadRegister(); }, [loadRegister]);
   // A different post is a different register: its filters start clean.
-  useEffect(() => { setFunnel(''); setRowQ(''); }, [jobCode, designation]);
+  useEffect(() => { setFunnel(''); setRowQ(''); setSort({ key: null, dir: 1 }); }, [jobCode, designation]);
 
   // Saving a Section A cell writes straight to the application, then refetches so
   // every derived column (screening, decision, flags) stays in step.
@@ -660,6 +744,16 @@ export default function ApplicationRegisterPage() {
       toast(e.message, 'error');
       throw e;
     }
+  }
+
+  /* Ascending, then descending, then back to register order — so there is always
+     a way back to the sequence the register is actually kept in. */
+  function toggleSort(key) {
+    setSort((cur) => {
+      if (cur.key !== key) return { key, dir: 1 };
+      if (cur.dir === 1) return { key, dir: -1 };
+      return { key: null, dir: 1 };
+    });
   }
 
   function openPost(p) {
@@ -690,13 +784,16 @@ export default function ApplicationRegisterPage() {
   /* What Section A actually shows: the funnel tile narrows by outcome, the search
      by person. The CSV and the print copy follow this same set, so what you export
      is what you were looking at. */
-  const shown = rows.filter((r) => {
-    const tile = FUNNEL.find((f) => f.key === funnel);
-    if (tile && !tile.match(r)) return false;
-    const needle = rowQ.trim().toLowerCase();
-    if (!needle) return true;
-    return `${r.candidate_name} ${r.application_id} ${r.mobile} ${r.current_employer}`.toLowerCase().includes(needle);
-  });
+  const shown = sortRows(
+    rows.filter((r) => {
+      const tile = FUNNEL.find((f) => f.key === funnel);
+      if (tile && !tile.match(r)) return false;
+      const needle = rowQ.trim().toLowerCase();
+      if (!needle) return true;
+      return `${r.candidate_name} ${r.application_id} ${r.mobile} ${r.current_employer}`.toLowerCase().includes(needle);
+    }),
+    sort
+  );
   const narrowed = Boolean(funnel || rowQ.trim());
   const csvName = `application-register-${slug(designation || header?.designation || jobCode)}-${slug(jobCode)}.csv`;
 
@@ -760,7 +857,7 @@ export default function ApplicationRegisterPage() {
 
             <div className="infobar no-print">
               <b>Screening, interview status and final decision are read from the pipeline</b> — they update
-              themselves as the panel scores and HR moves the stage, satisfying control point 3. The four tinted
+              themselves as the panel scores and HR moves the stage. The four tinted
               columns are yours to fill in: relevant hotel experience, last employer, notice period and remarks.
               Each saves when you leave the cell.
             </div>
@@ -787,7 +884,19 @@ export default function ApplicationRegisterPage() {
                     Clear {funnel && rowQ.trim() ? 'filters' : 'filter'}
                   </button>
                 )}
+                {sort.key && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSort({ key: null, dir: 1 })}>
+                    <X size={12} />
+                    Register order
+                  </button>
+                )}
                 <span className="mini ml-auto">Scroll sideways for the full register · the first four columns stay put</span>
+              </div>
+            )}
+
+            {rows.length > 0 && (
+              <div className="mb-3 no-print">
+                <SalaryLegend band={header.salary_band} />
               </div>
             )}
 
@@ -826,18 +935,18 @@ export default function ApplicationRegisterPage() {
                       <th className="reg-group no-print" aria-hidden="true" />
                     </tr>
                     <tr>
-                      <th className="num rf rf1">Sr.</th>
+                      <th className="num rf rf1" title="The register serial, fixed when the application arrived">Sr.</th>
                       <th className="rf rf2">Application ID</th>
-                      <th className="rf rf3">Date</th>
-                      <th className="rf rf4">Candidate Name</th>
+                      <SortHeader id="date" sort={sort} onSort={toggleSort} className="rf rf3">Date</SortHeader>
+                      <SortHeader id="candidate_name" sort={sort} onSort={toggleSort} className="rf rf4">Candidate Name</SortHeader>
                       <th>Mobile No.</th>
                       <th>Source</th>
-                      <th>Qualification</th>
-                      <th className="num">Total Exp.</th>
-                      <th className="num">Relevant Hotel Exp.</th>
-                      <th>Current / Last Employer</th>
-                      <th className="num">Current Salary</th>
-                      <th className="num">Expected Salary</th>
+                      <SortHeader id="qualification" sort={sort} onSort={toggleSort}>Qualification</SortHeader>
+                      <SortHeader id="total_experience_years" sort={sort} onSort={toggleSort} className="num">Total Exp.</SortHeader>
+                      <SortHeader id="relevant_hotel_experience_years" sort={sort} onSort={toggleSort} className="num">Relevant Hotel Exp.</SortHeader>
+                      <SortHeader id="current_employer" sort={sort} onSort={toggleSort}>Current / Last Employer</SortHeader>
+                      <SortHeader id="current_salary" sort={sort} onSort={toggleSort} className="num">Current Salary</SortHeader>
+                      <SortHeader id="expected_salary" sort={sort} onSort={toggleSort} className="num">Expected Salary</SortHeader>
                       <th>Notice Period</th>
                       <th>Screening</th>
                       <th>Interview Status</th>
@@ -887,8 +996,12 @@ export default function ApplicationRegisterPage() {
                             onSave={(v) => saveCell(r, 'current_employer', v)}
                           />
                         </td>
-                        <td className="num whitespace-nowrap">{inr(r.current_salary)}</td>
-                        <td className="num whitespace-nowrap">{inr(r.expected_salary)}</td>
+                        <td className="num">
+                          <SalaryCell value={r.current_salary} standing={r.current_salary_standing} kind="current" />
+                        </td>
+                        <td className="num">
+                          <SalaryCell value={r.expected_salary} standing={r.expected_salary_standing} kind="expected" />
+                        </td>
                         <td className="reg-edit min-w-[110px]">
                           <EditCell
                             value={r.notice_period}
@@ -965,7 +1078,7 @@ export default function ApplicationRegisterPage() {
             )}
           </div>
 
-          <ControlPoints points={reg.control_points} rows={rows} selection={reg.selection} />
+          <SignOff />
         </>
       )}
 
