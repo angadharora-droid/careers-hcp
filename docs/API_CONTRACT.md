@@ -79,6 +79,9 @@ candidate-facing status lookup.
 - `GET /applications?stage=&q=&red_flag=true` → `{ applications: [Application] }`
 - `GET /applications/:id` → `{ application }`
 - `PATCH /applications/:id` (candidate fields only) → `{ application }`
+  Also owns the Application Register's Section A annotations: `current_employer`,
+  `relevant_hotel_experience_years`, `notice_period`, `remarks`. `stage`, `position_id`,
+  `pcn` and `reference_id` are stripped — use the dedicated endpoints for those.
 - `DELETE /applications/:id` → `{ ok: true }`
 
 Application (HR view) includes candidate fields plus:
@@ -89,6 +92,8 @@ Application (HR view) includes candidate fields plus:
   "rejection_reason": "", "interview_date": "",
   "date_of_joining": "", "offered_salary": null, "offer_sent_at": null, "offer_sent_to": "",
   "applied_on": "…",
+  "current_employer": "", "relevant_hotel_experience_years": null, "notice_period": "", "remarks": "",
+  "approval": { "recommended_by": "", "salary_approved_by": "", "approval_date": "", "offer_issued_date": "", "employee_code": "", "closed_by": "" },
   "documents": [{ "filename": "…", "original_name": "cv.pdf" }],
   "rounds": 2,
   "panel_size": 2,
@@ -116,6 +121,54 @@ Server-enforced rules (surface the returned `error` to the user):
 - `POST /applications/:id/send-offer` — Body `{ to? }` (defaults to the candidate's email). Emails the letter via server SMTP; on success records `offer_sent_at`/`offer_sent_to` and returns `{ application, sent_to }`. If SMTP is unconfigured, returns 400 with `{ error, email_configured: false }` so the client can fall back to a `mailto:` hand-off. Requires the same Selected + offer-terms gate as the letter.
 
 SMTP is configured with `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_SECURE` (`true`/`false`), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in `backend/.env`. Without them, letter preview/print still works; only server-side emailing is disabled.
+
+### Application Register (HR)
+
+The recruitment control format, kept **separately for each vacant post** (`job_code` +
+`designation`). Section A tracks every applicant, Section B records the selection and its
+approval chain, Section C lists the mandatory control points. Everything except HR's own
+annotations is compiled from positions, applications, panel assignments and panel scores,
+so the register cannot drift from the pipeline.
+
+- `GET /register/posts` → `{ posts: [Post] }` — the picker: every post with a sanctioned seat or an application behind it.
+```json
+{ "key": "CPA-FO-C1||Front Office Executive", "job_code": "CPA-FO-C1", "designation": "…",
+  "department": "…", "grade": "C1", "unit": "…", "seats_total": 3, "open_vacancies": 2,
+  "vacancies": 2, "applications": 5, "selected": 1, "pending": 2, "is_closed": false,
+  "date_opened": "2026-08-01", "date_closed": null }
+```
+`vacancies` = seats still open **plus** seats this drive filled, so the count does not fall to
+zero the moment the post is filled. `date_opened` is the earliest a seat went vacant;
+`date_closed` stays `null` while any seat is recruitable, then becomes the moment the last
+seat was taken.
+
+- `GET /register?job_code=&designation=` → `{ header, rows, selection, control_points }`
+  `job_code` is required (400 without it); `designation` narrows to one post where a job code
+  is shared by two roles. 404 when no seat or application matches.
+
+`rows` (Section A) carry the sample format's columns, with three **derived** ones that
+satisfy control point 3 — they follow the pipeline and are not separately editable:
+
+| Field | Derivation |
+| --- | --- |
+| `screening` | `Shortlisted` once a panel is appointed or an interview date is set; `Not shortlisted` if rejected before that; else `On hold` / `Pending` |
+| `interview_status` | `N.A.` with no panel · `Round N scheduled` · `Did not attend` (rejected/parked with nothing scored) · `Round N cleared` · `Both/All rounds cleared` |
+| `final_decision` | `Selected` · `Rejected` · `On hold` · `Final pending` (all rounds scored, HR yet to call it) · `Pending` |
+| `register_flag` | Control point 7 — `Talent Pool` (arrived after closure) · `Post Closed` (undecided when the last seat went) · `""` |
+
+Rows also carry `sr`, `application_id` (the `reference_id`), `date` (`dd-mm-yy`), the candidate
+fields, `rounds`/`rounds_scored`/`panel_average`/`any_red_flags`, `interviewers` and `pcn`.
+
+`selection` (Section B) holds one record per Selected candidate. `candidate_selected`,
+`application_id`, `recommended_designation`, `recommended_salary` (the offered salary),
+`interviewed_by`/`interviewer_names` and `expected_joining_date` are read off the application;
+the six authority fields are stored and written through the endpoint below.
+
+- `PATCH /applications/:id/approval` → `{ application }`
+  Body: `{ recommended_by?, salary_approved_by?, approval_date?, offer_issued_date?, employee_code?, closed_by? }`.
+  Dates are ISO `YYYY-MM-DD`. Only valid while the candidate is `Selected`. Server-enforced:
+  - **Control point 5** — `offer_issued_date` requires `salary_approved_by`, `approval_date` and a set `offered_salary`, and cannot predate `approval_date`.
+  - **Control point 6** — `employee_code` requires `offer_issued_date`.
 
 ### Interview rounds
 

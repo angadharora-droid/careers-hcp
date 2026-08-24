@@ -68,9 +68,13 @@ const REGISTER_CSV = [
 
 const slug = (s) => String(s || '').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').toLowerCase();
 
-// ISO → the register's dd-mm-yyyy, matching how the paper form writes dates.
+/* ISO → the register's dd-mm-yyyy, matching how the paper form writes dates.
+   A bare 'YYYY-MM-DD' is reformatted as text rather than parsed: `new Date()`
+   reads it as UTC midnight, which lands on the previous day west of Greenwich. */
 function regDate(d) {
   if (!d) return '';
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d));
+  if (plain) return `${plain[3]}-${plain[2]}-${plain[1]}`;
   const x = new Date(d);
   if (Number.isNaN(x.getTime())) return String(d);
   const p = (n) => String(n).padStart(2, '0');
@@ -240,9 +244,9 @@ function PostPicker({ posts, loading, err, onRetry, onOpen }) {
 
 /* ===== Header block — the sample format's nine identifying fields ===== */
 
-function HeaderField({ label, children, wide }) {
+function HeaderField({ label, children }) {
   return (
-    <div className={`flex border border-line rounded-sm overflow-hidden ${wide ? 'sm:col-span-2' : ''}`}>
+    <div className="flex border border-line rounded-sm overflow-hidden">
       <div className="w-[124px] shrink-0 bg-footer text-cream px-2.5 py-2 font-button text-[10.5px] font-medium uppercase tracking-[1.2px] leading-tight flex items-center">
         {label}
       </div>
@@ -293,7 +297,7 @@ const APPROVAL_FIELDS = [
 function DerivedRow({ label, children }) {
   return (
     <tr>
-      <th scope="row" className="w-[240px] text-left font-medium">{label}</th>
+      <th scope="row" className="reg-particular">{label}</th>
       <td>{children}</td>
     </tr>
   );
@@ -307,9 +311,14 @@ function SelectionRecord({ record, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
 
+  /* Re-sync only when the stored record actually changes value. `record` is a new
+     object on every refetch, so depending on its identity would wipe half-typed
+     approval details whenever a Section A cell was saved elsewhere on the page. */
+  const stored = JSON.stringify(APPROVAL_FIELDS.map((f) => record[f.key] || ''));
   useEffect(() => {
     setForm(Object.fromEntries(APPROVAL_FIELDS.map((f) => [f.key, record[f.key] || ''])));
-  }, [record]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [record.id, stored]);
 
   const dirty = APPROVAL_FIELDS.some((f) => (form[f.key] || '') !== (record[f.key] || ''));
 
@@ -374,7 +383,7 @@ function SelectionRecord({ record, onSaved }) {
 
           {APPROVAL_FIELDS.map((f) => (
             <tr key={f.key}>
-              <th scope="row" className="w-[240px] text-left font-medium">{f.label}</th>
+              <th scope="row" className="reg-particular">{f.label}</th>
               <td>
                 <input
                   className="inp py-1.5 min-h-0 sm:min-h-0 max-w-[340px]"

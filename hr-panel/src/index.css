@@ -102,6 +102,10 @@
   .gate-ok { @apply bg-brand-green/8 border-brand-green/50 text-brand-green; }
   .scoresum { @apply bg-berry-soft/60 border border-berry/40 rounded-sm px-3.5 py-2.5 text-[12.5px] text-body mt-2; }
 
+  /* Section B of the Application Register is a two-column particular/detail table,
+     so its row headers must shed the sticky, uppercase COLUMN-header styling. */
+  .tbl th.reg-particular { @apply static w-[240px] whitespace-normal text-left align-top bg-beige/40 text-body text-[12px] font-medium normal-case tracking-normal; }
+
   /* Print scaffolding — used by the Application Register, which is a paper control
      format first and a screen second. `.print-only` blocks stay hidden until print;
      `.no-print` (navigation, buttons, hints) drops out of the printed page. */
