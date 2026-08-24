@@ -3,12 +3,13 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
-  LayoutDashboard, Table, Users, Flag, BookOpen, UserPlus, Menu, X, LogOut,
+  LayoutDashboard, Table, Users, UserCheck, Flag, BookOpen, UserPlus, Menu, X, LogOut,
 } from './Icons';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/register', label: 'Position Register', icon: Table },
+  { to: '/occupants', label: 'Occupants', icon: UserCheck },
   { to: '/applications', label: 'Applications', icon: Users },
   { to: '/red-flags', label: 'Red Flags', icon: Flag },
   { to: '/framework', label: 'Framework', icon: BookOpen },

@@ -71,6 +71,8 @@ candidate-facing status lookup.
   Statuses: `Vacant | Filled | Under Recruitment | Frozen | On Hold | Contract | Outsourced | Eliminated`.
 - `POST /positions` `{ designation*, department*, grade*, job_family, reports_to, cost_centre, salary_min, salary_max, budgeted_salary, replacement_sla_days, is_critical, is_revenue_generating, is_guest_facing, job_description, competency_profile, approver, remarks, status? }` → `201 { position }` — **PCN is generated server-side** (`CPA-DEPT-GRADE-###`).
 - `PATCH /positions/:id` (any fields above; pcn/job_code immutable) → `{ position }`
+- `GET /positions/occupants` → `{ occupants: [{ name, seats: [{ id, pcn, job_code, designation, department, grade, budgeted_salary, application|null }], seat_count, unlinked_count }], totals: { filled_seats, occupants, multi_seat_occupants, unlinked_seats } }` — every Filled seat grouped by occupant; `application` is the Selected application holding the seat (`{ id, reference_id, date_of_joining, offered_salary, applied_on }`), null for seats seeded Filled or stranded by a double-select.
+- `POST /positions/:id/hand-back` → `{ position }` — releases a Filled seat with no Selected application behind it (status → Under Recruitment, occupant cleared). 400 if the seat is not Filled or a live selection holds it.
 - `POST /positions/:id/eliminate` → `{ position }` (400 if seat has an occupant)
 
 ### Applications

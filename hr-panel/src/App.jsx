@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import RegisterPage from './pages/RegisterPage';
+import OccupantsPage from './pages/OccupantsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import RedFlagsPage from './pages/RedFlagsPage';
 import FrameworkPage from './pages/FrameworkPage';
@@ -18,6 +19,7 @@ function AppRoutes() {
       <Route element={<Layout />}>
         <Route index element={<DashboardPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="occupants" element={<OccupantsPage />} />
         <Route path="applications" element={<ApplicationsPage />} />
         <Route path="red-flags" element={<RedFlagsPage />} />
         <Route path="framework" element={<FrameworkPage />} />

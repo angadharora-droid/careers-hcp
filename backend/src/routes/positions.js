@@ -30,6 +30,66 @@ router.get('/', async (req, res) => {
   res.json({ positions: positions.map(decorate) });
 });
 
+// GET /api/positions/occupants — every Filled seat grouped by the person holding
+// it, each seat annotated with the Selected application that claims it (if any).
+// A Filled seat with NO Selected application behind it is either a seat seeded as
+// Filled for existing staff, or one stranded by the old double-select bug — the
+// latter is why the register can show the same occupant on several rows.
+router.get('/occupants', async (req, res) => {
+  const filled = await Position.find({ status: 'Filled' }).sort('pcn');
+  const selected = await Application.find(
+    { stage: 'Selected', position_id: { $ne: null } },
+    'candidate_name reference_id position_id date_of_joining offered_salary applied_on'
+  );
+  const bySeat = new Map(selected.map((a) => [String(a.position_id), a]));
+
+  const groups = new Map();
+  for (const p of filled) {
+    const name = String(p.occupant_name || '').trim();
+    // Seats seeded Filled without a name each stand alone — they are not duplicates.
+    const key = name ? name.toLowerCase() : `(unnamed) ${p.pcn}`;
+    if (!groups.has(key)) groups.set(key, { name, seats: [] });
+    const a = bySeat.get(String(p._id)) || null;
+    groups.get(key).seats.push({
+      id: p._id,
+      pcn: p.pcn,
+      job_code: p.job_code,
+      designation: p.designation,
+      department: p.department,
+      grade: p.grade,
+      budgeted_salary: p.budgeted_salary,
+      application: a && {
+        id: a._id,
+        reference_id: a.reference_id,
+        date_of_joining: a.date_of_joining,
+        offered_salary: a.offered_salary,
+        applied_on: a.applied_on,
+      },
+    });
+  }
+
+  const occupants = [...groups.values()]
+    .map((g) => ({
+      ...g,
+      seat_count: g.seats.length,
+      unlinked_count: g.seats.filter((s) => !s.application).length,
+    }))
+    .sort((a, b) =>
+      b.seat_count - a.seat_count
+      || (a.name ? 0 : 1) - (b.name ? 0 : 1) // unnamed seeded seats after named people
+      || a.name.localeCompare(b.name));
+
+  res.json({
+    occupants,
+    totals: {
+      filled_seats: filled.length,
+      occupants: occupants.length,
+      multi_seat_occupants: occupants.filter((g) => g.seat_count > 1).length,
+      unlinked_seats: occupants.reduce((n, g) => n + g.unlinked_count, 0),
+    },
+  });
+});
+
 // POST /api/positions — PCN auto-generated server-side (UNIT-DEPT-GRADE-SERIAL).
 // The scheme is fixed: seats of different designations in the same department and
 // grade share a job_code; the Career Panel lists roles by designation, not code.
@@ -75,6 +135,33 @@ router.patch('/:id', async (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// POST /api/positions/:id/hand-back — release a Filled seat that no Selected
+// application is holding (a double-select leftover, or a separated employee).
+// A seat held by a live selection is refused: move that application out of
+// Selected instead, which releases the seat and keeps both records in step.
+router.post('/:id/hand-back', async (req, res) => {
+  const p = await Position.findById(req.params.id);
+  if (!p) return res.status(404).json({ error: 'Position not found' });
+  if (p.status !== 'Filled') {
+    return res.status(400).json({ error: 'Only a Filled seat can be handed back' });
+  }
+  const holder = await Application.findOne(
+    { stage: 'Selected', position_id: p._id },
+    'candidate_name reference_id'
+  );
+  if (holder) {
+    return res.status(400).json({
+      error: `Seat is held by a live selection (${holder.candidate_name}, ${holder.reference_id}). ` +
+        'Move that application out of Selected instead — that releases the seat.',
+    });
+  }
+  p.status = 'Under Recruitment';
+  p.occupant_name = '';
+  p.vacant_since = new Date();
+  await p.save();
+  res.json({ position: decorate(p) });
 });
 
 // POST /api/positions/:id/eliminate — cannot eliminate a filled seat
