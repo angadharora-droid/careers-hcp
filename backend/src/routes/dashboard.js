@@ -59,6 +59,10 @@ router.get('/summary', async (_req, res) => {
     band_max_total: live.reduce((s, p) => s + (p.salary_max || 0), 0),
     avg_days_to_fill: fillTimes.length ? Math.round(fillTimes.reduce((a, b) => a + b, 0) / fillTimes.length) : 0,
     filled_measured: fillTimes.length,
+    /* Seats sitting Filled with no measurement — occupied before time-to-fill was
+       tracked, or seeded for existing staff who never went through recruitment.
+       Lets the client say WHY the average is empty instead of just showing a dash. */
+    filled_unmeasured: live.filter((p) => p.status === 'Filled' && typeof p.days_to_fill !== 'number').length,
     avg_days_vacant: dvs.length ? Math.round(dvs.reduce((a, b) => a + b, 0) / dvs.length) : 0,
     sla_breached_count: vacant.filter(slaBreached).length,
     aging_vacancies: aging,

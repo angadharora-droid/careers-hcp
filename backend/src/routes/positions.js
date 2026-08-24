@@ -2,7 +2,9 @@ import { Router } from 'express';
 import Position, { POSITION_STATUSES } from '../models/Position.js';
 import Application from '../models/Application.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached, bandStanding } from '../utils/helpers.js';
+import {
+  nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached, bandStanding, RECRUITABLE_STATUSES,
+} from '../utils/helpers.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
@@ -173,11 +175,24 @@ router.patch('/:id', async (req, res) => {
     const b = { ...req.body };
     delete b.pcn; delete b.job_code; delete b._id; // identity fields are immutable
 
-    const wasVacant = p.status === 'Vacant';
+    /* Reopening a seat restarts its vacancy clock. This has to cover BOTH
+       recruitable statuses: marking a leaver's seat 'Under Recruitment' through
+       the edit dialog is the normal way a seat reopens, and only handling
+       'Vacant' left vacant_since null — which silently cost the seat both its
+       days-vacant count and its time-to-fill on the next hire. */
+    const wasRecruitable = RECRUITABLE_STATUSES.includes(p.status);
     Object.assign(p, b);
-    if (b.status === 'Vacant' && !wasVacant) {
+    const isRecruitable = RECRUITABLE_STATUSES.includes(p.status);
+    if (isRecruitable && !wasRecruitable) {
       p.vacant_since = new Date();
       p.occupant_name = '';
+      // The occupancy is over, so its time-to-fill no longer describes this seat.
+      p.filled_on = null;
+      p.days_to_fill = null;
+    } else if (isRecruitable && !p.vacant_since) {
+      // A seat that lost its clock to the older behaviour — start it now rather
+      // than leave it permanently unmeasurable.
+      p.vacant_since = new Date();
     }
     await p.save();
     res.json({ position: decorate(p) });

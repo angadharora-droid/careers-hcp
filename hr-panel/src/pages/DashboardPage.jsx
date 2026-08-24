@@ -37,6 +37,21 @@ function Stat({ n, label, tone, icon: IconCmp, to, hint }) {
   return <div className="bg-card border border-line rounded-md p-4">{inner}</div>;
 }
 
+/* The average only counts seats filled through a selection, because that is the
+   only moment the vacancy-to-hire clock can be stopped. A seat occupied before
+   this was tracked cannot be measured after the fact — vacant_since is cleared
+   the instant a seat fills — so the tile says which case it is in rather than
+   showing a bare dash. */
+function fillHint(data) {
+  if (data.filled_measured) {
+    return `Vacancy to selection, across ${data.filled_measured} filled seat${data.filled_measured === 1 ? '' : 's'}`;
+  }
+  if (data.filled_unmeasured) {
+    return `${data.filled_unmeasured} seat${data.filled_unmeasured === 1 ? ' was' : 's were'} filled before this was tracked — the next hire starts the average`;
+  }
+  return 'Starts once a candidate is selected into a seat';
+}
+
 function OccupancyBar({ filled, total }) {
   const pct = total > 0 ? Math.round((filled / total) * 100) : 0;
   return (
@@ -115,11 +130,7 @@ export default function DashboardPage() {
           n={data.filled_measured ? data.avg_days_to_fill : '—'}
           label="Avg Days to Fill"
           icon={Clock}
-          hint={
-            data.filled_measured
-              ? `Vacancy to selection, across ${data.filled_measured} filled seat${data.filled_measured === 1 ? '' : 's'}`
-              : 'No seat has been filled through the system yet'
-          }
+          hint={fillHint(data)}
         />
         <Stat n={data.sla_breached_count} label="Past SLA" icon={AlertTriangle} tone={data.sla_breached_count > 0 ? 'red' : undefined} to="/register?breached=1" />
         <Stat n={data.red_flag_queue_count} label="Red-Flag Queue" icon={Flag} tone={data.red_flag_queue_count > 0 ? 'red' : undefined} to="/red-flags" />
