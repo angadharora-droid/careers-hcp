@@ -10,21 +10,31 @@
    splits it into its own chunk that downloads on the first export and is cached
    after that. */
 
-// Quiet tints that survive printing and stay readable behind black text.
+/* Excel's own conditional-formatting palette — the green/amber/red every Excel
+   user already knows how to read, and saturated enough to carry across a room.
+   (The first cut used quieter tints; they read as dull on a real register.) */
 const FIT_FILLS = {
-  3: 'FFE3F0E4', // green — strong fit
-  2: 'FFFBEEDA', // amber — possible fit
-  1: 'FFF7E3E1', // red   — weak fit
+  3: 'FFC6EFCE', // green — strong fit
+  2: 'FFFFEB9C', // amber — possible fit
+  1: 'FFFFC7CE', // red   — weak fit
 };
 
 const FIT_TEXT = {
-  3: 'FF2F6B3A',
-  2: 'FF8A5A1F',
-  1: 'FF9B2C2C',
+  3: 'FF006100',
+  2: 'FF9C6500',
+  1: 'FF9C0006',
 };
 
 const HEADER_BG = 'FF1F2A44';
 const BORDER = 'FFD9D2C7';
+
+/* Band-standing text colours for the salary columns — same hues the fit rows
+   use, so one legend covers both. */
+export const STANDING_TEXT = {
+  'Within band': 'FF006100',
+  'Under band': 'FF9C6500',
+  'Over band': 'FF9C0006',
+};
 
 const stars = (n) => (n ? '★'.repeat(n) + '☆'.repeat(3 - n) : '');
 
@@ -90,11 +100,17 @@ export async function exportExcel(filename, columns, rows, options = {}) {
       };
       if (fit && FIT_FILLS[fit]) {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FIT_FILLS[fit] } };
-        // A three-star row is the one a reader should land on first.
-        if (fit === 3) cell.font = { size: 10, bold: true, color: { argb: FIT_TEXT[3] } };
+        // Dark text in the matching hue; three-star rows also bold, so the
+        // candidates worth landing on first stand out even in greyscale print.
+        cell.font = { size: 10, bold: fit === 3, color: { argb: FIT_TEXT[fit] } };
       }
       const col = columns[i - 1];
       if (col?.numFmt) cell.numFmt = col.numFmt;
+      /* A column may colour its own text per row — the salary columns paint
+         themselves by band standing. Applied last, over the row-tint font, so
+         the cell's own verdict wins; bold keeps it legible on the tinted rows. */
+      const own = col?.fontColor?.(r);
+      if (own) cell.font = { ...(cell.font || {}), size: 10, bold: true, color: { argb: own } };
     });
   }
 

@@ -111,7 +111,11 @@ export function fitRating({
   if (!weight) return null;
 
   const pct = Math.round((score / weight) * 100);
-  let stars = pct >= 75 ? 3 : pct >= 50 ? 2 : 1;
+  /* Three stars is a recommendation, so it is priced above the halfway-decent:
+     a candidate affordable but with half their career outside hotels lands at
+     75 and should read "possible", not "strong". 80 also matches the panel
+     scale, where 80% is the 'Strong' anchor. */
+  let stars = pct >= 80 ? 3 : pct >= 55 ? 2 : 1;
   if (anyRedFlags && stars > 1) {
     stars = 1;
     basis.push('Red flag raised by a panellist');

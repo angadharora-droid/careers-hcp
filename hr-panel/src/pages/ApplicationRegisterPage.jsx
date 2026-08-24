@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { inr, fmtDate, band } from '../lib/format';
 import { exportCSV } from '../lib/export';
-import { exportExcel } from '../lib/excel';
+import { exportExcel, STANDING_TEXT } from '../lib/excel';
 import { ErrorBox, Empty, TableSkeleton, Spinner } from '../components/LoadState';
 import { BandPill } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
@@ -835,8 +835,8 @@ export default function ApplicationRegisterPage() {
           { header: 'Total Exp. (yrs)', value: (r) => r.total_experience_years ?? '', width: 9 },
           { header: 'Hotel Exp. (yrs)', value: (r) => r.relevant_hotel_experience_years ?? '', width: 9 },
           { header: 'Current / Last Employer', value: (r) => r.current_employer, width: 20 },
-          { header: 'Current Salary', value: (r) => r.current_salary ?? '', width: 12, numFmt: '#,##0' },
-          { header: 'Expected Salary', value: (r) => r.expected_salary ?? '', width: 12, numFmt: '#,##0' },
+          { header: 'Current Salary', value: (r) => r.current_salary ?? '', width: 12, numFmt: '#,##0', fontColor: (r) => STANDING_TEXT[r.current_salary_standing] || null },
+          { header: 'Expected Salary', value: (r) => r.expected_salary ?? '', width: 12, numFmt: '#,##0', fontColor: (r) => STANDING_TEXT[r.expected_salary_standing] || null },
           { header: 'Expected vs Band', value: (r) => r.expected_salary_standing ?? '', width: 12 },
           { header: 'Notice Period', value: (r) => r.notice_period, width: 11 },
           { header: 'Screening', value: (r) => r.screening, width: 12 },
