@@ -417,8 +417,11 @@ router.post('/:id/send-offer', requireRole('hr_admin'), async (req, res) => {
   }
   app.offer_sent_at = new Date();
   app.offer_sent_to = to;
+  app.offer_sent_method = 'email';
+  app.offer_sent_note = '';
+  app.offer_sent_by_name = req.user.name;
   await app.save();
-  await recordEvent(app._id, 'offer', 'Offer letter emailed', { actor: req.user, detail: to });
+  await recordEvent(app._id, 'offer', 'Offer letter emailed by the system', { actor: req.user, detail: to });
   res.json({ application: await withDerived(app), sent_to: to });
 });
 
@@ -492,6 +495,78 @@ router.patch('/:id/approval', requireRole('hr_admin'), async (req, res) => {
       next.employee_code ? `Employee code ${next.employee_code}` : null,
     ].filter(Boolean).join(' · '),
   });
+  res.json({ application: await withDerived(app) });
+});
+
+/* ===== HR: offer sent outside the system ===== */
+
+// POST /api/applications/:id/offer-sent  { sent_on?, sent_to?, note? }
+// The unit sent the letter itself — from their own mailbox, over WhatsApp, or by
+// hand. Server SMTP is optional in most deployments, so without this the register
+// would show "not sent" for offers that plainly did go out.
+router.post('/:id/offer-sent', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+
+  /* Same gate as generating the letter: an offer cannot have been sent if its
+     terms were never set, or the candidate does not hold a seat. */
+  const gate = offerReady(app);
+  if (gate) return res.status(400).json({ error: gate });
+
+  const { sent_on, sent_to, note } = req.body || {};
+
+  let at = new Date();
+  if (sent_on !== undefined && String(sent_on).trim()) {
+    const raw = String(sent_on).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      return res.status(400).json({ error: 'Sent-on must be a date (YYYY-MM-DD)' });
+    }
+    at = new Date(`${raw}T12:00:00`); // midday, so a timezone shift cannot move the day
+    if (Number.isNaN(at.getTime())) return res.status(400).json({ error: 'Sent-on is not a real date' });
+    // Recording an offer as sent in the future is always a typo.
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    if (at > endOfToday) return res.status(400).json({ error: 'The offer cannot have been sent on a future date' });
+  }
+
+  const to = String(sent_to ?? '').trim() || app.email || '';
+  const noteText = String(note ?? '').trim();
+  if (to.length > 200) return res.status(400).json({ error: 'Sent-to must be 200 characters or fewer' });
+  if (noteText.length > 300) return res.status(400).json({ error: 'Note must be 300 characters or fewer' });
+
+  app.offer_sent_at = at;
+  app.offer_sent_to = to;
+  app.offer_sent_method = 'manual';
+  app.offer_sent_note = noteText;
+  app.offer_sent_by_name = req.user.name;
+  await app.save();
+  await recordEvent(app._id, 'offer', 'Offer letter sent manually', {
+    actor: req.user,
+    detail: [to, noteText].filter(Boolean).join(' · '),
+    at,
+  });
+  res.json({ application: await withDerived(app) });
+});
+
+/* DELETE /api/applications/:id/offer-sent — undo a manual record.
+   A send the SERVER performed is deliberately not clearable: that email really
+   left the building, and erasing the record would make the register lie. */
+router.delete('/:id/offer-sent', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  if (!app.offer_sent_at) return res.status(400).json({ error: 'No offer send is recorded' });
+  if (app.offer_sent_method === 'email') {
+    return res.status(400).json({
+      error: 'This offer was emailed by the system, so the record cannot be removed. Only a manually recorded send can be undone.',
+    });
+  }
+  app.offer_sent_at = null;
+  app.offer_sent_to = '';
+  app.offer_sent_method = '';
+  app.offer_sent_note = '';
+  app.offer_sent_by_name = '';
+  await app.save();
+  await recordEvent(app._id, 'offer', 'Manual offer-sent record removed', { actor: req.user });
   res.json({ application: await withDerived(app) });
 });
 

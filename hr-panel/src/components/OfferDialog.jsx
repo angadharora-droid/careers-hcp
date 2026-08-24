@@ -3,7 +3,7 @@ import { ErrorBox } from './LoadState';
 import { api, openOfferLetter } from '../lib/api';
 import { fmtDate } from '../lib/format';
 import { useToast } from '../context/ToastContext';
-import { Check, FileText, Mail, X } from './Icons';
+import { Check, FileText, Mail, X, Trash } from './Icons';
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -24,6 +24,16 @@ export default function OfferDialog({ app, onClose, onUpdated }) {
   const [err, setErr] = useState(null);
   const [busy, setBusy] = useState(false);
   const [emailBusy, setEmailBusy] = useState(false);
+
+  /* Recording a send the unit made itself — from their own mailbox, over
+     WhatsApp, or by hand. Server SMTP is optional in most deployments, so
+     without this the register would show "not sent" for offers that did go out. */
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualBusy, setManualBusy] = useState(false);
+  const today = new Date().toISOString().slice(0, 10);
+  const [sentOn, setSentOn] = useState(today);
+  const [sentTo, setSentTo] = useState(app.email || '');
+  const [sentNote, setSentNote] = useState('');
 
   useEffect(() => {
     prevFocus.current = document.activeElement;
@@ -122,7 +132,10 @@ export default function OfferDialog({ app, onClose, onUpdated }) {
         // No server SMTP → hand off to the HR user's own mail client instead.
         if (/not configured|SMTP|nodemailer/i.test(e.message)) {
           openMailClient(updated);
-          toast('Opening your mail app — attach the printed letter');
+          // The mail app takes over from here, so nothing has been recorded yet —
+          // open the manual form so the send can be logged once it goes out.
+          setManualOpen(true);
+          toast('Opening your mail app — then record the send below');
         } else {
           setErr(e.message);
         }
@@ -133,6 +146,43 @@ export default function OfferDialog({ app, onClose, onUpdated }) {
       setEmailBusy(false);
     }
   }
+
+  async function recordManual() {
+    setErr(null);
+    setManualBusy(true);
+    try {
+      const updated = await persist();
+      if (incomplete(updated)) return;
+      const d = await api.post(`/applications/${app.id}/offer-sent`, {
+        sent_on: sentOn,
+        sent_to: sentTo,
+        note: sentNote,
+      });
+      onUpdated(d.application);
+      setManualOpen(false);
+      toast('Recorded — offer letter sent manually');
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setManualBusy(false);
+    }
+  }
+
+  async function clearManual() {
+    setErr(null);
+    setManualBusy(true);
+    try {
+      const d = await api.del(`/applications/${app.id}/offer-sent`);
+      onUpdated(d.application);
+      toast('Offer-sent record removed');
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setManualBusy(false);
+    }
+  }
+
+  const anyBusy = busy || emailBusy || manualBusy;
 
   return (
     <div
@@ -193,24 +243,103 @@ export default function OfferDialog({ app, onClose, onUpdated }) {
         <p className="hint">Both are printed on the offer letter, along with the seat and grade above.</p>
 
         {app.offer_sent_at && (
-          <p className="mini mt-2 inline-flex items-center gap-1">
-            <Check size={12} className="text-brand-green" />
-            Offer emailed to {app.offer_sent_to || app.email} on {fmtDate(app.offer_sent_at)}.
-          </p>
+          <div className="bg-brand-green/8 border border-brand-green/40 rounded-sm px-3 py-2 mt-3 text-[12.5px] text-body">
+            <span className="inline-flex items-start gap-1.5">
+              <Check size={13} className="text-brand-green mt-px shrink-0" />
+              <span>
+                Offer letter{' '}
+                <b>{app.offer_sent_method === 'manual' ? 'sent manually' : 'emailed by the system'}</b>
+                {' '}to {app.offer_sent_to || app.email} on {fmtDate(app.offer_sent_at)}.
+                {app.offer_sent_note && <> <span className="text-muted">{app.offer_sent_note}</span></>}
+                {app.offer_sent_by_name && <div className="mini">Recorded by {app.offer_sent_by_name}</div>}
+              </span>
+            </span>
+            {app.offer_sent_method === 'manual' && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm mt-2"
+                onClick={clearManual}
+                disabled={anyBusy}
+                title="Remove this record — use it if it was entered by mistake"
+              >
+                <Trash size={12} />
+                Undo this record
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Recording a send made outside the system */}
+        {manualOpen && !app.offer_sent_at && (
+          <div className="panel-box mt-3">
+            <div className="panel-box-h">Record a letter you sent yourself</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4">
+              <div>
+                <label className="lbl" htmlFor="manual-on">Sent on</label>
+                <input
+                  id="manual-on"
+                  type="date"
+                  className="inp"
+                  max={today}
+                  value={sentOn}
+                  onChange={(e) => setSentOn(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="lbl" htmlFor="manual-to">Sent to</label>
+                <input
+                  id="manual-to"
+                  className="inp"
+                  value={sentTo}
+                  placeholder="email, phone, or in person"
+                  onChange={(e) => setSentTo(e.target.value)}
+                />
+              </div>
+            </div>
+            <label className="lbl" htmlFor="manual-note">How (optional)</label>
+            <input
+              id="manual-note"
+              className="inp"
+              maxLength={300}
+              value={sentNote}
+              placeholder="e.g. Sent from the P&amp;C mailbox / handed over at reception"
+              onChange={(e) => setSentNote(e.target.value)}
+            />
+            <div className="flex gap-2 flex-wrap mt-3">
+              <button type="button" className="btn btn-sm" onClick={recordManual} disabled={anyBusy}>
+                {manualBusy ? 'Recording…' : 'Record as sent'}
+              </button>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setManualOpen(false)} disabled={anyBusy}>
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
 
         <ErrorBox error={err} />
 
         <div className="flex gap-2 flex-wrap items-center mt-5">
-          <button type="button" className="btn btn-ghost btn-sm" onClick={preview} disabled={busy || emailBusy}>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={preview} disabled={anyBusy}>
             <FileText size={13} />
             Preview / print
           </button>
-          <button type="button" className="btn btn-sm" onClick={email} disabled={busy || emailBusy}>
+          <button type="button" className="btn btn-sm" onClick={email} disabled={anyBusy}>
             <Mail size={13} />
             {emailBusy ? 'Sending…' : 'Email to candidate'}
           </button>
-          <button type="button" className="btn ml-auto" onClick={save} disabled={busy || emailBusy}>
+          {!app.offer_sent_at && !manualOpen && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => setManualOpen(true)}
+              disabled={anyBusy}
+              title="You sent the letter yourself — record it so the register shows the offer as sent"
+            >
+              <Check size={13} />
+              Mark as sent manually
+            </button>
+          )}
+          <button type="button" className="btn ml-auto" onClick={save} disabled={anyBusy}>
             {busy ? 'Saving…' : 'Save'}
           </button>
         </div>

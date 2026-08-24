@@ -129,6 +129,7 @@ Application (HR view) includes candidate fields plus:
   "applied_on": "…",
   "current_employer": "", "relevant_hotel_experience_years": null, "notice_period": "", "remarks": "",
   "comment_count": 0, "salary_band": { "min": 22000, "max": 28000 }, "band_standing": "Within band",
+  "offer_sent_method": "manual", "offer_sent_note": "", "offer_sent_by_name": "",
   "move_history": [{ "from_job_code", "from_designation", "from_stage", "moved_by_name", "note", "moved_at" }],
   "approval": { "recommended_by": "", "salary_approved_by": "", "approval_date": "", "offer_issued_date": "", "employee_code": "", "closed_by": "" },
   "documents": [{ "filename": "…", "original_name": "cv.pdf" }],
@@ -156,6 +157,11 @@ Server-enforced rules (surface the returned `error` to the user):
 - `PATCH /applications/:id/offer` — Body `{ date_of_joining?, offered_salary? }`. Sets/adjusts offer terms; only valid while the candidate is `Selected`. → `{ application }`
 - `GET /applications/:id/offer-letter` — returns a self-contained, printable **HTML** offer letter (not JSON). 400 until the candidate is Selected **and** both `date_of_joining` and `offered_salary` are set.
 - `POST /applications/:id/send-offer` — Body `{ to? }` (defaults to the candidate's email). Emails the letter via server SMTP; on success records `offer_sent_at`/`offer_sent_to` and returns `{ application, sent_to }`. If SMTP is unconfigured, returns 400 with `{ error, email_configured: false }` so the client can fall back to a `mailto:` hand-off. Requires the same Selected + offer-terms gate as the letter.
+
+- `POST /applications/:id/offer-sent` — Body `{ sent_on?, sent_to?, note? }`. Records a letter the unit sent **itself** (own mailbox, WhatsApp, by hand), for the common case where server SMTP is not configured. Same gate as the letter: Selected, with a seat, a date of joining and an offered salary. `sent_on` is ISO `YYYY-MM-DD` and cannot be in the future; it defaults to today, and `sent_to` to the candidate's email. Sets `offer_sent_method: 'manual'` and records `offer_sent_by_name`. → `{ application }`
+- `DELETE /applications/:id/offer-sent` — Undoes a **manual** record (for one entered by mistake). A send the server actually performed returns 400: that email left the building, and erasing the record would make the register lie.
+
+`offer_sent_method` is `'email'` (server sent it over SMTP), `'manual'` (HR sent it and recorded it), or `''` before any offer goes out. The Application Register and the occupant view both report which.
 
 SMTP is configured with `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_SECURE` (`true`/`false`), `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` in `backend/.env`. Without them, letter preview/print still works; only server-side emailing is disabled.
 

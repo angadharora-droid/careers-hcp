@@ -62,6 +62,15 @@ const applicationSchema = new mongoose.Schema(
     offered_salary: { type: Number, default: null },   // monthly CTC actually offered
     offer_sent_at: { type: Date, default: null },
     offer_sent_to: { type: String, default: '' },
+    /* HOW the offer reached the candidate. Server SMTP is not the only route —
+       most units send from their own mailbox, by WhatsApp, or hand the letter
+       over in person, and the register has to be able to say so.
+         'email'  — sent by this server over SMTP
+         'manual' — sent by HR themselves and recorded here
+       Blank until an offer actually goes out. */
+    offer_sent_method: { type: String, enum: ['', 'email', 'manual'], default: '' },
+    offer_sent_note: { type: String, default: '' },
+    offer_sent_by_name: { type: String, default: '' },
     applied_on: { type: Date, default: Date.now },
     /* Every time HR pushes this application to a different role, the role it came
        from is recorded here. The reference_id never changes, so an application

@@ -11,8 +11,7 @@ router.use(requireAuth, requireRole('hr_admin'));
 
 /* The Application Register is the auditable paper form behind the pipeline:
    one register per vacant post (job_code + designation), Section A tracking every
-   applicant, Section B recording who recommended and approved the selection, and
-   Section C carrying the sign-off.
+   applicant and Section B recording who recommended and approved the selection.
 
    Everything here is COMPILED from positions, applications, panel assignments and
    panel scores — the register holds no pipeline state of its own, so it can never
@@ -167,7 +166,7 @@ router.get('/posts', async (_req, res) => {
 
 /* ===== GET /api/register?job_code=&designation= =====
    The register itself: header block, Section A rows, Section B selection records,
-   Section C sign-off. */
+   Section B selection records. */
 router.get('/', async (req, res) => {
   const job_code = String(req.query.job_code || '').trim();
   const designation = String(req.query.designation || '').trim();
@@ -298,6 +297,9 @@ router.get('/', async (req, res) => {
       seat_status: seat?.status || '',
       offer_sent_at: app.offer_sent_at,
       offer_sent_to: app.offer_sent_to || '',
+      offer_sent_method: app.offer_sent_method || '',
+      offer_sent_note: app.offer_sent_note || '',
+      offer_sent_by_name: app.offer_sent_by_name || '',
       approval_complete: Boolean(ap.approval_date && ap.salary_approved_by && app.offered_salary != null),
     };
   });

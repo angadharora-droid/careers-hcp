@@ -16,7 +16,7 @@ import { useToast } from '../context/ToastContext';
 
 /* The Application Register — the recruitment control format kept separately for
    each vacant post. Section A tracks every applicant against that post, Section B
-   records the selection and its approval chain, and Section C carries the sign-off.
+   and Section B records the selection and its approval chain.
 
    Everything except HR's own annotations is compiled server-side from positions,
    applications and panel scores, so the register cannot disagree with the pipeline.
@@ -304,7 +304,6 @@ function SectionNav({ counts }) {
   const items = [
     { href: '#section-a', label: 'A · Applications', n: counts.rows },
     { href: '#section-b', label: 'B · Selection & approval', n: counts.selection },
-    { href: '#section-c', label: 'C · Sign-off', n: null },
   ];
   return (
     <nav aria-label="Register sections" className="flex gap-1.5 flex-wrap mb-4 no-print">
@@ -616,11 +615,20 @@ function SelectionRecord({ record, onSaved }) {
           </DerivedRow>
           <DerivedRow label="Offer Letter">
             {record.offer_sent_at ? (
-              <span className={`${CHIP} bg-brand-green/10 text-brand-green`}>
-                Emailed {fmtDate(record.offer_sent_at)}{record.offer_sent_to ? ` · ${record.offer_sent_to}` : ''}
-              </span>
+              <>
+                <span className={`${CHIP} bg-brand-green/10 text-brand-green`}>
+                  {record.offer_sent_method === 'manual' ? 'Sent manually' : 'Emailed'} {fmtDate(record.offer_sent_at)}
+                </span>
+                <div className="mini mt-1">
+                  {record.offer_sent_to}
+                  {record.offer_sent_note && ` · ${record.offer_sent_note}`}
+                  {record.offer_sent_by_name && ` · recorded by ${record.offer_sent_by_name}`}
+                </div>
+              </>
             ) : (
-              <span className="mini">not sent yet — generate it from the applicant drawer</span>
+              <span className="mini">
+                not sent yet — email it from the applicant drawer, or send it yourself and record it there
+              </span>
             )}
           </DerivedRow>
         </tbody>
@@ -640,40 +648,6 @@ function SelectionRecord({ record, onSaved }) {
           </span>
         )}
       </div>
-    </div>
-  );
-}
-
-/* ===== Section C — sign-off ===== */
-
-function SignatureBox({ role }) {
-  return (
-    <div className="border border-line rounded-sm overflow-hidden">
-      <div className="bg-footer text-cream px-3 py-2 font-button text-[10.5px] font-medium uppercase tracking-[1.2px] text-center">
-        {role}
-      </div>
-      <div className="bg-card px-3 py-3.5 text-[12px] text-muted leading-[2.4]">
-        Name: <span className="inline-block border-b border-line w-[62%] align-baseline" /><br />
-        Signature: <span className="inline-block border-b border-line w-[54%] align-baseline" /><br />
-        Date: <span className="inline-block border-b border-line w-[65%] align-baseline" />
-      </div>
-    </div>
-  );
-}
-
-function SignOff() {
-  return (
-    <div className="card" id="section-c">
-      <div className="card-h">C. Sign-off</div>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-        <SignatureBox role="Prepared / Updated By" />
-        <SignatureBox role="Reviewed By" />
-        <SignatureBox role="Approved By" />
-      </div>
-      <p className="mini mt-3">
-        Screening, interview outcome and rejection reasons in Section A are read from the pipeline, so the
-        register and the applicant record can never disagree.
-      </p>
     </div>
   );
 }
@@ -1078,7 +1052,6 @@ export default function ApplicationRegisterPage() {
             )}
           </div>
 
-          <SignOff />
         </>
       )}
 

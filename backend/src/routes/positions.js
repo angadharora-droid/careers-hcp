@@ -57,7 +57,7 @@ router.get('/occupants', async (req, res) => {
     { stage: 'Selected', position_id: { $ne: null } },
     'candidate_name reference_id position_id date_of_joining offered_salary applied_on '
     + 'email mobile qualification total_experience_years relevant_hotel_experience_years '
-    + 'current_employer source approval offer_sent_at documents notice_period'
+    + 'current_employer source approval offer_sent_at offer_sent_method documents notice_period'
   );
   const bySeat = new Map(selected.map((a) => [String(a.position_id), a]));
 
@@ -97,6 +97,7 @@ router.get('/occupants', async (req, res) => {
         notice_period: a.notice_period,
         documents: (a.documents || []).length,
         offer_sent_at: a.offer_sent_at,
+        offer_sent_method: a.offer_sent_method || '',
         employee_code: a.approval?.employee_code || '',
         recommended_by: a.approval?.recommended_by || '',
         salary_approved_by: a.approval?.salary_approved_by || '',

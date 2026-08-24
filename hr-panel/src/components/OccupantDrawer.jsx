@@ -159,7 +159,7 @@ export default function OccupantDrawer({ group, onClose }) {
                   {a.offer_sent_at ? (
                     <span className="inline-flex items-center gap-1.5">
                       <Mail size={13} className="text-muted" />
-                      emailed {fmtDate(a.offer_sent_at)}
+                      {a.offer_sent_method === 'manual' ? 'sent manually' : 'emailed'} {fmtDate(a.offer_sent_at)}
                     </span>
                   ) : <span className="mini">not sent</span>}
                 </Info>
