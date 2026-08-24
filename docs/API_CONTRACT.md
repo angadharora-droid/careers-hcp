@@ -173,20 +173,33 @@ recommendation.
 
 ### Timeline — `GET /applications/:id/timeline` (HR **and** the candidate's panellists)
 
-→ `{ timeline: [Item], current: { stage, rounds, rounds_scored, panel_appointed, awaiting } }`
+→ `{ timeline: [Item], reconstructed, current: { stage, rounds, rounds_scored, panel_appointed, awaiting } }`
 
-Three sources are merged so nothing has to be trusted to stay in step with anything else:
+Each item is `{ type, summary, detail, from, to, actor_name, actor_role, at, derived? }`, sorted
+oldest first. **Every item names who did it** — `actor_name` plus `actor_role` (`hr_admin` /
+`interviewer`), denormalised so an old entry still reads correctly after someone's designation
+changes or their account is removed. For a dual-role user it records the hat they were wearing,
+not their primary role. `current.awaiting` names the open end (`"Round 2 of 3"`) or is `null`.
 
-| Source | Contributes |
-| --- | --- |
-| the application itself | the `applied` entry, which always exists |
-| `PanelScore.submitted_at` | one `score` entry per round, as actually submitted |
-| `ApplicationEvent` | `stage` · `panel` · `offer` · `approval` · `move` · `document` — the HR actions nothing else records |
+Sources are merged so nothing has to be trusted to stay in step with anything else:
 
-Each item is `{ type, summary, detail, from, to, actor_name, actor_role, at }`, sorted oldest
-first. `current.awaiting` names the open end (`"Round 2 of 3"`) or is `null`. Applications that
-predate the event log still show a real timeline from the first two sources. Event writes are
-fire-and-forget: a timeline entry never fails the action it describes.
+| Source | Contributes | Actor |
+| --- | --- | --- |
+| the application itself | `applied` (always present; folds in the documents submitted with it) | the candidate |
+| `PanelScore.submitted_at` | one `score` per round, as actually submitted | the panellist |
+| `ApplicationEvent` | `stage` · `panel` · `offer` · `approval` · `move` · `document` · `edit` | whoever acted |
+
+**Applications worked before the action log existed** are reconstructed from records that were
+always kept — `PanelAssignment.assigned_at`/`assigned_by`, `move_history`, `offer_sent_at`,
+`CandidateDocument.created_at` and `approval.approval_date`. Those items carry `derived: true`.
+A derived item is dropped when a stored event of the same type sits within 10s of it, so an
+application straddling the upgrade never shows an action twice.
+
+`reconstructed: true` means the history is partial. **Stage changes were never stored before the
+log**, so for older applications the milestones appear but not every move between them — there
+is no way to recover them. Clients should say so rather than implying the history is complete.
+
+Event writes are fire-and-forget: a timeline entry never fails the action it describes.
 
 ### Move to another role — `POST /applications/:id/move` (HR)
 

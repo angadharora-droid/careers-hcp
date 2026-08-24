@@ -864,8 +864,12 @@ router.get('/:id/timeline', async (req, res) => {
      application is written moments before the application row itself, so it would
      otherwise appear above "Application received"; those are part of applying, not
      a later attachment, and belong on the applied entry instead. */
+  /* The apply route writes the document rows BEFORE the application row, so a
+     document submitted with the application always stamps at or before
+     applied_on. That makes a strict comparison the exact discriminator — no
+     time buffer, which would swallow a genuine attachment made minutes later. */
   const appliedAt = new Date(app.applied_on).getTime();
-  const attachedLater = docs.filter((d) => d.created_at && new Date(d.created_at).getTime() > appliedAt + DEDUPE_MS);
+  const attachedLater = docs.filter((d) => d.created_at && new Date(d.created_at).getTime() > appliedAt);
   for (const d of attachedLater) {
     if (covered('document', d.created_at)) continue;
     derived.push({
