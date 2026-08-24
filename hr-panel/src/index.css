@@ -134,6 +134,16 @@
      groups rather than one undifferentiated run. */
   .tbl th.reg-group { @apply bg-footer text-cream text-center normal-case tracking-[1px] text-[10px] py-1; }
 
+  /* Fit-rating row tints — the on-screen twin of the coloured Excel export.
+     Whisper-quiet washes so the row still reads as a table row; the stars carry
+     the actual verdict. Frozen cells repeat the tint over their opaque ground. */
+  .reg-fit-3 td, .reg-freeze tbody tr.reg-fit-3 td.rf { background-color: color-mix(in srgb, var(--color-brand-green) 7%, var(--color-card)); }
+  .reg-fit-2 td, .reg-freeze tbody tr.reg-fit-2 td.rf { background-color: color-mix(in srgb, var(--color-brand-amber) 8%, var(--color-card)); }
+  .reg-fit-1 td, .reg-freeze tbody tr.reg-fit-1 td.rf { background-color: color-mix(in srgb, var(--color-brand-red) 6%, var(--color-card)); }
+  .tbl tbody tr.reg-fit-3:hover td { background-color: color-mix(in srgb, var(--color-brand-green) 13%, var(--color-card)); }
+  .tbl tbody tr.reg-fit-2:hover td { background-color: color-mix(in srgb, var(--color-brand-amber) 14%, var(--color-card)); }
+  .tbl tbody tr.reg-fit-1:hover td { background-color: color-mix(in srgb, var(--color-brand-red) 11%, var(--color-card)); }
+
   /* The tinted cells HR fills in themselves. */
   .tbl td.reg-edit { @apply bg-berry-soft/40 p-0.5; }
 

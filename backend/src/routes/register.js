@@ -4,7 +4,7 @@ import Position from '../models/Position.js';
 import PanelAssignment from '../models/PanelAssignment.js';
 import PanelScore from '../models/PanelScore.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { RECRUITABLE_STATUSES, roundsForGrade, bandStanding } from '../utils/helpers.js';
+import { RECRUITABLE_STATUSES, roundsForGrade, bandStanding, fitRating } from '../utils/helpers.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
@@ -226,6 +226,10 @@ router.get('/', async (req, res) => {
     const asg = (assignBy.get(String(app._id)) || []).sort((a, b) => a.round - b.round);
     const scs = (scoreBy.get(String(app._id)) || []).sort((a, b) => a.round - b.round);
     const rounds = roundsByGrade.get(app.grade) ?? defaultRounds;
+    const panelAverage = scs.length
+      ? Math.round(scs.reduce((n, sc) => n + sc.total_score, 0) / scs.length)
+      : null;
+    const anyRedFlags = scs.some((sc) => (sc.red_flags || []).length > 0);
     return {
       sr: i + 1,
       id: app._id,
@@ -260,8 +264,19 @@ router.get('/', async (req, res) => {
       register_flag: registerFlagOf(app, date_closed),
       rounds,
       rounds_scored: scs.length,
-      any_red_flags: scs.some((s) => (s.red_flags || []).length > 0),
-      panel_average: scs.length ? Math.round(scs.reduce((n, s) => n + s.total_score, 0) / scs.length) : null,
+      any_red_flags: anyRedFlags,
+      panel_average: panelAverage,
+      // 1-3 stars from the signals on file; null when none of them are.
+      fit: fitRating({
+        panelAverage,
+        roundsScored: scs.length,
+        anyRedFlags,
+        expectedSalary: app.expected_salary,
+        bandMin,
+        bandMax,
+        totalExperience: app.total_experience_years,
+        relevantExperience: app.relevant_hotel_experience_years,
+      }),
       interviewers: asg.map((a) => a.interviewer_user_id?.name).filter(Boolean),
       documents: app.documents?.length || 0,
     };

@@ -66,10 +66,13 @@ router.get('/positions/:slug', async (req, res) => {
 // before this rule (which have blanks) don't fail validation.
 const REQUIRED_FIELDS = [
   'designation', 'candidate_name', 'mobile', 'email', 'age', 'gender', 'qualification',
-  'total_experience_years', 'expected_salary', 'willing_to_relocate', 'needs_accommodation',
+  'total_experience_years', 'relevant_hotel_experience_years', 'expected_salary',
+  'willing_to_relocate', 'needs_accommodation',
   'worked_at_cph_before', 'source', 'why_join', 'intro_note',
 ];
-const CURRENT_EMPLOYMENT_FIELDS = ['current_designation', 'years_in_current_firm', 'current_salary'];
+const CURRENT_EMPLOYMENT_FIELDS = [
+  'current_employer', 'current_designation', 'years_in_current_firm', 'current_salary', 'notice_period',
+];
 
 // POST /api/public/applications — multipart/form-data, files under "documents"
 router.post('/applications', documentUpload.array('documents', 6), async (req, res) => {
@@ -84,6 +87,17 @@ router.post('/applications', documentUpload.array('documents', 6), async (req, r
       for (const f of CURRENT_EMPLOYMENT_FIELDS) {
         if (missing(f)) return res.status(400).json({ error: `${f.replace(/_/g, ' ')} is required` });
       }
+    }
+    /* The CV is mandatory: screening cannot proceed without it, and an
+       application taken without one used to strand HR chasing candidates for
+       the single document every decision rests on. Client enforces this too;
+       the server is the guarantee. */
+    if (!req.files?.length) {
+      return res.status(400).json({ error: 'Please attach your CV (PDF) — an application cannot be submitted without it' });
+    }
+    // A candidate cannot have spent more years in hotels than in work at all.
+    if (Number(b.relevant_hotel_experience_years) > Number(b.total_experience_years)) {
+      return res.status(400).json({ error: 'Hotel experience cannot be more than total experience' });
     }
     if (wordCount(b.intro_note) > 50) {
       return res.status(400).json({ error: 'Brief intro must be 50 words or fewer' });
@@ -123,6 +137,12 @@ router.post('/applications', documentUpload.array('documents', 6), async (req, r
         email: b.email.trim(),
         qualification: b.qualification,
         total_experience_years: b.total_experience_years ? Number(b.total_experience_years) : undefined,
+        relevant_hotel_experience_years:
+          String(b.relevant_hotel_experience_years ?? '').trim() !== ''
+            ? Number(b.relevant_hotel_experience_years)
+            : null,
+        current_employer: String(b.current_employer || '').trim(),
+        notice_period: String(b.notice_period || '').trim(),
         current_designation: b.current_designation,
         years_in_current_firm: b.years_in_current_firm ? Number(b.years_in_current_firm) : undefined,
         current_salary: b.current_salary ? Number(b.current_salary) : undefined,

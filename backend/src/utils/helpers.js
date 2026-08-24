@@ -51,6 +51,83 @@ export function bandStanding(offered, min, max) {
   return 'Within band';
 }
 
+/* How well a candidate fits the post they applied to, as a 1-3 star rating.
+
+   Deliberately built only from signals with a defensible reading — no invented
+   thresholds for "enough experience", which vary by role and are nowhere on file:
+
+     Panel verdict (50)  what the interviewers actually scored, once anyone has
+                         interviewed them. The strongest signal by far, so it
+                         carries half the weight the moment it exists.
+     Affordability (25)  whether what they expect sits inside the sanctioned band.
+                         Over the band is a nil, not a deduction — it is a real
+                         blocker, not a preference.
+     Relevance (25)      how much of their experience is the RIGHT experience:
+                         hotel years over total years. A ratio, so it needs no
+                         absolute threshold to be meaningful.
+
+   Only the signals actually on file are scored, and the total is normalised over
+   those — so a candidate rated before their interview is judged on screening
+   evidence rather than punished for not having been interviewed yet. With NO
+   signal on file the rating is null: an unrated row is honest, one star is a
+   verdict nobody reached.
+
+   A red flag from any panellist caps the rating at one star whatever the
+   arithmetic says — that is the whole point of raising one. */
+export function fitRating({
+  panelAverage = null, roundsScored = 0, anyRedFlags = false,
+  expectedSalary = null, bandMin = 0, bandMax = 0,
+  totalExperience = null, relevantExperience = null,
+} = {}) {
+  let score = 0;
+  let weight = 0;
+  const basis = [];
+
+  if (roundsScored > 0 && typeof panelAverage === 'number') {
+    score += (panelAverage / 100) * 50;
+    weight += 50;
+    basis.push(`Panel scored ${panelAverage}/100`);
+  }
+
+  const standing = bandStanding(expectedSalary, bandMin, bandMax);
+  if (standing) {
+    score += (standing === 'Over band' ? 0 : 1) * 25;
+    weight += 25;
+    basis.push(standing === 'Over band'
+      ? 'Expects more than the band allows'
+      : `Salary expectation ${standing.toLowerCase()}`);
+  }
+
+  const total = Number(totalExperience);
+  const relevant = Number(relevantExperience);
+  if (Number.isFinite(total) && total > 0 && Number.isFinite(relevant) && relevant >= 0) {
+    const ratio = Math.min(relevant / total, 1);
+    score += ratio * 25;
+    weight += 25;
+    basis.push(`${relevant} of ${total} yrs in hotels`);
+  }
+
+  // Nothing on file to judge on — say so rather than inventing a verdict.
+  if (!weight) return null;
+
+  const pct = Math.round((score / weight) * 100);
+  let stars = pct >= 75 ? 3 : pct >= 50 ? 2 : 1;
+  if (anyRedFlags && stars > 1) {
+    stars = 1;
+    basis.push('Red flag raised by a panellist');
+  }
+
+  return {
+    stars,
+    score: pct,
+    label: stars === 3 ? 'Strong fit' : stars === 2 ? 'Possible fit' : 'Weak fit',
+    basis,
+    // How much of the picture this rating actually saw, so the UI can flag a
+    // rating resting on a single signal rather than presenting all alike.
+    confidence: weight >= 75 ? 'high' : weight >= 50 ? 'medium' : 'low',
+  };
+}
+
 /* Days a seat took to fill, measured from the day it fell vacant to the day a
    candidate was selected into it. Called at claim time, while vacant_since is
    still readable — it is cleared in the same update. */

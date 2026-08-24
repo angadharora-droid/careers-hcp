@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { inr, fmtDate, band } from '../lib/format';
 import { exportCSV } from '../lib/export';
+import { exportExcel } from '../lib/excel';
 import { ErrorBox, Empty, TableSkeleton, Spinner } from '../components/LoadState';
 import { BandPill } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
@@ -51,6 +52,8 @@ const REGISTER_CSV = [
   { header: 'Application ID', value: (r) => r.application_id },
   { header: 'Date', value: (r) => r.date },
   { header: 'Candidate Name', value: (r) => r.candidate_name },
+  { header: 'Fit (1-3)', value: (r) => r.fit?.stars ?? '' },
+  { header: 'Fit Label', value: (r) => r.fit?.label ?? '' },
   { header: 'Mobile No.', value: (r) => r.mobile },
   { header: 'Source', value: (r) => r.source },
   { header: 'Qualification', value: (r) => r.qualification },
@@ -84,12 +87,49 @@ function regDate(d) {
   return `${p(x.getDate())}-${p(x.getMonth() + 1)}-${x.getFullYear()}`;
 }
 
+/* ===== Fit rating — 1-3 stars, computed server-side =====
+   Same reading as the coloured Excel export: panel verdict once one exists,
+   affordability of the expectation, and how much of the experience is hotel
+   experience. Null (no stars) means nothing on file to judge on — an honest
+   blank, not a one-star verdict. */
+
+const FIT_TONES = {
+  3: 'text-brand-green',
+  2: 'text-brand-amber',
+  1: 'text-brand-red',
+};
+
+const FIT_ROW_TINT = {
+  3: 'reg-fit-3',
+  2: 'reg-fit-2',
+  1: 'reg-fit-1',
+};
+
+function FitStars({ fit }) {
+  if (!fit) {
+    return <span className="mini" title="No signals on file yet — screening details or a panel score start the rating">not rated</span>;
+  }
+  const full = '★'.repeat(fit.stars);
+  const empty = '☆'.repeat(3 - fit.stars);
+  return (
+    <span
+      className={`whitespace-nowrap font-semibold ${FIT_TONES[fit.stars]}`}
+      title={`${fit.label} (${fit.score}/100${fit.confidence !== 'high' ? `, ${fit.confidence} confidence` : ''}) — ${fit.basis.join(' · ')}`}
+    >
+      <span aria-hidden="true" className="text-[14px] tracking-[1px]">{full}</span>
+      <span aria-hidden="true" className="text-[14px] tracking-[1px] opacity-40">{empty}</span>
+      <span className="sr-only">{fit.stars} of 3 stars — {fit.label}</span>
+    </span>
+  );
+}
+
 /* ===== Sorting =====
    The register is kept in the order applications arrived, and `Sr.` is the
    permanent serial that order assigned — so sorting reorders the ROWS on screen
    without ever renumbering them. Clearing the sort returns to register order. */
 
 const SORTS = {
+  fit: { get: (r) => (r.fit ? r.fit.stars * 1000 + r.fit.score : null) },
   date: { get: (r) => new Date(r.applied_on).getTime() },
   candidate_name: { get: (r) => r.candidate_name || '', string: true },
   qualification: { get: (r) => r.qualification || '', string: true },
@@ -258,6 +298,7 @@ const FUNNEL = [
   { key: 'selected', label: 'Selected', tone: 'green', match: (r) => r.final_decision === 'Selected' },
   { key: 'rejected', label: 'Rejected', tone: 'red', match: (r) => r.final_decision === 'Rejected' },
   { key: 'flagged', label: 'Talent pool / closed', tone: 'muted', match: (r) => Boolean(r.register_flag) },
+  { key: 'bestfit', label: '★★★ Best fit', tone: 'green', match: (r) => r.fit?.stars === 3 },
 ];
 
 const FUNNEL_TONE = {
@@ -271,7 +312,7 @@ const FUNNEL_TONE = {
 
 function FunnelStrip({ rows, active, onPick }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mb-4">
+    <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-2 mb-4">
       {FUNNEL.map((f) => {
         const n = rows.filter(f.match).length;
         const on = active === f.key;
@@ -752,6 +793,8 @@ export default function ApplicationRegisterPage() {
     );
   }
 
+  const [xlsxBusy, setXlsxBusy] = useState(false);
+
   const header = reg?.header;
   const rows = reg?.rows || [];
 
@@ -771,6 +814,53 @@ export default function ApplicationRegisterPage() {
   const narrowed = Boolean(funnel || rowQ.trim());
   const csvName = `application-register-${slug(designation || header?.designation || jobCode)}-${slug(jobCode)}.csv`;
 
+  /* The Excel export carries what CSV cannot: each row tinted by fit, three-star
+     candidates bold, a legend at the foot. Exports the rows as currently
+     filtered and sorted, so what downloads is what was on screen. */
+  async function exportXlsx() {
+    setXlsxBusy(true);
+    try {
+      await exportExcel(
+        csvName.replace(/\.csv$/, '.xlsx'),
+        [
+          { header: 'Sr.', value: (r) => r.sr, width: 5 },
+          { header: 'Application ID', value: (r) => r.application_id, width: 14 },
+          { header: 'Date', value: (r) => r.date, width: 10 },
+          { header: 'Candidate Name', value: (r) => r.candidate_name, width: 20 },
+          { header: 'Fit', value: (r) => (r.fit ? '★'.repeat(r.fit.stars) : ''), width: 7 },
+          { header: 'Fit Reading', value: (r) => r.fit?.label ?? 'Not rated', width: 12 },
+          { header: 'Mobile No.', value: (r) => r.mobile, width: 13 },
+          { header: 'Source', value: (r) => r.source, width: 10 },
+          { header: 'Qualification', value: (r) => r.qualification, width: 14 },
+          { header: 'Total Exp. (yrs)', value: (r) => r.total_experience_years ?? '', width: 9 },
+          { header: 'Hotel Exp. (yrs)', value: (r) => r.relevant_hotel_experience_years ?? '', width: 9 },
+          { header: 'Current / Last Employer', value: (r) => r.current_employer, width: 20 },
+          { header: 'Current Salary', value: (r) => r.current_salary ?? '', width: 12, numFmt: '#,##0' },
+          { header: 'Expected Salary', value: (r) => r.expected_salary ?? '', width: 12, numFmt: '#,##0' },
+          { header: 'Expected vs Band', value: (r) => r.expected_salary_standing ?? '', width: 12 },
+          { header: 'Notice Period', value: (r) => r.notice_period, width: 11 },
+          { header: 'Screening', value: (r) => r.screening, width: 12 },
+          { header: 'Interview Status', value: (r) => r.interview_status, width: 16 },
+          { header: 'Panel Avg', value: (r) => r.panel_average ?? '', width: 9 },
+          { header: 'Final Decision', value: (r) => r.final_decision, width: 12 },
+          { header: 'Remarks', value: (r) => r.remarks, width: 22 },
+        ],
+        shown,
+        {
+          sheetName: 'Application Register',
+          title: `APPLICATION REGISTER — ${(designation || header?.designation || '').toUpperCase()}`,
+          subtitle: `${header?.job_code || jobCode} · ${header?.department || ''} · exported ${new Date().toLocaleDateString('en-IN')}`,
+          fitOf: (r) => r.fit?.stars ?? null,
+        }
+      );
+      toast('Excel register downloaded');
+    } catch (e) {
+      toast(`Excel export failed: ${e.message}`, 'error');
+    } finally {
+      setXlsxBusy(false);
+    }
+  }
+
   return (
     <div>
       <div className="no-print">
@@ -788,10 +878,20 @@ export default function ApplicationRegisterPage() {
                 className="btn btn-ghost btn-sm"
                 onClick={() => exportCSV(csvName, REGISTER_CSV, shown)}
                 disabled={shown.length === 0}
-                title="Download Section A as a CSV spreadsheet"
+                title="Plain CSV — no colours, opens anywhere"
               >
                 <Download size={13} />
-                Export CSV
+                CSV
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => exportXlsx()}
+                disabled={shown.length === 0 || xlsxBusy}
+                title="Excel workbook with the best-fitted candidates highlighted"
+              >
+                <Download size={13} />
+                {xlsxBusy ? 'Building…' : 'Excel'}
               </button>
               <button type="button" className="btn btn-sm" onClick={() => window.print()} disabled={!reg}>
                 <Printer size={13} />
@@ -901,6 +1001,7 @@ export default function ApplicationRegisterPage() {
                       <th className="reg-group rf rf2" colSpan={1}>Identity</th>
                       <th className="reg-group rf rf3" aria-hidden="true" />
                       <th className="reg-group rf rf4" aria-hidden="true" />
+                      <th className="reg-group">Fit</th>
                       <th className="reg-group" colSpan={3}>Applicant</th>
                       <th className="reg-group" colSpan={2}>Experience</th>
                       <th className="reg-group" colSpan={4}>Current terms</th>
@@ -913,6 +1014,7 @@ export default function ApplicationRegisterPage() {
                       <th className="rf rf2">Application ID</th>
                       <SortHeader id="date" sort={sort} onSort={toggleSort} className="rf rf3">Date</SortHeader>
                       <SortHeader id="candidate_name" sort={sort} onSort={toggleSort} className="rf rf4">Candidate Name</SortHeader>
+                      <SortHeader id="fit" sort={sort} onSort={toggleSort} title="Sort weakest fit first — click again for best first">Fit</SortHeader>
                       <th>Mobile No.</th>
                       <th>Source</th>
                       <SortHeader id="qualification" sort={sort} onSort={toggleSort}>Qualification</SortHeader>
@@ -931,7 +1033,7 @@ export default function ApplicationRegisterPage() {
                   </thead>
                   <tbody>
                     {shown.map((r) => (
-                      <tr key={r.id}>
+                      <tr key={r.id} className={r.fit ? FIT_ROW_TINT[r.fit.stars] : undefined}>
                         <td className="num rf rf1">{r.sr}</td>
                         <td className="rf rf2">
                           <span className="font-mono font-bold text-berry text-xs">{r.application_id}</span>
@@ -946,6 +1048,7 @@ export default function ApplicationRegisterPage() {
                           <b className="text-ink">{r.candidate_name}</b>
                           {r.pcn && <div className="mini font-mono">{r.pcn}</div>}
                         </td>
+                        <td><FitStars fit={r.fit} /></td>
                         <td className="whitespace-nowrap tabular-nums">{r.mobile}</td>
                         <td>{r.source || '—'}</td>
                         <td>{r.qualification || '—'}</td>

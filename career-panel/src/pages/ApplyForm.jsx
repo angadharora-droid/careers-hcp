@@ -42,9 +42,12 @@ const EMPTY_FORM = {
   gender: '',
   qualification: '',
   total_experience_years: '',
+  relevant_hotel_experience_years: '',
+  current_employer: '',
   current_designation: '',
   years_in_current_firm: '',
   current_salary: '',
+  notice_period: '',
   expected_salary: '',
   willing_to_relocate: '',
   needs_accommodation: '',
@@ -59,7 +62,9 @@ const FIELD_ORDER = Object.keys(EMPTY_FORM);
 
 // A candidate who declares 0 years of experience has no current employer to
 // describe, so these three stop being required for them.
-const CURRENT_EMPLOYMENT_FIELDS = ['current_designation', 'years_in_current_firm', 'current_salary'];
+const CURRENT_EMPLOYMENT_FIELDS = [
+  'current_employer', 'current_designation', 'years_in_current_firm', 'current_salary', 'notice_period',
+];
 const FRESHER_HINT = 'Not needed for freshers.';
 
 const isFresher = (form) => {
@@ -108,7 +113,23 @@ const VALIDATORS = {
     label: 'Experience',
     max: 50,
   }),
+  // Hotel years cannot exceed total years — the form catches the slip before
+  // the server does. 0 is a real answer (career-changers exist).
+  relevant_hotel_experience_years: (v, form) => {
+    const t = String(v).trim();
+    if (!t) return 'Please enter your hotel-industry experience — 0 if none yet.';
+    const n = Number(t);
+    if (!Number.isFinite(n)) return 'Hotel experience must be a number.';
+    if (n < 0) return 'Hotel experience cannot be negative.';
+    const total = Number(String(form?.total_experience_years ?? '').trim());
+    if (Number.isFinite(total) && n > total) {
+      return 'Hotel experience cannot be more than your total experience.';
+    }
+    return '';
+  },
+  current_employer: requiredText('Please enter the name of your current or last employer.'),
   current_designation: requiredText('Please enter your current or last designation.'),
+  notice_period: requiredText("Please tell us your notice period — 'Immediate' if you can join right away."),
   years_in_current_firm: requiredNumber({
     missing: 'Please enter how long you have been with your current firm.',
     label: 'Years in current firm',
@@ -378,6 +399,7 @@ export default function ApplyForm() {
 
   const addFiles = (picked) => {
     const problems = [];
+    setFileError('');
     const next = [...files];
     for (const f of Array.from(picked || [])) {
       const ext = (f.name.split('.').pop() || '').toLowerCase();
@@ -428,6 +450,13 @@ export default function ApplyForm() {
       setErrors(nextErrors);
       const firstInvalid = FIELD_ORDER.find((name) => nextErrors[name]);
       focusField(fieldRefs.current[firstInvalid]);
+      return;
+    }
+    // The CV is the one document screening cannot proceed without.
+    if (files.length === 0) {
+      setFileError('Please attach your CV (PDF) — an application cannot be screened without it.');
+      dropZoneRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      dropZoneRef.current?.focus();
       return;
     }
 
@@ -562,6 +591,29 @@ export default function ApplyForm() {
                 {...fieldProps('total_experience_years')}
               />
               <TextField
+                label="Hotel-industry experience (years)"
+                name="relevant_hotel_experience_years"
+                required
+                type="number"
+                inputMode="decimal"
+                min="0"
+                max="50"
+                step="0.5"
+                placeholder="0 if none yet"
+                hint="Of your total experience, how much was in hotels?"
+                {...fieldProps('relevant_hotel_experience_years')}
+              />
+              <TextField
+                label="Current / last employer"
+                name="current_employer"
+                required={!fresher}
+                hint={fresher ? FRESHER_HINT : undefined}
+                type="text"
+                autoComplete="organization"
+                placeholder="e.g. Hotel Grand Residency"
+                {...fieldProps('current_employer')}
+              />
+              <TextField
                 label="Current / last designation"
                 name="current_designation"
                 required={!fresher}
@@ -603,6 +655,15 @@ export default function ApplyForm() {
                 min="0"
                 placeholder="e.g. 18000"
                 {...fieldProps('expected_salary')}
+              />
+              <TextField
+                label="Notice period"
+                name="notice_period"
+                required={!fresher}
+                hint={fresher ? FRESHER_HINT : undefined}
+                type="text"
+                placeholder="e.g. 30 days / Immediate"
+                {...fieldProps('notice_period')}
               />
             </div>
           </FormSection>
@@ -702,7 +763,7 @@ export default function ApplyForm() {
             </div>
           </FormSection>
 
-          <FormSection title="Documents">
+          <FormSection title="Documents" required>
             <input
               ref={fileInputRef}
               type="file"
@@ -750,7 +811,7 @@ export default function ApplyForm() {
                   : 'Click to choose files, or drag & drop here'}
               </p>
               <p className="mt-1 text-[12px] text-muted">
-                CV and certificates (optional) · PDF only · up to {MAX_FILES} files · 5 MB each
+                CV required, certificates welcome · PDF only · up to {MAX_FILES} files · 5 MB each
               </p>
             </div>
 
