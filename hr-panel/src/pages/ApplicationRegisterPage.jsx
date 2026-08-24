@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
-import { inr, fmtDate } from '../lib/format';
+import { inr, fmtDate, band } from '../lib/format';
 import { exportCSV } from '../lib/export';
 import { ErrorBox, Empty, TableSkeleton, Spinner } from '../components/LoadState';
+import { BandPill } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
 import ApplicantDrawer from '../components/ApplicantDrawer';
 import {
@@ -362,7 +363,15 @@ function SelectionRecord({ record, onSaved }) {
             {record.recommended_salary == null ? (
               <span className="mini">not set — record the offered salary on the application first</span>
             ) : (
-              <b>{inr(record.recommended_salary)} per month</b>
+              <span className="inline-flex items-center gap-2 flex-wrap">
+                <b>{inr(record.recommended_salary)} per month</b>
+                <BandPill standing={record.band_standing} />
+              </span>
+            )}
+            {record.salary_band && (
+              <div className="mini mt-1">
+                Sanctioned band for this seat: {band(record.salary_band.min, record.salary_band.max)}
+              </div>
             )}
           </DerivedRow>
           <DerivedRow label="Interviewed By">

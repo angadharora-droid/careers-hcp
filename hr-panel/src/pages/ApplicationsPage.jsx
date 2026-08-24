@@ -6,7 +6,7 @@ import { ErrorBox, Empty, TableSkeleton } from '../components/LoadState';
 import { StageBadge } from '../components/Badges';
 import ApplicantDrawer from '../components/ApplicantDrawer';
 import PageHeader from '../components/PageHeader';
-import { Search, AlertTriangle, Flag, Users, Download } from '../components/Icons';
+import { Search, AlertTriangle, Flag, Users, Download, MessageSquare } from '../components/Icons';
 
 const STAGES = ['Applied', 'Interview Scheduled', 'Selected', 'Rejected', 'On Hold'];
 
@@ -32,6 +32,7 @@ const APP_CSV = [
   { header: 'Date of Joining', value: (a) => a.date_of_joining || '' },
   { header: 'Offered Salary', value: (a) => a.offered_salary ?? '' },
   { header: 'PCN', value: (a) => a.pcn || '' },
+  { header: 'Notes', value: (a) => a.comment_count || 0 },
 ];
 
 export function ScoreCell({ summary }) {
@@ -259,7 +260,7 @@ export default function ApplicationsPage() {
               <thead>
                 <tr>
                   <th>Applicant</th><th>Job Code</th><th>Designation</th><th className="num">Exp</th>
-                  <th>Stage</th><th>Panel Score</th><th><span className="sr-only">Actions</span></th>
+                  <th>Stage</th><th>Panel Score</th><th className="num">Notes</th><th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -283,6 +284,14 @@ export default function ApplicationsPage() {
                       {a.stage === 'Selected' && a.pcn && <div className="mini font-mono">{a.pcn}</div>}
                     </td>
                     <td><ScoreCell summary={a.score_summary} /></td>
+                    <td className="num">
+                      {a.comment_count > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-body" title={`${a.comment_count} note${a.comment_count === 1 ? '' : 's'}`}>
+                          <MessageSquare size={12} className="text-muted" />
+                          <b className="tabular-nums">{a.comment_count}</b>
+                        </span>
+                      ) : <span className="mini">—</span>}
+                    </td>
                     <td>
                       <button type="button" className="btn btn-sm" onClick={() => setOpenId(a.id)}>Open</button>
                     </td>

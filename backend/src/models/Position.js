@@ -19,12 +19,19 @@ const positionSchema = new mongoose.Schema(
     department: { type: String, required: true },
     reports_to: { type: String, default: '' },
     cost_centre: { type: String, default: '' },
+    // The sanctioned salary band. An offer is judged under / within / over this
+    // band — there is no separate budgeted figure to drift out of step with it.
     salary_min: { type: Number, default: 0 },
     salary_max: { type: Number, default: 0 },
-    budgeted_salary: { type: Number, default: 0 },
     status: { type: String, enum: POSITION_STATUSES, default: 'Vacant' },
     occupant_name: { type: String, default: '' },
     vacant_since: { type: Date, default: null },
+    /* Time-to-fill, stamped when a selection claims the seat. `vacant_since` is
+       cleared in the same moment, so the elapsed days are RECORDED here rather
+       than recomputed later — that keeps the dashboard average stable even after
+       the seat is handed back and refilled. */
+    filled_on: { type: Date, default: null },
+    days_to_fill: { type: Number, default: null },
     replacement_sla_days: { type: Number, default: 30 },
     is_critical: { type: Boolean, default: false },
     is_revenue_generating: { type: Boolean, default: false },

@@ -63,6 +63,19 @@ const applicationSchema = new mongoose.Schema(
     offer_sent_at: { type: Date, default: null },
     offer_sent_to: { type: String, default: '' },
     applied_on: { type: Date, default: Date.now },
+    /* Every time HR pushes this application to a different role, the role it came
+       from is recorded here. The reference_id never changes, so control point 1
+       (one unique Application ID per application) survives the move. */
+    move_history: [{
+      from_job_code: String,
+      from_designation: String,
+      from_stage: String,
+      from_rejection_reason: String,
+      moved_by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      moved_by_name: String,
+      note: String,
+      moved_at: { type: Date, default: Date.now },
+    }],
     // Application Register, Section A — HR's running note on the row.
     remarks: { type: String, default: '' },
     /* Application Register, Section B — Selection and Approval Record.

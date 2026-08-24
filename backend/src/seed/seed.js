@@ -127,7 +127,6 @@ export async function seedIfEmpty() {
         cost_centre: r.dept,
         salary_min: r.min,
         salary_max: r.max,
-        budgeted_salary: r.max,
         status: 'Vacant',
         vacant_since: VACANT_SINCE,
         replacement_sla_days: r.crit ? 15 : 30,

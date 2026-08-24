@@ -4,11 +4,12 @@ import Application, { STAGES, REJECTION_REASONS } from '../models/Application.js
 import Position from '../models/Position.js';
 import PanelAssignment from '../models/PanelAssignment.js';
 import PanelScore from '../models/PanelScore.js';
+import ApplicationComment from '../models/ApplicationComment.js';
 import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
   RECRUITABLE_STATUSES, recruitable, roundsForGrade, scoreSummary, wordCount,
-  applyPanelRule, resolvePanelRule,
+  applyPanelRule, resolvePanelRule, daysToFill, bandStanding,
 } from '../utils/helpers.js';
 import { buildOfferLetter } from '../utils/offerLetter.js';
 import { isEmailConfigured, sendMail } from '../utils/mailer.js';
@@ -18,13 +19,20 @@ const router = Router();
 router.use(requireAuth);
 
 async function withDerived(app) {
-  const [scores, assignments, rounds] = await Promise.all([
+  const [scores, assignments, rounds, commentCount, seat] = await Promise.all([
     PanelScore.find({ application_id: app._id }),
     PanelAssignment.find({ application_id: app._id }).populate('interviewer_user_id', 'name email department designation'),
     roundsForGrade(app.grade),
+    ApplicationComment.countDocuments({ application_id: app._id }),
+    app.position_id ? Position.findById(app.position_id, 'salary_min salary_max') : null,
   ]);
   const o = app.toObject({ versionKey: false });
   o.id = o._id;
+  o.comment_count = commentCount;
+  /* Where the actual offer sits against the seat's sanctioned band. Only a
+     Selected candidate holds a seat, so this is null everywhere else. */
+  o.salary_band = seat ? { min: seat.salary_min, max: seat.salary_max } : null;
+  o.band_standing = seat ? bandStanding(app.offered_salary, seat.salary_min, seat.salary_max) : null;
   o.rounds = rounds;
   o.panel_size = rounds; // retained for existing clients
   o.score_summary = scoreSummary(scores, rounds);
@@ -192,18 +200,28 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
     const seatFilter = position_id
       ? { _id: position_id, job_code: app.job_code, designation: app.designation, status: { $in: RECRUITABLE_STATUSES } }
       : { job_code: app.job_code, designation: app.designation, status: { $in: RECRUITABLE_STATUSES } };
-    // Atomic claim of the seat: filter includes the recruitable check, so a
-    // concurrent selection cannot double-fill the same PCN.
+    /* Atomic claim of the seat: filter includes the recruitable check, so a
+       concurrent selection cannot double-fill the same PCN. `new: false` returns
+       the PRE-claim document, which is the only place vacant_since still holds a
+       value — the update clears it, and time-to-fill is measured from it. */
     const seat = await Position.findOneAndUpdate(
       seatFilter,
       { status: 'Filled', occupant_name: app.candidate_name, vacant_since: null },
-      { new: true, sort: { pcn: 1 } }
+      { new: false, sort: { pcn: 1 } }
     );
     if (!seat) {
       return res.status(400).json({
         error: 'Recruitment gate CLOSED: no seat under this job code is Vacant or Under Recruitment.',
       });
     }
+    /* Stamp how long the seat took to fill. A second write, but the seat is
+       already claimed by now, so nothing can race it — and it keeps the claim
+       itself a single atomic compare-and-set. */
+    const filledOn = new Date();
+    await Position.findByIdAndUpdate(seat._id, {
+      filled_on: filledOn,
+      days_to_fill: daysToFill(seat.vacant_since, filledOn),
+    });
     try {
       app.stage = 'Selected';
       app.position_id = seat._id;
@@ -215,16 +233,19 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
       }
       await app.save();
     } catch (err) {
-      // Roll the seat back so position + application can't desync.
+      // Roll the seat back so position + application can't desync — including
+      // the time-to-fill stamps written just above, for a fill that did not stick.
       await Position.findByIdAndUpdate(seat._id, {
-        status: 'Under Recruitment', occupant_name: '', vacant_since: null,
+        status: 'Under Recruitment', occupant_name: '', vacant_since: seat.vacant_since,
+        filled_on: null, days_to_fill: null,
       });
       return res.status(500).json({ error: 'Selection failed, position rolled back: ' + err.message });
     }
     // Hand back the seat this candidate used to hold, so they never occupy two.
     if (previousSeatId && String(previousSeatId) !== String(seat._id)) {
       await Position.findByIdAndUpdate(previousSeatId, {
-        status: 'Under Recruitment', occupant_name: '', vacant_since: null,
+        status: 'Under Recruitment', occupant_name: '', vacant_since: new Date(),
+        filled_on: null, days_to_fill: null,
       });
     }
     return res.json({ application: await withDerived(app), filled_pcn: seat.pcn });
@@ -233,8 +254,9 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
   // If a previously Selected candidate is moved back out, release their seat.
   if (app.stage === 'Selected' && stage !== 'Selected' && app.position_id) {
     await Position.findByIdAndUpdate(app.position_id, {
-      status: 'Under Recruitment', occupant_name: '', vacant_since: null,
-    });
+        status: 'Under Recruitment', occupant_name: '', vacant_since: new Date(),
+        filled_on: null, days_to_fill: null,
+      });
     app.position_id = null;
     app.pcn = '';
   }
@@ -493,6 +515,157 @@ router.get('/:id/panel-rule', requireRole('hr_admin'), async (req, res) => {
       })),
     },
   });
+});
+
+/* ===== Shared thread: comments (HR + assigned interviewers, both ways) ===== */
+
+/* Same access rule as the scores read: HR sees every application, an interviewer
+   only the candidates they were appointed to. Returns the application, or null
+   when this user has no business reading it. */
+async function readableApplication(req, id) {
+  if (!mongoose.isValidObjectId(id)) return null;
+  const app = await Application.findById(id);
+  if (!app) return null;
+  if (req.user.hasRole('hr_admin')) return app;
+  const assigned = await PanelAssignment.findOne({
+    application_id: app._id, interviewer_user_id: req.user._id,
+  });
+  return assigned ? app : null;
+}
+
+const commentJSON = (c) => ({
+  id: c._id,
+  author: { id: c.author_user_id, name: c.author_name, role: c.author_role, designation: c.author_designation },
+  body: c.body,
+  created_at: c.created_at,
+});
+
+// GET /api/applications/:id/comments — oldest first, the way a thread reads
+router.get('/:id/comments', async (req, res) => {
+  const app = await readableApplication(req, req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  const comments = await ApplicationComment.find({ application_id: app._id }).sort('created_at');
+  res.json({ comments: comments.map(commentJSON) });
+});
+
+// POST /api/applications/:id/comments  { body }
+// HR and the candidate's own panellists both post here — one shared thread, so a
+// note left by either side is on the record everyone working the candidate reads.
+router.post('/:id/comments', async (req, res) => {
+  const app = await readableApplication(req, req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  const body = String((req.body || {}).body || '').trim();
+  if (!body) return res.status(400).json({ error: 'Write something before posting' });
+  if (body.length > 2000) return res.status(400).json({ error: 'A comment is at most 2000 characters' });
+  const c = await ApplicationComment.create({
+    application_id: app._id,
+    author_user_id: req.user._id,
+    author_name: req.user.name,
+    // The hat they are wearing: a dual-role user posting from the HR panel signs as HR.
+    author_role: req.user.hasRole('hr_admin') ? 'hr_admin' : 'interviewer',
+    author_designation: req.user.designation || '',
+    body,
+  });
+  res.status(201).json({ comment: commentJSON(c) });
+});
+
+// DELETE /api/applications/:id/comments/:commentId — author removes their own;
+// HR can remove any, since HR owns the record the thread hangs off.
+router.delete('/:id/comments/:commentId', async (req, res) => {
+  const app = await readableApplication(req, req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  if (!mongoose.isValidObjectId(req.params.commentId)) {
+    return res.status(404).json({ error: 'Comment not found' });
+  }
+  const c = await ApplicationComment.findOne({ _id: req.params.commentId, application_id: app._id });
+  if (!c) return res.status(404).json({ error: 'Comment not found' });
+  const mine = String(c.author_user_id) === String(req.user._id);
+  if (!mine && !req.user.hasRole('hr_admin')) {
+    return res.status(403).json({ error: 'You can only delete your own comment' });
+  }
+  await c.deleteOne();
+  res.json({ ok: true });
+});
+
+/* ===== HR: push an application to a different role ===== */
+
+// POST /api/applications/:id/move  { job_code, designation, note? }
+// The candidate applied to the wrong role, or is a better fit elsewhere. The
+// application ID is KEPT (control point 1) and the old role is recorded in
+// move_history, so the register still shows where the candidate came from.
+router.post('/:id/move', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+
+  const job_code = String((req.body || {}).job_code || '').trim();
+  const designation = String((req.body || {}).designation || '').trim();
+  const note = String((req.body || {}).note || '').trim();
+  if (!job_code || !designation) {
+    return res.status(400).json({ error: 'Target job_code and designation are required' });
+  }
+  if (job_code === app.job_code && designation === app.designation) {
+    return res.status(400).json({ error: 'The application is already against that role' });
+  }
+  if (note.length > 300) return res.status(400).json({ error: 'Move note must be 300 characters or fewer' });
+
+  /* An interview already scored was scored against the OLD scorecard — a different
+     grade runs a different number of rounds, and a different department a different
+     competency profile. Rather than carry forward a score that no longer means what
+     it says, the move is refused outright. */
+  const scored = await PanelScore.countDocuments({ application_id: app._id });
+  if (scored > 0) {
+    return res.status(400).json({
+      error: `Cannot move: ${scored} interview round(s) have already been scored against ${app.designation}, `
+        + 'on the scorecard for that role. Reject this application and ask the candidate to apply to the other role.',
+    });
+  }
+  if (app.stage === 'Selected') {
+    return res.status(400).json({
+      error: 'Cannot move a Selected candidate — move them out of Selected first, which releases their seat.',
+    });
+  }
+
+  // The target must be a real role with a seat open to recruit into.
+  const target = await Position.findOne({
+    job_code, designation, status: { $in: RECRUITABLE_STATUSES },
+  }).sort({ pcn: 1 });
+  if (!target) {
+    return res.status(400).json({
+      error: `No seat under ${designation} (${job_code}) is Vacant or Under Recruitment, so there is nothing to move the application to.`,
+    });
+  }
+
+  app.move_history.push({
+    from_job_code: app.job_code,
+    from_designation: app.designation,
+    from_stage: app.stage,
+    from_rejection_reason: app.rejection_reason || '',
+    moved_by: req.user._id,
+    moved_by_name: req.user.name,
+    note,
+  });
+
+  // Take the whole role snapshot from the target seat — leaving a stale grade or
+  // competency_profile behind would hand the candidate the wrong scorecard.
+  app.job_code = target.job_code;
+  app.designation = target.designation;
+  app.department = target.department;
+  app.grade = target.grade;
+  app.job_family = target.job_family || '';
+  app.competency_profile = target.competency_profile ?? null;
+  app.unit = target.unit;
+  app.unit_code = target.unit_code;
+
+  /* The move is a fresh start against the new role: any panel appointed for the
+     old one is dropped (none of it is scored — that was refused above), and the
+     application returns to Applied with its interview date and rejection cleared. */
+  await PanelAssignment.deleteMany({ application_id: app._id });
+  app.stage = 'Applied';
+  app.interview_date = '';
+  app.rejection_reason = '';
+  await app.save();
+
+  res.json({ application: await withDerived(app), moved_to: { job_code, designation, grade: target.grade } });
 });
 
 /* ===== Shared read: panel comparison (HR + assigned interviewers) ===== */

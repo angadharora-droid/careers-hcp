@@ -4,6 +4,7 @@ import { api, downloadDocument } from '../lib/api';
 import { formatDate, recommendationFor } from '../lib/format';
 import { useToast } from '../context/ToastContext';
 import ConfirmDialog from '../components/ConfirmDialog';
+import CommentThread from '../components/CommentThread';
 import {
   btnGhost,
   btnGreen,
@@ -443,9 +444,15 @@ export default function ScoreCandidate() {
         </div>
       </Card>
 
+      {/* Shared notes — People & Culture and this candidate's panel both post here.
+          Placed ABOVE the independence banner so it reads as logistics, not input. */}
+      <Card title="Notes" right="shared with People &amp; Culture">
+        <CommentThread applicationId={app.id} />
+      </Card>
+
       <InfoBanner>
         <b>Score independently.</b> Note on paper first, then enter — don't anchor on other
-        panellists.
+        panellists. Notes above are logistics, not other panellists' assessments.
       </InfoBanner>
 
       {stageLocked && (

@@ -4,7 +4,7 @@ import Position from '../models/Position.js';
 import PanelAssignment from '../models/PanelAssignment.js';
 import PanelScore from '../models/PanelScore.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { RECRUITABLE_STATUSES, roundsForGrade } from '../utils/helpers.js';
+import { RECRUITABLE_STATUSES, roundsForGrade, bandStanding } from '../utils/helpers.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
@@ -280,6 +280,9 @@ router.get('/', async (req, res) => {
       application_id: app.reference_id,
       recommended_designation: [app.designation, app.grade].filter(Boolean).join(' - '),
       recommended_salary: app.offered_salary ?? null,
+      // Control on the offer: where it sits against the seat's sanctioned band.
+      salary_band: seat ? { min: seat.salary_min, max: seat.salary_max } : null,
+      band_standing: seat ? bandStanding(app.offered_salary, seat.salary_min, seat.salary_max) : null,
       interviewed_by: asg
         .map((a) => a.interviewer_user_id?.designation || a.interviewer_user_id?.name)
         .filter(Boolean),

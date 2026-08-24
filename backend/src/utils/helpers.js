@@ -37,6 +37,33 @@ export function slaBreached(p) {
   return dv != null && p.replacement_sla_days != null && dv > p.replacement_sla_days;
 }
 
+/* Where an actual offer sits against the seat's sanctioned salary band.
+   Returns null when the band was never set (min and max both 0), so callers can
+   tell "no band on file" apart from "inside the band". */
+export function bandStanding(offered, min, max) {
+  if (offered == null || !Number.isFinite(Number(offered))) return null;
+  const lo = Number(min) || 0;
+  const hi = Number(max) || 0;
+  if (lo <= 0 && hi <= 0) return null;
+  const n = Number(offered);
+  if (hi > 0 && n > hi) return 'Over band';
+  if (lo > 0 && n < lo) return 'Under band';
+  return 'Within band';
+}
+
+/* Days a seat took to fill, measured from the day it fell vacant to the day a
+   candidate was selected into it. Called at claim time, while vacant_since is
+   still readable — it is cleared in the same update. */
+export function daysToFill(vacantSince, filledOn = new Date()) {
+  if (!vacantSince) return null;
+  const a = new Date(vacantSince);
+  const b = new Date(filledOn);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return null;
+  a.setHours(0, 0, 0, 0);
+  b.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.round((b - a) / 86400000));
+}
+
 export function recommendation(total) {
   if (total >= 85) return 'Strongly Recommend';
   if (total >= 70) return 'Recommend';

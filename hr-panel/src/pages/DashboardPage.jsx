@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import { inr } from '../lib/format';
+import { band } from '../lib/format';
 import { ErrorBox, Empty, TileSkeleton, CardSkeleton } from '../components/LoadState';
 import { StatusPill, FlagPill } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
@@ -11,7 +11,7 @@ import {
 
 const ALL_STATUSES = ['Filled', 'Under Recruitment', 'Vacant', 'Frozen', 'On Hold', 'Contract', 'Outsourced', 'Eliminated'];
 
-function Stat({ n, label, tone, icon: IconCmp, to }) {
+function Stat({ n, label, tone, icon: IconCmp, to, hint }) {
   // Quiet editorial tiles: serif black numbers; red is reserved for alerts (Past SLA / red flags).
   const color = tone === 'red' ? 'text-brand-red' : 'text-ink';
   const inner = (
@@ -21,6 +21,7 @@ function Stat({ n, label, tone, icon: IconCmp, to }) {
         {IconCmp && <IconCmp size={16} className="text-muted/70 mt-0.5" />}
       </div>
       <div className="font-button text-[11px] font-medium text-muted uppercase tracking-[1.5px] mt-2">{label}</div>
+      {hint && <div className="text-[10.5px] text-muted/80 mt-1 leading-snug">{hint}</div>}
     </>
   );
   if (to) {
@@ -76,7 +77,7 @@ export default function DashboardPage() {
     return (
       <div>
         {header}
-        <TileSkeleton count={7} />
+        <TileSkeleton count={8} />
         <CardSkeleton lines={4} />
         <CardSkeleton lines={6} />
       </div>
@@ -93,9 +94,10 @@ export default function DashboardPage() {
       under: acc.under + d.under_recruitment,
       vacant: acc.vacant + d.vacant,
       frozen: acc.frozen + d.frozen_or_hold,
-      budget: acc.budget + (d.budgeted_salary || 0),
+      bandMin: acc.bandMin + (d.band_min || 0),
+      bandMax: acc.bandMax + (d.band_max || 0),
     }),
-    { total: 0, filled: 0, under: 0, vacant: 0, frozen: 0, budget: 0 }
+    { total: 0, filled: 0, under: 0, vacant: 0, frozen: 0, bandMin: 0, bandMax: 0 }
   );
 
   return (
@@ -103,12 +105,22 @@ export default function DashboardPage() {
       {header}
 
       {/* KPI tiles — clickable drill-downs into the register / red-flag queue */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3 mb-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-8 gap-3 mb-4">
         <Stat n={data.positions_total} label="Positions (PCNs)" icon={Building} to="/register" />
         <Stat n={by.Filled || 0} label="Filled" icon={CheckCircle} to="/register?status=Filled" />
         <Stat n={by['Under Recruitment'] || 0} label="Under Recruitment" icon={Clock} to={`/register?status=${encodeURIComponent('Under Recruitment')}`} />
         <Stat n={by.Vacant || 0} label="Vacant (idle)" icon={AlertCircle} to="/register?status=Vacant" />
         <Stat n={data.avg_days_vacant} label="Avg Days Vacant" icon={Calendar} />
+        <Stat
+          n={data.filled_measured ? data.avg_days_to_fill : '—'}
+          label="Avg Days to Fill"
+          icon={Clock}
+          hint={
+            data.filled_measured
+              ? `Vacancy to selection, across ${data.filled_measured} filled seat${data.filled_measured === 1 ? '' : 's'}`
+              : 'No seat has been filled through the system yet'
+          }
+        />
         <Stat n={data.sla_breached_count} label="Past SLA" icon={AlertTriangle} tone={data.sla_breached_count > 0 ? 'red' : undefined} to="/register?breached=1" />
         <Stat n={data.red_flag_queue_count} label="Red-Flag Queue" icon={Flag} tone={data.red_flag_queue_count > 0 ? 'red' : undefined} to="/red-flags" />
       </div>
@@ -179,13 +191,13 @@ export default function DashboardPage() {
 
       {/* Manpower by department */}
       <div className="card">
-        <h2 className="card-h">Manpower by Department <span className="r">budget total {inr(data.budget_total)}/mo (excl. Eliminated)</span></h2>
+        <h2 className="card-h">Manpower by Department <span className="r">sanctioned band {band(data.band_min_total, data.band_max_total)}/mo (excl. Eliminated)</span></h2>
         <div className="tbl-scroll">
           <table className="tbl">
             <thead>
               <tr>
                 <th>Department</th><th className="num">Positions</th><th className="num">Filled</th><th className="num">Under Recruitment</th>
-                <th className="num">Vacant (idle)</th><th className="num">Frozen/Hold</th><th className="num">Budgeted Salary</th>
+                <th className="num">Vacant (idle)</th><th className="num">Frozen/Hold</th><th className="num">Salary Band ₹/mo</th>
               </tr>
             </thead>
             <tbody>
@@ -200,7 +212,7 @@ export default function DashboardPage() {
                   <td className="num text-brand-amber">{d.under_recruitment}</td>
                   <td className="num text-brand-red font-bold">{d.vacant}</td>
                   <td className="num">{d.frozen_or_hold}</td>
-                  <td className="num">{inr(d.budgeted_salary)}</td>
+                  <td className="num whitespace-nowrap">{band(d.band_min, d.band_max)}</td>
                 </tr>
               ))}
               {(data.departments || []).length > 0 && (
@@ -211,7 +223,7 @@ export default function DashboardPage() {
                   <td className="num text-brand-amber">{deptTotals.under}</td>
                   <td className="num text-brand-red">{deptTotals.vacant}</td>
                   <td className="num">{deptTotals.frozen}</td>
-                  <td className="num">{inr(deptTotals.budget)}</td>
+                  <td className="num whitespace-nowrap">{band(deptTotals.bandMin, deptTotals.bandMax)}</td>
                 </tr>
               )}
             </tbody>

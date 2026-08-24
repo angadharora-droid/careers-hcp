@@ -77,3 +77,17 @@ export function AssignmentChip({ status }) {
     </span>
   );
 }
+
+/* Where a hired salary sits against the seat's sanctioned band. Over is the one
+   that needs an eye on it, so it carries the alert colour; under band is amber
+   because it is usually a negotiation win but occasionally a retention risk. */
+const BAND_STYLES = {
+  'Within band': 'bg-brand-green/10 text-brand-green',
+  'Under band': 'bg-brand-amber/12 text-brand-amber',
+  'Over band': 'bg-brand-red/10 text-brand-red',
+};
+
+export function BandPill({ standing }) {
+  if (!standing) return null;
+  return <span className={`${CHIP} ${BAND_STYLES[standing] || 'bg-muted/12 text-muted'}`}>{standing}</span>;
+}

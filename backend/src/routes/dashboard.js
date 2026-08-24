@@ -16,6 +16,7 @@ router.get('/summary', async (_req, res) => {
   const byStatus = Object.fromEntries(POSITION_STATUSES.map((s) => [s, 0]));
   positions.forEach((p) => { byStatus[p.status] = (byStatus[p.status] || 0) + 1; });
 
+  const live = positions.filter((p) => p.status !== 'Eliminated');
   const vacant = positions.filter((p) => p.status === 'Vacant');
   const dvs = vacant.map(daysVacant).filter((x) => x != null);
   const aging = vacant
@@ -36,17 +37,28 @@ router.get('/summary', async (_req, res) => {
       under_recruitment: dp.filter((p) => p.status === 'Under Recruitment').length,
       vacant: dp.filter((p) => p.status === 'Vacant').length,
       frozen_or_hold: dp.filter((p) => ['Frozen', 'On Hold'].includes(p.status)).length,
-      budgeted_salary: dp.reduce((s, p) => s + (p.budgeted_salary || 0), 0),
+      // The department's sanctioned monthly salary band, summed across its seats.
+      band_min: dp.reduce((s, p) => s + (p.salary_min || 0), 0),
+      band_max: dp.reduce((s, p) => s + (p.salary_max || 0), 0),
     };
   });
 
   const pipeline = Object.fromEntries(STAGES.map((s) => [s, apps.filter((a) => a.stage === s).length]));
   const flaggedIds = await PanelScore.distinct('application_id', { 'red_flags.0': { $exists: true } });
 
+  /* Average time to fill — how long a seat took from falling vacant to a candidate
+     being selected into it. Only seats currently filled through this system carry
+     the stamp, so `filled_measured` reports how many rows the average stands on. */
+  const fillTimes = live.map((p) => p.days_to_fill).filter((n) => typeof n === 'number');
+
   res.json({
     positions_total: positions.length,
     by_status: byStatus,
-    budget_total: positions.filter((p) => p.status !== 'Eliminated').reduce((s, p) => s + (p.budgeted_salary || 0), 0),
+    // The sanctioned monthly salary band across every live seat.
+    band_min_total: live.reduce((s, p) => s + (p.salary_min || 0), 0),
+    band_max_total: live.reduce((s, p) => s + (p.salary_max || 0), 0),
+    avg_days_to_fill: fillTimes.length ? Math.round(fillTimes.reduce((a, b) => a + b, 0) / fillTimes.length) : 0,
+    filled_measured: fillTimes.length,
     avg_days_vacant: dvs.length ? Math.round(dvs.reduce((a, b) => a + b, 0) / dvs.length) : 0,
     sla_breached_count: vacant.filter(slaBreached).length,
     aging_vacancies: aging,

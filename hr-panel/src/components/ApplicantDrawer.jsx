@@ -3,12 +3,16 @@ import DetailModal from './DetailModal';
 import ConfirmDialog from './ConfirmDialog';
 import OfferDialog from './OfferDialog';
 import { ErrorBox, Skeleton, Loading } from './LoadState';
-import { AssignmentChip, RecChip, StageBadge } from './Badges';
+import CommentThread from './CommentThread';
+import MoveRoleDialog from './MoveRoleDialog';
+import { AssignmentChip, RecChip, StageBadge, BandPill } from './Badges';
 import { api, downloadDocument, previewDocument, uploadDocuments } from '../lib/api';
-import { inr, fmtDate } from '../lib/format';
+import { inr, fmtDate, band, bandStanding } from '../lib/format';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 import {
   Check, AlertTriangle, Flag, FileText, Download, Eye, Trash, ChevronDown, ChevronUp,
+  MessageSquare, Shuffle,
 } from './Icons';
 
 const RECRUITABLE = ['Vacant', 'Under Recruitment'];
@@ -164,6 +168,10 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  // Only your own comments carry a delete control.
+  const { user } = useAuth();
+  const currentUserId = user?.id;
   const attachInputRef = useRef(null);
 
   const applyApp = useCallback((application) => {
@@ -375,15 +383,17 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
   const gateOpen = openSeats.length > 0;
   const isSelected = app.stage === 'Selected' && app.pcn;
 
-  // Budgeted salary of the seat in play: the candidate's own seat once Selected,
-  // otherwise across the open seats under this job code (a range if they differ).
-  const budgetSeats = isSelected ? positions.filter((p) => p.pcn === app.pcn) : openSeats;
-  const budgets = [...new Set(budgetSeats.map((p) => p.budgeted_salary).filter((b) => b > 0))];
-  const budgetLabel = budgets.length === 0
-    ? null
-    : budgets.length === 1
-      ? inr(budgets[0])
-      : `${inr(Math.min(...budgets))} – ${inr(Math.max(...budgets))}`;
+  /* Sanctioned salary band of the seat in play: the candidate's own seat once
+     Selected, otherwise the widest band across the open seats under this job code.
+     An offer is judged against this — under, within or over. */
+  const bandSeats = isSelected ? positions.filter((p) => p.pcn === app.pcn) : openSeats;
+  const lows = bandSeats.map((p) => p.salary_min).filter((n) => n > 0);
+  const highs = bandSeats.map((p) => p.salary_max).filter((n) => n > 0);
+  const seatMin = lows.length ? Math.min(...lows) : 0;
+  const seatMax = highs.length ? Math.max(...highs) : 0;
+  const bandLabel = band(seatMin, seatMax);
+  // Only a real offer can sit against the band, so this is null until one is set.
+  const offerStanding = bandStanding(app.offered_salary, seatMin, seatMax);
 
   return (
     <DetailModal onClose={onClose} labelledBy="applicant-title">
@@ -398,6 +408,15 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
           <span className="mini">
             {app.designation} · Grade {app.grade} · {app.department}
           </span>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => setMoveOpen(true)}
+            title="Push this application to a different role"
+          >
+            <Shuffle size={12} />
+            Move role
+          </button>
         </div>
         <p className="mini mt-1">
           Ref <span className="font-mono font-bold">{app.reference_id}</span> · applied {fmtDate(app.applied_on)} ·{' '}
@@ -482,7 +501,15 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
                 <Info label="Total Exp">{app.total_experience_years ?? '—'}y</Info>
                 <Info label="Current Role">{app.current_designation || '—'} ({app.years_in_current_firm ?? '—'}y)</Info>
                 <Info label="Salary">{inr(app.current_salary)} → {inr(app.expected_salary)} expected</Info>
-                <Info label="Seat budget">{budgetLabel || '—'}</Info>
+                <Info label="Salary band">{bandLabel}</Info>
+                <Info label="Offered">
+                  {app.offered_salary == null ? '—' : (
+                    <span className="inline-flex items-center gap-1.5 flex-wrap">
+                      {inr(app.offered_salary)}
+                      <BandPill standing={offerStanding} />
+                    </span>
+                  )}
+                </Info>
                 <Info label="Relocate / Accom">{app.willing_to_relocate || '—'} / {app.needs_accommodation || '—'}</Info>
                 <Info label="Worked at CPH before">{app.worked_at_cph_before || '—'}</Info>
                 <Info label="Source">{app.source || '—'}</Info>
@@ -491,6 +518,43 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
               </div>
             </div>
           )}
+        </section>
+
+        {/* Role history — only once this application has actually been moved */}
+        {app.move_history?.length > 0 && (
+          <section className="mt-5">
+            <SectionHeading>Role history</SectionHeading>
+            <div className="mt-2">
+              {app.move_history.map((m, i) => (
+                <div key={`${m.moved_at}-${i}`} className="panel-box mt-0 mb-1.5">
+                  <div className="text-[12.5px] text-body">
+                    Moved from <b>{m.from_designation}</b> <span className="pcn">{m.from_job_code}</span>
+                    {m.from_stage && <> (was {m.from_stage})</>}
+                  </div>
+                  <div className="mini mt-1">
+                    {m.moved_by_name || 'HR'} · {fmtDate(m.moved_at)}
+                    {m.note && <> · {m.note}</>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Shared notes — HR and this candidate's panellists both post and read */}
+        <section className="mt-5">
+          <SectionHeading>
+            <span className="inline-flex items-center gap-1.5">
+              Notes
+              <MessageSquare size={13} className="text-muted" />
+              {app.comment_count > 0 && (
+                <span className="tabular-nums font-normal text-muted">{app.comment_count}</span>
+              )}
+            </span>
+          </SectionHeading>
+          <div className="mt-2">
+            <CommentThread applicationId={app.id} currentUserId={currentUserId} compact />
+          </div>
         </section>
 
         {/* Documents */}
@@ -839,6 +903,15 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
           onConfirm={() => { setPartialConfirm(null); saveStage(true); }}
         />
       )}
+      {moveOpen && (
+        <MoveRoleDialog
+          app={app}
+          positions={positions}
+          onClose={() => setMoveOpen(false)}
+          onMoved={async () => { await load(); onChanged(); }}
+        />
+      )}
+
       {deleteConfirm && (
         <ConfirmDialog
           title="Delete application?"

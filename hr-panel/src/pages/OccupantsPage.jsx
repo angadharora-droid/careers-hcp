@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import { inr } from '../lib/format';
+import { inr, band } from '../lib/format';
 import { ErrorBox, Empty, TableSkeleton, TileSkeleton } from '../components/LoadState';
-import { FlagPill } from '../components/Badges';
+import { FlagPill, BandPill } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { Search, X, UserCheck, Users, CheckCircle, AlertTriangle, Inbox } from '../components/Icons';
@@ -165,13 +165,13 @@ export default function OccupantsPage() {
             <thead>
               <tr>
                 <th>Occupant</th><th>PCN (seat)</th><th>Designation</th><th>Dept</th><th>Grade</th>
-                <th className="num">Budget ₹/mo</th><th>Selection</th><th><span className="sr-only">Actions</span></th>
+                <th className="num">Salary Band ₹/mo</th><th className="num">Hired At</th><th>Selection</th><th><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <Empty
                       icon={anyFilter ? Inbox : UserCheck}
                       title={anyFilter ? 'No occupants match' : 'No filled seats yet'}
@@ -208,7 +208,19 @@ export default function OccupantsPage() {
                     <td>{s.designation}</td>
                     <td>{s.department}</td>
                     <td>{s.grade}</td>
-                    <td className="num">{inr(s.budgeted_salary)}</td>
+                    <td className="num whitespace-nowrap">{band(s.salary_min, s.salary_max)}</td>
+                    <td className="num whitespace-nowrap">
+                      {s.application?.offered_salary == null ? (
+                        <span className="mini">—</span>
+                      ) : (
+                        <>
+                          {inr(s.application.offered_salary)}
+                          {s.application.band_standing && (
+                            <div className="mt-1"><BandPill standing={s.application.band_standing} /></div>
+                          )}
+                        </>
+                      )}
+                    </td>
                     <td>
                       {s.application ? (
                         <span className="inline-block px-2 py-0.5 rounded-sm text-[11px] font-semibold uppercase tracking-[1px] bg-brand-green/10 text-brand-green whitespace-nowrap">

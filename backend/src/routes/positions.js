@@ -2,7 +2,7 @@ import { Router } from 'express';
 import Position, { POSITION_STATUSES } from '../models/Position.js';
 import Application from '../models/Application.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached } from '../utils/helpers.js';
+import { nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached, bandStanding } from '../utils/helpers.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
@@ -57,13 +57,18 @@ router.get('/occupants', async (req, res) => {
       designation: p.designation,
       department: p.department,
       grade: p.grade,
-      budgeted_salary: p.budgeted_salary,
+      salary_min: p.salary_min,
+      salary_max: p.salary_max,
+      days_to_fill: p.days_to_fill,
+      filled_on: p.filled_on,
       application: a && {
         id: a._id,
         reference_id: a.reference_id,
         date_of_joining: a.date_of_joining,
         offered_salary: a.offered_salary,
         applied_on: a.applied_on,
+        // How the hired salary sits against this seat's sanctioned band.
+        band_standing: bandStanding(a.offered_salary, p.salary_min, p.salary_max),
       },
     });
   }
@@ -160,6 +165,9 @@ router.post('/:id/hand-back', async (req, res) => {
   p.status = 'Under Recruitment';
   p.occupant_name = '';
   p.vacant_since = new Date();
+  // The occupancy is over, so its time-to-fill no longer describes this seat.
+  p.filled_on = null;
+  p.days_to_fill = null;
   await p.save();
   res.json({ position: decorate(p) });
 });

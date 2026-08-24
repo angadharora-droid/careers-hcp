@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../lib/api';
-import { inr } from '../lib/format';
+import { band } from '../lib/format';
 import { exportCSV, stamp } from '../lib/export';
 import { ErrorBox, Empty, TableSkeleton } from '../components/LoadState';
 import { StatusPill, FlagPill } from '../components/Badges';
@@ -22,7 +22,6 @@ const POS_CSV = [
   { header: 'Grade', value: (p) => p.grade },
   { header: 'Department', value: (p) => p.department },
   { header: 'Reports To', value: (p) => p.reports_to || '' },
-  { header: 'Budget (monthly)', value: (p) => p.budgeted_salary ?? '' },
   { header: 'Salary Min', value: (p) => p.salary_min ?? '' },
   { header: 'Salary Max', value: (p) => p.salary_max ?? '' },
   { header: 'Status', value: (p) => p.status },
@@ -37,7 +36,7 @@ const POS_CSV = [
 // Client-side sortable columns
 const SORTS = {
   designation: { label: 'Designation', get: (p) => p.designation || '', string: true },
-  budget: { label: 'Budget', get: (p) => Number(p.budgeted_salary) || 0 },
+  band: { label: 'Salary Band', get: (p) => Number(p.salary_max) || Number(p.salary_min) || 0 },
   days: { label: 'Days Vacant', get: (p) => (p.days_vacant == null ? null : Number(p.days_vacant)) },
 };
 
@@ -211,7 +210,7 @@ export default function RegisterPage() {
 
       <div className="card">
         <div className="infobar">
-          <b>Positions exist independently of employees.</b> Recruitment can only open against a position that is Approved + Vacant + within budget. Employees occupy PCNs; they don't create them.
+          <b>Positions exist independently of employees.</b> Recruitment can only open against a position that is Approved + Vacant + within its sanctioned salary band. Employees occupy PCNs; they don't create them.
         </div>
 
         <div className="flex gap-2 flex-wrap items-center mb-2">
@@ -272,7 +271,7 @@ export default function RegisterPage() {
                   <SortHeader id="designation" sort={sort} onSort={toggleSort}>Designation</SortHeader>
                   <th>Job Family</th><th>Grade</th>
                   <th>Dept</th><th>Reports To</th>
-                  <SortHeader id="budget" sort={sort} onSort={toggleSort} className="num">Budget ₹/mo</SortHeader>
+                  <SortHeader id="band" sort={sort} onSort={toggleSort} className="num">Salary Band ₹/mo</SortHeader>
                   <th>Status</th>
                   <SortHeader id="days" sort={sort} onSort={toggleSort} className="num">Days Vacant</SortHeader>
                   <th>Occupant</th><th>Flags</th><th><span className="sr-only">Actions</span></th>
@@ -318,7 +317,7 @@ export default function RegisterPage() {
                       <td>{p.grade}</td>
                       <td>{p.department}</td>
                       <td>{p.reports_to || '—'}</td>
-                      <td className="num">{inr(p.budgeted_salary)}</td>
+                      <td className="num whitespace-nowrap">{band(p.salary_min, p.salary_max)}</td>
                       <td><StatusPill status={p.status} /></td>
                       <td className="num">
                         {p.days_vacant == null ? (

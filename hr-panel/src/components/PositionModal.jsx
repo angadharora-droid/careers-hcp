@@ -64,7 +64,6 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
     approver: position?.approver || 'General Manager',
     salary_min: position?.salary_min ?? '',
     salary_max: position?.salary_max ?? '',
-    budgeted_salary: position?.budgeted_salary ?? '',
     status: position?.status || 'Vacant',
     replacement_sla_days: position?.replacement_sla_days ?? 30,
     is_critical: !!position?.is_critical,
@@ -79,6 +78,12 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
     const v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
     setForm((f) => ({ ...f, [k]: v }));
   };
+
+  /* A band whose max sits below its min would make every offer read "over band",
+     so it is blocked at the source. Both ends optional; only the pair is checked. */
+  const bandInverted =
+    Number(form.salary_min) > 0 && Number(form.salary_max) > 0
+    && Number(form.salary_max) < Number(form.salary_min);
 
   // Validate on blur, not on keystroke (guide).
   const validateField = (k, value) => {
@@ -99,13 +104,16 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
       (!okDes ? designationRef : departmentRef).current?.focus();
       return;
     }
+    if (bandInverted) {
+      setErr('Salary Max must be at least Salary Min.');
+      return;
+    }
     const payload = {
       ...form,
       designation: form.designation.trim(),
       department: form.department.trim(),
       salary_min: Number(form.salary_min) || 0,
       salary_max: Number(form.salary_max) || 0,
-      budgeted_salary: Number(form.budgeted_salary) || 0,
       replacement_sla_days: Number(form.replacement_sla_days) || 0,
       competency_profile: form.competency_profile || null,
     };
@@ -195,7 +203,7 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
         </div>
       </Section>
 
-      <Section title="Reporting & budget">
+      <Section title="Reporting & salary band">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2.5">
           <div>
             <label className="lbl" htmlFor="pos-reports">Reports To</label>
@@ -206,7 +214,7 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
             <input id="pos-approver" className="inp" value={form.approver} onChange={set('approver')} />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-2.5">
           <div>
             <label className="lbl" htmlFor="pos-cc">Cost Centre</label>
             <input id="pos-cc" className="inp" value={form.cost_centre} onChange={set('cost_centre')} />
@@ -217,13 +225,23 @@ export default function PositionModal({ position, grades, onClose, onSaved }) {
           </div>
           <div>
             <label className="lbl" htmlFor="pos-smax">Salary Max (₹/mo)</label>
-            <input id="pos-smax" className="inp" type="number" inputMode="numeric" min="0" value={form.salary_max} onChange={set('salary_max')} />
-          </div>
-          <div>
-            <label className="lbl" htmlFor="pos-budget">Budgeted Salary (₹/mo)</label>
-            <input id="pos-budget" className="inp" type="number" inputMode="numeric" min="0" value={form.budgeted_salary} onChange={set('budgeted_salary')} />
+            <input
+              id="pos-smax"
+              className={`inp ${bandInverted ? 'inp-err' : ''}`}
+              type="number"
+              inputMode="numeric"
+              min="0"
+              value={form.salary_max}
+              onChange={set('salary_max')}
+              aria-invalid={bandInverted}
+              aria-describedby={bandInverted ? 'pos-smax-err' : undefined}
+            />
+            <FieldError id="pos-smax-err" msg={bandInverted ? 'Maximum must be at least the minimum' : null} />
           </div>
         </div>
+        <p className="hint">
+          Offers are judged against this band — a hired salary shows as under, within or over it.
+        </p>
       </Section>
 
       <Section title="Flags & SLA">
