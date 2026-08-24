@@ -47,11 +47,15 @@ ok('public payload hides salary band', foRole && !('salary_min' in foRole) && !(
 
 // Every field on the apply form is mandatory, so negative tests start from a
 // complete payload and omit exactly one thing.
-const CURRENT_EMPLOYMENT_FIELDS = ['current_designation', 'years_in_current_firm', 'current_salary'];
+const CURRENT_EMPLOYMENT_FIELDS = [
+  'current_employer', 'current_designation', 'years_in_current_firm', 'current_salary', 'notice_period',
+];
 const applicantOf = (over = {}) => ({
   designation: foRole.designation, candidate_name: 'Priya Sharma', mobile: '9876543210',
   email: 'priya@example.com', age: 24, gender: 'Female', qualification: 'BHM',
-  total_experience_years: 2, current_designation: 'Front Desk Associate',
+  total_experience_years: 2, relevant_hotel_experience_years: 1,
+  current_employer: 'Hotel Prior', notice_period: '30 days',
+  current_designation: 'Front Desk Associate',
   years_in_current_firm: 1.5, current_salary: 14000, expected_salary: 16000,
   willing_to_relocate: 'Yes', needs_accommodation: 'No', worked_at_cph_before: 'No', source: 'Walk-in',
   why_join: 'Guest service career',
@@ -87,7 +91,7 @@ for (const field of CURRENT_EMPLOYMENT_FIELDS) {
 const noDocs = await req('POST', '/public/applications', {
   form: formOf(applicantOf({ candidate_name: 'NoDocs Test', email: 'nodocs@example.com' })),
 });
-ok('application without documents accepted', noDocs.status === 201, `got ${noDocs.status}`);
+ok('application without a CV rejected', noDocs.status === 400 && /CV/.test(noDocs.json?.error || ''), `got ${noDocs.status}`);
 const badDoc = await req('POST', '/public/applications', {
   form: formOf(applicantOf(), { files: ['cv.docx'] }),
 });
@@ -97,7 +101,8 @@ ok('non-PDF document rejected', badDoc.status === 400 && /pdf/i.test(badDoc.json
 const fresher = await req('POST', '/public/applications', {
   form: formOf({
     ...omit(applicantOf(), ...CURRENT_EMPLOYMENT_FIELDS),
-    total_experience_years: 0, candidate_name: 'Fresher Test', email: 'fresher@example.com',
+    total_experience_years: 0, relevant_hotel_experience_years: 0,
+    candidate_name: 'Fresher Test', email: 'fresher@example.com',
   }, { files: ['cv.pdf'] }),
 });
 ok('fresher (0 years) exempt from current-employment fields', fresher.status === 201, JSON.stringify(fresher.json));

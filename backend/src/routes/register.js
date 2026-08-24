@@ -147,6 +147,11 @@ router.get('/posts', async (_req, res) => {
       open_vacancies: open,
       // Seats this drive is accountable for: those still open plus those it filled.
       vacancies: open + selected.length,
+      salary_band: {
+        min: Math.min(...g.seats.map((p) => p.salary_min).filter((n) => n > 0), Infinity) === Infinity
+          ? 0 : Math.min(...g.seats.map((p) => p.salary_min).filter((n) => n > 0)),
+        max: Math.max(0, ...g.seats.map((p) => p.salary_max).filter((n) => n > 0)),
+      },
       applications: g.apps.length,
       selected: selected.length,
       pending: g.apps.filter((a) => ['Applied', 'Interview Scheduled', 'On Hold'].includes(a.stage)).length,

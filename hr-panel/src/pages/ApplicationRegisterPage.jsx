@@ -440,6 +440,7 @@ function PostPicker({ posts, loading, err, onRetry, onOpen }) {
             <thead>
               <tr>
                 <th>Post Applied For</th><th>Job Code</th><th>Dept</th><th>Grade</th>
+                <th className="num">Salary Band ₹/mo</th>
                 <th className="num">Vacancies</th><th className="num">Applications</th>
                 <th className="num">Pending</th><th className="num">Selected</th>
                 <th>Register</th><th><span className="sr-only">Open</span></th>
@@ -452,6 +453,7 @@ function PostPicker({ posts, loading, err, onRetry, onOpen }) {
                   <td className="pcn">{p.job_code}</td>
                   <td>{p.department || '—'}</td>
                   <td>{p.grade || '—'}</td>
+                  <td className="num whitespace-nowrap">{band(p.salary_band?.min, p.salary_band?.max)}</td>
                   <td className="num">
                     <b>{p.open_vacancies}</b>
                     <span className="mini"> / {p.seats_total} seats</span>
@@ -505,6 +507,13 @@ function HeaderBlock({ header }) {
       <HeaderField label="No. of Vacancies">
         {header.vacancies}
         <span className="mini"> ({header.open_vacancies} still open of {header.seats_total} sanctioned seats)</span>
+      </HeaderField>
+      <HeaderField label="Salary Band">
+        {header.salary_band && (header.salary_band.min > 0 || header.salary_band.max > 0) ? (
+          <b>{band(header.salary_band.min, header.salary_band.max)}<span className="mini font-normal"> /mo</span></b>
+        ) : (
+          <span className="mini">not set — set it on the position</span>
+        )}
       </HeaderField>
       <HeaderField label="Register Owner">{header.register_owner}</HeaderField>
       <HeaderField label="Recruitment Period">{period}</HeaderField>
@@ -849,7 +858,11 @@ export default function ApplicationRegisterPage() {
         {
           sheetName: 'Application Register',
           title: `APPLICATION REGISTER — ${(designation || header?.designation || '').toUpperCase()}`,
-          subtitle: `${header?.job_code || jobCode} · ${header?.department || ''} · exported ${new Date().toLocaleDateString('en-IN')}`,
+          subtitle: `${header?.job_code || jobCode} · ${header?.department || ''}`
+            + (header?.salary_band && (header.salary_band.min > 0 || header.salary_band.max > 0)
+              ? ` · band ${band(header.salary_band.min, header.salary_band.max)}/mo`
+              : '')
+            + ` · exported ${new Date().toLocaleDateString('en-IN')}`,
           fitOf: (r) => r.fit?.stars ?? null,
         }
       );
