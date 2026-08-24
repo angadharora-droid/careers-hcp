@@ -325,6 +325,69 @@ router.post('/:id/send-offer', requireRole('hr_admin'), async (req, res) => {
   res.json({ application: await withDerived(app), sent_to: to });
 });
 
+/* ===== HR: Application Register — Section B approval record ===== */
+
+// PATCH /api/applications/:id/approval
+// { recommended_by?, salary_approved_by?, approval_date?, offer_issued_date?,
+//   employee_code?, closed_by? }
+// Records who recommended, who approved the salary and when — control point 4.
+router.patch('/:id/approval', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  if (app.stage !== 'Selected') {
+    return res.status(400).json({ error: 'The approval record applies only to a Selected candidate' });
+  }
+  const b = req.body || {};
+  const text = (v, max, label) => {
+    const t = String(v ?? '').trim();
+    if (t.length > max) throw new Error(`${label} must be ${max} characters or fewer`);
+    return t;
+  };
+  const date = (v, label) => {
+    const t = String(v ?? '').trim();
+    if (t && !/^\d{4}-\d{2}-\d{2}$/.test(t)) throw new Error(`${label} must be a date (YYYY-MM-DD)`);
+    return t;
+  };
+
+  const next = { ...(app.approval?.toObject?.() || app.approval || {}) };
+  try {
+    if (b.recommended_by !== undefined) next.recommended_by = text(b.recommended_by, 120, 'Recommended by');
+    if (b.salary_approved_by !== undefined) next.salary_approved_by = text(b.salary_approved_by, 120, 'Salary approved by');
+    if (b.employee_code !== undefined) next.employee_code = text(b.employee_code, 40, 'Employee code');
+    if (b.closed_by !== undefined) next.closed_by = text(b.closed_by, 120, 'Application closed by');
+    if (b.approval_date !== undefined) next.approval_date = date(b.approval_date, 'Approval date');
+    if (b.offer_issued_date !== undefined) next.offer_issued_date = date(b.offer_issued_date, 'Offer issued date');
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+
+  /* Control point 5: no offer letter before position AND salary approval. The seat
+     is already proven by stage Selected (it claimed a PCN); the salary approval is
+     what this record adds, so an offer issue date cannot predate it. */
+  if (next.offer_issued_date) {
+    if (!next.salary_approved_by || !next.approval_date) {
+      return res.status(400).json({
+        error: 'Control point 5: record the salary approving authority and approval date before entering an offer issued date.',
+      });
+    }
+    if (app.offered_salary == null) {
+      return res.status(400).json({ error: 'Control point 5: set the offered salary before entering an offer issued date.' });
+    }
+    if (next.offer_issued_date < next.approval_date) {
+      return res.status(400).json({ error: 'Control point 5: the offer cannot be issued before the approval date.' });
+    }
+  }
+  // Control point 6: the employee code closes the loop from application to hire,
+  // so it only exists once an offer has actually gone out.
+  if (next.employee_code && !next.offer_issued_date) {
+    return res.status(400).json({ error: 'Record the offer issued date before the employee code.' });
+  }
+
+  app.approval = next;
+  await app.save();
+  res.json({ application: await withDerived(app) });
+});
+
 /* ===== HR: interviewer appointment ===== */
 
 // POST /api/applications/:id/assign-panel  { assignments: [{ interviewer_user_id, round }] }

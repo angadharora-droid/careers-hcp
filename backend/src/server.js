@@ -13,6 +13,7 @@ import authRoutes from './routes/auth.js';
 import publicRoutes from './routes/public.js';
 import positionRoutes from './routes/positions.js';
 import applicationRoutes from './routes/applications.js';
+import registerRoutes from './routes/register.js';
 import userRoutes from './routes/users.js';
 import gradeRoutes from './routes/grades.js';
 import competencyRoutes from './routes/competencies.js';
@@ -29,6 +30,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/public', publicRoutes);          // Career Panel — no auth
 app.use('/api/positions', positionRoutes);     // HR
 app.use('/api/applications', applicationRoutes); // HR (+ shared scores read)
+app.use('/api/register', registerRoutes);      // HR — Application Register (compiled view)
 app.use('/api/users', userRoutes);             // HR
 app.use('/api/grades', gradeRoutes);
 app.use('/api/competencies', competencyRoutes);

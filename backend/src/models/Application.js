@@ -38,8 +38,13 @@ const applicationSchema = new mongoose.Schema(
     qualification: String,
     total_experience_years: Number,
     current_designation: String,
+    current_employer: { type: String, default: '' },      // Application Register: Current / Last Employer
     years_in_current_firm: Number,
     current_salary: Number,
+    // Hotel-industry years only — the register tracks it separately from total
+    // experience because relevance, not length, drives shortlisting.
+    relevant_hotel_experience_years: { type: Number, default: null },
+    notice_period: { type: String, default: '' },         // free text: '30 days', 'Immediate'
     expected_salary: Number,
     willing_to_relocate: { type: String, default: 'Yes' },
     needs_accommodation: { type: String, default: 'No' },
@@ -58,6 +63,21 @@ const applicationSchema = new mongoose.Schema(
     offer_sent_at: { type: Date, default: null },
     offer_sent_to: { type: String, default: '' },
     applied_on: { type: Date, default: Date.now },
+    // Application Register, Section A — HR's running note on the row.
+    remarks: { type: String, default: '' },
+    /* Application Register, Section B — Selection and Approval Record.
+       Only the authorities and dates live here; the candidate, application ID,
+       recommended designation/grade, recommended salary, interviewers and
+       expected joining date are all read off the application itself so the
+       register can never disagree with the pipeline. */
+    approval: {
+      recommended_by: { type: String, default: '' },
+      salary_approved_by: { type: String, default: '' },
+      approval_date: { type: String, default: '' },     // ISO 'YYYY-MM-DD'
+      offer_issued_date: { type: String, default: '' }, // ISO 'YYYY-MM-DD'
+      employee_code: { type: String, default: '' },     // filled in after joining
+      closed_by: { type: String, default: '' },
+    },
   },
   { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } }
 );

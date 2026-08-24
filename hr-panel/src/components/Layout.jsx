@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
   LayoutDashboard, Table, Users, UserCheck, Flag, BookOpen, UserPlus, Menu, X, LogOut,
+  ClipboardList,
 } from './Icons';
 
 const NAV = [
@@ -11,6 +12,7 @@ const NAV = [
   { to: '/register', label: 'Position Register', icon: Table },
   { to: '/occupants', label: 'Occupants', icon: UserCheck },
   { to: '/applications', label: 'Applications', icon: Users },
+  { to: '/application-register', label: 'Application Register', icon: ClipboardList },
   { to: '/red-flags', label: 'Red Flags', icon: Flag },
   { to: '/framework', label: 'Framework', icon: BookOpen },
   { to: '/interviewers', label: 'Interviewers', icon: UserPlus },

@@ -101,4 +101,41 @@
   .gate { @apply flex items-start gap-2 bg-brand-red/8 border border-brand-red/50 rounded-sm px-3 py-2 text-[11.5px] text-brand-red mt-2; }
   .gate-ok { @apply bg-brand-green/8 border-brand-green/50 text-brand-green; }
   .scoresum { @apply bg-berry-soft/60 border border-berry/40 rounded-sm px-3.5 py-2.5 text-[12.5px] text-body mt-2; }
+
+  /* Print scaffolding — used by the Application Register, which is a paper control
+     format first and a screen second. `.print-only` blocks stay hidden until print;
+     `.no-print` (navigation, buttons, hints) drops out of the printed page. */
+  .print-only { display: none; }
+}
+
+@media print {
+  /* Landscape: Section A carries 17 columns, and the paper format is landscape too. */
+  @page { size: A4 landscape; margin: 12mm; }
+
+  html, body { @apply bg-white; }
+
+  /* The register prints as a whole document, so the table scroller must let go of
+     its viewport clamp — otherwise only the first screenful reaches the paper. */
+  .tbl-scroll { max-height: none !important; overflow: visible !important; }
+  .tbl th { position: static !important; box-shadow: none !important; }
+  .tbl { font-size: 9px; }
+  .tbl th, .tbl td { @apply px-1 py-1; }
+  .tbl th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* Editable register cells print as their value, not as form furniture. */
+  .tbl input { @apply border-transparent bg-transparent p-0 text-[9px]; }
+
+  .card { @apply border-0 p-0 mb-4 shadow-none; break-inside: auto; }
+  .card-h { @apply text-[15px] pb-1.5 mb-2; }
+
+  /* Section B and C should not be split across a page break mid-record. */
+  .card-h, tr, .no-break { break-inside: avoid; }
+
+  .no-print, aside, header, nav { display: none !important; }
+  .print-only { display: block !important; }
+  main { @apply max-w-none p-0; }
+  .lg\:pl-\[240px\] { padding-left: 0 !important; }
+
+  /* Keep the register's tinted header cells and status chips legible on paper. */
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }

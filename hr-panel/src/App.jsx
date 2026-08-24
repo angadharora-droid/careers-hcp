@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import RegisterPage from './pages/RegisterPage';
+import ApplicationRegisterPage from './pages/ApplicationRegisterPage';
 import OccupantsPage from './pages/OccupantsPage';
 import ApplicationsPage from './pages/ApplicationsPage';
 import RedFlagsPage from './pages/RedFlagsPage';
@@ -21,6 +22,7 @@ function AppRoutes() {
         <Route path="register" element={<RegisterPage />} />
         <Route path="occupants" element={<OccupantsPage />} />
         <Route path="applications" element={<ApplicationsPage />} />
+        <Route path="application-register" element={<ApplicationRegisterPage />} />
         <Route path="red-flags" element={<RedFlagsPage />} />
         <Route path="framework" element={<FrameworkPage />} />
         <Route path="interviewers" element={<InterviewersPage />} />
