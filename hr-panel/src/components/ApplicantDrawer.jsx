@@ -4,6 +4,7 @@ import ConfirmDialog from './ConfirmDialog';
 import OfferDialog from './OfferDialog';
 import { ErrorBox, Skeleton, Loading } from './LoadState';
 import CommentThread from './CommentThread';
+import Timeline from './Timeline';
 import MoveRoleDialog from './MoveRoleDialog';
 import { AssignmentChip, RecChip, StageBadge, BandPill } from './Badges';
 import { api, downloadDocument, previewDocument, uploadDocuments } from '../lib/api';
@@ -169,6 +170,8 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  // Bumped after any write, to refetch the timeline without reloading the drawer.
+  const [timelineKey, setTimelineKey] = useState(0);
   // Only your own comments carry a delete control.
   const { user } = useAuth();
   const currentUserId = user?.id;
@@ -176,6 +179,7 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
 
   const applyApp = useCallback((application) => {
     setApp(application);
+    setTimelineKey((n) => n + 1);
     const size = application.rounds || application.panel_size || 2;
     // Keyed by round rather than array position — a gap in the middle must not
     // shift everyone else's round number.
@@ -520,26 +524,13 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
           )}
         </section>
 
-        {/* Role history — only once this application has actually been moved */}
-        {app.move_history?.length > 0 && (
-          <section className="mt-5">
-            <SectionHeading>Role history</SectionHeading>
-            <div className="mt-2">
-              {app.move_history.map((m, i) => (
-                <div key={`${m.moved_at}-${i}`} className="panel-box mt-0 mb-1.5">
-                  <div className="text-[12.5px] text-body">
-                    Moved from <b>{m.from_designation}</b> <span className="pcn">{m.from_job_code}</span>
-                    {m.from_stage && <> (was {m.from_stage})</>}
-                  </div>
-                  <div className="mini mt-1">
-                    {m.moved_by_name || 'HR'} · {fmtDate(m.moved_at)}
-                    {m.note && <> · {m.note}</>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        {/* Timeline — the application's history, and the audit trail Section A leans on */}
+        <section className="mt-5">
+          <SectionHeading>Timeline</SectionHeading>
+          <div className="bg-cream/40 border border-line rounded-sm p-3.5 pl-4 mt-1.5">
+            <Timeline applicationId={app.id} key={timelineKey} />
+          </div>
+        </section>
 
         {/* Shared notes — HR and this candidate's panellists both post and read */}
         <section className="mt-5">

@@ -102,6 +102,41 @@
   .gate-ok { @apply bg-brand-green/8 border-brand-green/50 text-brand-green; }
   .scoresum { @apply bg-berry-soft/60 border border-berry/40 rounded-sm px-3.5 py-2.5 text-[12.5px] text-body mt-2; }
 
+  /* Application Register, Section A carries 17 columns, so the four that identify
+     a row — Sr., Application ID, Date, Candidate — freeze while the rest scrolls
+     under them. Only from lg up: on a narrow screen the frozen block would eat
+     the viewport, and the whole table scrolls as one instead. */
+  .reg-freeze { --reg-c1: 40px; --reg-c2: 108px; --reg-c3: 76px; --reg-grp: 22px; }
+  /* Two stacked header rows: the family band sits at the top, the real column
+     headers directly beneath it, so both stay put on a vertical scroll. */
+  .reg-freeze thead tr:first-child th { top: 0; height: var(--reg-grp); }
+  .reg-freeze thead tr:nth-child(2) th { top: var(--reg-grp); }
+  @media (min-width: 1024px) {
+    .reg-freeze th.rf, .reg-freeze td.rf { position: sticky; }
+    /* Stacking order, lowest first: plain body cells, frozen body cells, plain
+       headers, frozen headers — the corner that must sit above everything. */
+    .reg-freeze tbody td.rf { z-index: 2; }
+    .reg-freeze thead th { z-index: 3; }
+    .reg-freeze thead th.rf { z-index: 4; }
+    .reg-freeze .rf1 { left: 0; width: var(--reg-c1); min-width: var(--reg-c1); }
+    .reg-freeze .rf2 { left: var(--reg-c1); width: var(--reg-c2); min-width: var(--reg-c2); }
+    .reg-freeze .rf3 { left: calc(var(--reg-c1) + var(--reg-c2)); width: var(--reg-c3); min-width: var(--reg-c3); }
+    .reg-freeze .rf4 { left: calc(var(--reg-c1) + var(--reg-c2) + var(--reg-c3)); width: 160px; min-width: 160px; }
+    /* The frozen block needs its own OPAQUE ground, or the columns scrolling
+       beneath it show through the half-transparent row striping. */
+    .reg-freeze tbody td.rf { @apply bg-card; }
+    .reg-freeze tbody tr:nth-child(even) td.rf { @apply bg-cream; }
+    .reg-freeze tbody tr:hover td.rf { @apply bg-beige; }
+    .reg-freeze td.rf4 { box-shadow: 1px 0 0 var(--color-line); }
+  }
+
+  /* Column-family header row above the real headers, so 17 columns read as five
+     groups rather than one undifferentiated run. */
+  .tbl th.reg-group { @apply bg-footer text-cream text-center normal-case tracking-[1px] text-[10px] py-1; }
+
+  /* The tinted cells HR fills in themselves. */
+  .tbl td.reg-edit { @apply bg-berry-soft/40 p-0.5; }
+
   /* Section B of the Application Register is a two-column particular/detail table,
      so its row headers must shed the sticky, uppercase COLUMN-header styling. */
   .tbl th.reg-particular { @apply static w-[240px] whitespace-normal text-left align-top bg-beige/40 text-body text-[12px] font-medium normal-case tracking-normal; }
@@ -121,7 +156,9 @@
   /* The register prints as a whole document, so the table scroller must let go of
      its viewport clamp — otherwise only the first screenful reaches the paper. */
   .tbl-scroll { max-height: none !important; overflow: visible !important; }
-  .tbl th { position: static !important; box-shadow: none !important; }
+  .tbl th, .reg-freeze td.rf, .reg-freeze th.rf { position: static !important; box-shadow: none !important; }
+  /* Frozen widths are a screen affordance; on paper the columns size themselves. */
+  .reg-freeze .rf1, .reg-freeze .rf2, .reg-freeze .rf3, .reg-freeze .rf4 { width: auto; min-width: 0; }
   .tbl { font-size: 9px; }
   .tbl th, .tbl td { @apply px-1 py-1; }
   .tbl th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }

@@ -9,7 +9,7 @@ import PageHeader from '../components/PageHeader';
 import ApplicantDrawer from '../components/ApplicantDrawer';
 import {
   Search, ArrowLeft, Printer, Download, ClipboardList, ClipboardCheck,
-  AlertTriangle, CheckCircle, Flag,
+  AlertTriangle, CheckCircle, Flag, X, Users, Inbox, Check,
 } from '../components/Icons';
 import { useToast } from '../context/ToastContext';
 
@@ -125,6 +125,83 @@ function EditCell({ value, onSave, type = 'text', placeholder = '—', className
       />
       {busy && <Spinner className="absolute right-1 top-1/2 -translate-y-1/2 w-3 h-3" />}
     </span>
+  );
+}
+
+/* ===== The funnel — where this post's applicants actually stand =====
+   Counted off the same derived columns Section A shows, so the strip and the
+   table can never disagree. Each tile filters the table below rather than
+   navigating away: the register is one page, and the numbers are its index. */
+
+const FUNNEL = [
+  { key: '', label: 'All', tone: 'ink', match: () => true },
+  { key: 'shortlisted', label: 'Shortlisted', tone: 'green', match: (r) => r.screening === 'Shortlisted' },
+  { key: 'interviewed', label: 'Interviewed', tone: 'blue', match: (r) => r.rounds_scored > 0 },
+  { key: 'pending', label: 'Awaiting decision', tone: 'amber', match: (r) => ['Pending', 'Final pending'].includes(r.final_decision) },
+  { key: 'selected', label: 'Selected', tone: 'green', match: (r) => r.final_decision === 'Selected' },
+  { key: 'rejected', label: 'Rejected', tone: 'red', match: (r) => r.final_decision === 'Rejected' },
+  { key: 'flagged', label: 'Talent pool / closed', tone: 'muted', match: (r) => Boolean(r.register_flag) },
+];
+
+const FUNNEL_TONE = {
+  ink: 'text-ink',
+  green: 'text-brand-green',
+  blue: 'text-brand-blue',
+  amber: 'text-brand-amber',
+  red: 'text-brand-red',
+  muted: 'text-muted',
+};
+
+function FunnelStrip({ rows, active, onPick }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2 mb-4">
+      {FUNNEL.map((f) => {
+        const n = rows.filter(f.match).length;
+        const on = active === f.key;
+        return (
+          <button
+            key={f.key || 'all'}
+            type="button"
+            aria-pressed={on}
+            onClick={() => onPick(on && f.key ? '' : f.key)}
+            disabled={n === 0 && Boolean(f.key)}
+            className={`text-left bg-card border rounded-md px-3 py-2.5 transition-colors duration-150 cursor-pointer disabled:opacity-45 disabled:cursor-default active:scale-[0.99] ${
+              on ? 'border-berry ring-1 ring-berry/30' : 'border-line hover:border-berry/60'
+            }`}
+          >
+            <div className={`font-display text-[24px] font-semibold leading-none tabular-nums ${FUNNEL_TONE[f.tone]}`}>{n}</div>
+            <div className="font-button text-[10px] font-medium text-muted uppercase tracking-[1.2px] mt-1.5 leading-tight">
+              {f.label}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* Jump links between the three sections — the register is long, and Section B is
+   the part HR comes back to. Anchors rather than tabs, so printing still emits
+   the whole document. */
+function SectionNav({ counts }) {
+  const items = [
+    { href: '#section-a', label: 'A · Applications', n: counts.rows },
+    { href: '#section-b', label: 'B · Selection & approval', n: counts.selection },
+    { href: '#section-c', label: 'C · Control points', n: null },
+  ];
+  return (
+    <nav aria-label="Register sections" className="flex gap-1.5 flex-wrap mb-4 no-print">
+      {items.map((i) => (
+        <a
+          key={i.href}
+          href={i.href}
+          className="inline-flex items-center gap-1.5 font-button text-[11px] font-medium uppercase tracking-[1.5px] px-3 py-1.5 rounded-sm border border-line bg-card text-body hover:text-berry hover:border-berry transition-colors duration-150"
+        >
+          {i.label}
+          {i.n != null && <span className="tabular-nums font-semibold">{i.n}</span>}
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -467,15 +544,42 @@ function SignatureBox({ role }) {
   );
 }
 
-function ControlPoints({ points }) {
+/* Which control points this register can actually evidence right now. The list is
+   the policy; the tick is whether the data behind it is there yet. */
+function controlPointState(rows, selection) {
+  const sel = selection[0];
+  return [
+    rows.length > 0 && rows.every((r) => r.application_id),
+    rows.every((r) => r.interview_status === 'N.A.' || r.application_id),
+    rows.every((r) => r.final_decision !== 'Rejected' || r.rejection_reason),
+    Boolean(sel && sel.interviewer_names?.length && sel.recommended_by && sel.salary_approved_by),
+    !sel || !sel.offer_issued_date || Boolean(sel.approval_date && sel.salary_approved_by),
+    Boolean(sel && sel.pcn && sel.application_id),
+    true, // flagged automatically — nothing for HR to do
+  ];
+}
+
+function ControlPoints({ points, rows, selection }) {
+  const state = controlPointState(rows, selection);
+  const met = state.filter(Boolean).length;
   return (
-    <div className="card">
-      <div className="card-h">C. Mandatory Control Points</div>
-      <ol className="border border-line rounded-sm overflow-hidden mb-5">
+    <div className="card" id="section-c">
+      <div className="card-h">
+        C. Mandatory Control Points
+        <span className="r tabular-nums">{met} of {points.length} evidenced</span>
+      </div>
+      <ol className="grid grid-cols-1 lg:grid-cols-2 gap-x-3 border-y border-line divide-y divide-line lg:divide-y-0 mb-5">
         {points.map((p, i) => (
-          <li key={p} className={`flex gap-3 px-3 py-2 text-[12.5px] text-body ${i % 2 ? 'bg-cream/50' : 'bg-card'} ${i ? 'border-t border-line' : ''}`}>
-            <span className="w-6 shrink-0 text-center font-button text-[11px] font-semibold text-berry tabular-nums">{i + 1}</span>
-            <span>{p}</span>
+          <li key={p} className="flex gap-2.5 px-1 py-2 text-[12.5px] text-body lg:border-b lg:border-line">
+            <span
+              className={`w-[18px] h-[18px] shrink-0 mt-px rounded-sm grid place-items-center text-[10px] font-bold tabular-nums ${
+                state[i] ? 'bg-brand-green/12 text-brand-green' : 'bg-beige text-muted'
+              }`}
+              title={state[i] ? 'Evidenced by this register' : 'Not yet evidenced'}
+            >
+              {state[i] ? <Check size={11} /> : i + 1}
+            </span>
+            <span className={state[i] ? '' : 'text-body'}>{p}</span>
           </li>
         ))}
       </ol>
@@ -509,6 +613,9 @@ export default function ApplicationRegisterPage() {
   const [regLoading, setRegLoading] = useState(false);
   const [regErr, setRegErr] = useState(null);
   const [openId, setOpenId] = useState(null);
+  // Section A view state — which funnel tile is active, and the name/ID search.
+  const [funnel, setFunnel] = useState('');
+  const [rowQ, setRowQ] = useState('');
 
   const loadPosts = useCallback(async () => {
     setPostsErr(null);
@@ -540,6 +647,8 @@ export default function ApplicationRegisterPage() {
 
   useEffect(() => { loadPosts(); }, [loadPosts]);
   useEffect(() => { loadRegister(); }, [loadRegister]);
+  // A different post is a different register: its filters start clean.
+  useEffect(() => { setFunnel(''); setRowQ(''); }, [jobCode, designation]);
 
   // Saving a Section A cell writes straight to the application, then refetches so
   // every derived column (screening, decision, flags) stays in step.
@@ -577,6 +686,18 @@ export default function ApplicationRegisterPage() {
 
   const header = reg?.header;
   const rows = reg?.rows || [];
+
+  /* What Section A actually shows: the funnel tile narrows by outcome, the search
+     by person. The CSV and the print copy follow this same set, so what you export
+     is what you were looking at. */
+  const shown = rows.filter((r) => {
+    const tile = FUNNEL.find((f) => f.key === funnel);
+    if (tile && !tile.match(r)) return false;
+    const needle = rowQ.trim().toLowerCase();
+    if (!needle) return true;
+    return `${r.candidate_name} ${r.application_id} ${r.mobile} ${r.current_employer}`.toLowerCase().includes(needle);
+  });
+  const narrowed = Boolean(funnel || rowQ.trim());
   const csvName = `application-register-${slug(designation || header?.designation || jobCode)}-${slug(jobCode)}.csv`;
 
   return (
@@ -594,8 +715,8 @@ export default function ApplicationRegisterPage() {
               <button
                 type="button"
                 className="btn btn-ghost btn-sm"
-                onClick={() => exportCSV(csvName, REGISTER_CSV, rows)}
-                disabled={rows.length === 0}
+                onClick={() => exportCSV(csvName, REGISTER_CSV, shown)}
+                disabled={shown.length === 0}
                 title="Download Section A as a CSV spreadsheet"
               >
                 <Download size={13} />
@@ -624,10 +745,17 @@ export default function ApplicationRegisterPage() {
         <>
           <HeaderBlock header={header} />
 
-          <div className="card">
+          <div className="no-print">
+            <FunnelStrip rows={rows} active={funnel} onPick={setFunnel} />
+            <SectionNav counts={{ rows: rows.length, selection: reg.selection.length }} />
+          </div>
+
+          <div className="card" id="section-a">
             <div className="card-h">
               A. Application Tracking Register
-              <span className="r tabular-nums">{rows.length} application{rows.length === 1 ? '' : 's'}</span>
+              <span className="r tabular-nums">
+                {narrowed ? `${shown.length} of ${rows.length}` : rows.length} application{rows.length === 1 ? '' : 's'}
+              </span>
             </div>
 
             <div className="infobar no-print">
@@ -637,20 +765,71 @@ export default function ApplicationRegisterPage() {
               Each saves when you leave the cell.
             </div>
 
+            {rows.length > 0 && (
+              <div className="flex gap-2 flex-wrap items-center mb-3 no-print">
+                <div className="relative">
+                  <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                  <input
+                    className="inp w-auto min-w-[230px] pl-8"
+                    placeholder="Find a candidate / application ID…"
+                    aria-label="Search this register"
+                    value={rowQ}
+                    onChange={(e) => setRowQ(e.target.value)}
+                  />
+                </div>
+                {narrowed && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    onClick={() => { setFunnel(''); setRowQ(''); }}
+                  >
+                    <X size={12} />
+                    Clear {funnel && rowQ.trim() ? 'filters' : 'filter'}
+                  </button>
+                )}
+                <span className="mini ml-auto">Scroll sideways for the full register · the first four columns stay put</span>
+              </div>
+            )}
+
             {rows.length === 0 ? (
               <Empty icon={ClipboardList} title="No applications against this post yet">
                 Candidates who apply on the public Careers site are entered here automatically, each with a
                 unique Application ID.
               </Empty>
+            ) : shown.length === 0 ? (
+              <Empty
+                icon={Inbox}
+                title="No application matches"
+                action={
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => { setFunnel(''); setRowQ(''); }}>
+                    Clear filters
+                  </button>
+                }
+              >
+                Try a different search, or pick another tile above.
+              </Empty>
             ) : (
-              <div className="tbl-scroll">
+              <div className="tbl-scroll reg-freeze">
                 <table className="tbl">
                   <thead>
+                    {/* Column families, so seventeen columns read as five groups */}
                     <tr>
-                      <th className="num">Sr.</th>
-                      <th>Application ID</th>
-                      <th>Date</th>
-                      <th>Candidate Name</th>
+                      <th className="reg-group rf rf1" aria-hidden="true" />
+                      <th className="reg-group rf rf2" colSpan={1}>Identity</th>
+                      <th className="reg-group rf rf3" aria-hidden="true" />
+                      <th className="reg-group rf rf4" aria-hidden="true" />
+                      <th className="reg-group" colSpan={3}>Applicant</th>
+                      <th className="reg-group" colSpan={2}>Experience</th>
+                      <th className="reg-group" colSpan={4}>Current terms</th>
+                      <th className="reg-group" colSpan={3}>Outcome</th>
+                      <th className="reg-group">Register</th>
+                      <th className="reg-group no-print" aria-hidden="true" />
+                    </tr>
+                    <tr>
+                      <th className="num rf rf1">Sr.</th>
+                      <th className="rf rf2">Application ID</th>
+                      <th className="rf rf3">Date</th>
+                      <th className="rf rf4">Candidate Name</th>
                       <th>Mobile No.</th>
                       <th>Source</th>
                       <th>Qualification</th>
@@ -668,10 +847,10 @@ export default function ApplicationRegisterPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r) => (
+                    {shown.map((r) => (
                       <tr key={r.id}>
-                        <td className="num">{r.sr}</td>
-                        <td>
+                        <td className="num rf rf1">{r.sr}</td>
+                        <td className="rf rf2">
                           <span className="font-mono font-bold text-berry text-xs">{r.application_id}</span>
                           {r.register_flag && (
                             <div className="mt-1">
@@ -679,8 +858,8 @@ export default function ApplicationRegisterPage() {
                             </div>
                           )}
                         </td>
-                        <td className="whitespace-nowrap tabular-nums">{r.date}</td>
-                        <td>
+                        <td className="rf rf3 whitespace-nowrap tabular-nums">{r.date}</td>
+                        <td className="rf rf4">
                           <b className="text-ink">{r.candidate_name}</b>
                           {r.pcn && <div className="mini font-mono">{r.pcn}</div>}
                         </td>
@@ -690,7 +869,7 @@ export default function ApplicationRegisterPage() {
                         <td className="num whitespace-nowrap">
                           {r.total_experience_years == null ? '—' : `${r.total_experience_years} yrs`}
                         </td>
-                        <td className="bg-berry-soft/40 p-0.5">
+                        <td className="reg-edit">
                           <EditCell
                             value={r.relevant_hotel_experience_years}
                             type="number"
@@ -700,7 +879,7 @@ export default function ApplicationRegisterPage() {
                             onSave={(v) => saveCell(r, 'relevant_hotel_experience_years', v)}
                           />
                         </td>
-                        <td className="bg-berry-soft/40 p-0.5 min-w-[150px]">
+                        <td className="reg-edit min-w-[150px]">
                           <EditCell
                             value={r.current_employer}
                             placeholder={r.current_designation || 'employer'}
@@ -710,7 +889,7 @@ export default function ApplicationRegisterPage() {
                         </td>
                         <td className="num whitespace-nowrap">{inr(r.current_salary)}</td>
                         <td className="num whitespace-nowrap">{inr(r.expected_salary)}</td>
-                        <td className="bg-berry-soft/40 p-0.5 min-w-[110px]">
+                        <td className="reg-edit min-w-[110px]">
                           <EditCell
                             value={r.notice_period}
                             placeholder="e.g. 30 days"
@@ -744,7 +923,7 @@ export default function ApplicationRegisterPage() {
                           </span>
                           {r.rejection_reason && <div className="mini mt-1">{r.rejection_reason}</div>}
                         </td>
-                        <td className="bg-berry-soft/40 p-0.5 min-w-[160px]">
+                        <td className="reg-edit min-w-[160px]">
                           <EditCell
                             value={r.remarks}
                             placeholder="add a note"
@@ -765,7 +944,7 @@ export default function ApplicationRegisterPage() {
             )}
           </div>
 
-          <div className="card">
+          <div className="card" id="section-b">
             <div className="card-h">
               B. Selection and Approval Record
               {reg.selection.length > 1 && (
@@ -786,7 +965,7 @@ export default function ApplicationRegisterPage() {
             )}
           </div>
 
-          <ControlPoints points={reg.control_points} />
+          <ControlPoints points={reg.control_points} rows={rows} selection={reg.selection} />
         </>
       )}
 

@@ -5,6 +5,7 @@ import Position from '../models/Position.js';
 import PanelAssignment from '../models/PanelAssignment.js';
 import PanelScore from '../models/PanelScore.js';
 import ApplicationComment from '../models/ApplicationComment.js';
+import ApplicationEvent, { recordEvent } from '../models/ApplicationEvent.js';
 import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
@@ -120,6 +121,10 @@ router.post('/:id/documents', requireRole('hr_admin'), documentUpload.array('doc
     const added = await saveCandidateDocuments(req.files);
     app.documents.push(...added);
     await app.save();
+    await recordEvent(app._id, 'document', `${added.length} document(s) attached`, {
+      actor: req.user,
+      detail: added.map((d) => d.original_name).filter(Boolean).join(', '),
+    });
     res.json({ application: await withDerived(app) });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -158,8 +163,14 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
     app.interview_date = String(interview_date || '').trim();
     // Lay down the fixed panel from Interview_Panel.xlsx. Silent when no rule covers
     // this unit/grade/department — HR then assigns by hand as before.
-    await applyPanelRule(app, { assignedBy: req.user._id });
+    const { applied: panelRounds } = await applyPanelRule(app, { assignedBy: req.user._id });
+    if (panelRounds) {
+      await recordEvent(app._id, 'panel', `Standing panel appointed — ${panelRounds} round(s)`, { actor: req.user });
+    }
   }
+
+  // The stage the application is leaving, captured before anything overwrites it.
+  const priorStage = app.stage;
 
   if (stage === 'Selected') {
     /* Already Selected and holding the same seat? Then this is an offer edit, not a
@@ -248,6 +259,12 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
         filled_on: null, days_to_fill: null,
       });
     }
+    await recordEvent(app._id, 'stage', 'Selected', {
+      actor: req.user,
+      from: priorStage,
+      to: 'Selected',
+      detail: `Seat ${seat.pcn} filled${app.offered_salary != null ? ` · offered ${app.offered_salary}` : ''}`,
+    });
     return res.json({ application: await withDerived(app), filled_pcn: seat.pcn });
   }
 
@@ -263,6 +280,16 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
 
   app.stage = stage;
   await app.save();
+  if (priorStage !== stage) {
+    await recordEvent(app._id, 'stage', stage, {
+      actor: req.user,
+      from: priorStage,
+      to: stage,
+      detail: stage === 'Rejected'
+        ? app.rejection_reason
+        : (stage === 'Interview Scheduled' && app.interview_date ? `Interview on ${app.interview_date}` : ''),
+    });
+  }
   res.json({ application: await withDerived(app) });
 });
 
@@ -303,6 +330,13 @@ router.patch('/:id/offer', requireRole('hr_admin'), async (req, res) => {
     }
   }
   await app.save();
+  await recordEvent(app._id, 'offer', 'Offer terms updated', {
+    actor: req.user,
+    detail: [
+      app.offered_salary != null ? `Salary ${app.offered_salary}` : null,
+      app.date_of_joining ? `Joining ${app.date_of_joining}` : null,
+    ].filter(Boolean).join(' · '),
+  });
   res.json({ application: await withDerived(app) });
 });
 
@@ -344,6 +378,7 @@ router.post('/:id/send-offer', requireRole('hr_admin'), async (req, res) => {
   app.offer_sent_at = new Date();
   app.offer_sent_to = to;
   await app.save();
+  await recordEvent(app._id, 'offer', 'Offer letter emailed', { actor: req.user, detail: to });
   res.json({ application: await withDerived(app), sent_to: to });
 });
 
@@ -407,6 +442,16 @@ router.patch('/:id/approval', requireRole('hr_admin'), async (req, res) => {
 
   app.approval = next;
   await app.save();
+  await recordEvent(app._id, 'approval', 'Approval record saved', {
+    actor: req.user,
+    detail: [
+      next.recommended_by ? `Recommended by ${next.recommended_by}` : null,
+      next.salary_approved_by ? `Salary approved by ${next.salary_approved_by}` : null,
+      next.approval_date ? `on ${next.approval_date}` : null,
+      next.offer_issued_date ? `Offer issued ${next.offer_issued_date}` : null,
+      next.employee_code ? `Employee code ${next.employee_code}` : null,
+    ].filter(Boolean).join(' · '),
+  });
   res.json({ application: await withDerived(app) });
 });
 
@@ -471,6 +516,10 @@ router.post('/:id/assign-panel', requireRole('hr_admin'), async (req, res) => {
       { upsert: true, setDefaultsOnInsert: true }
     );
   }
+  await recordEvent(app._id, 'panel', 'Interview panel appointed by hand', {
+    actor: req.user,
+    detail: users.map((u) => u.name).join(', '),
+  });
   res.json({ application: await withDerived(app) });
 });
 
@@ -635,6 +684,8 @@ router.post('/:id/move', requireRole('hr_admin'), async (req, res) => {
     });
   }
 
+  const prevJobCode = app.job_code;
+  const prevDesignation = app.designation;
   app.move_history.push({
     from_job_code: app.job_code,
     from_designation: app.designation,
@@ -665,7 +716,81 @@ router.post('/:id/move', requireRole('hr_admin'), async (req, res) => {
   app.rejection_reason = '';
   await app.save();
 
+  await recordEvent(app._id, 'move', `Moved to ${target.designation}`, {
+    actor: req.user,
+    from: `${prevDesignation} (${prevJobCode})`,
+    to: `${target.designation} (${target.job_code})`,
+    detail: note,
+  });
   res.json({ application: await withDerived(app), moved_to: { job_code, designation, grade: target.grade } });
+});
+
+/* ===== Shared read: timeline (HR + assigned interviewers) ===== */
+
+/* The application's history in one list. Three sources are merged, so nothing has
+   to be trusted to stay in step with anything else:
+     · the application itself supplies the one event that always exists (applied),
+     · PanelScore supplies each round as it was actually submitted,
+     · ApplicationEvent supplies the actions HR took, which nothing else records.
+   Applications created before events were logged still show a real timeline from
+   the first two. */
+router.get('/:id/timeline', async (req, res) => {
+  const app = await readableApplication(req, req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+
+  const [events, scores, assignments] = await Promise.all([
+    ApplicationEvent.find({ application_id: app._id }).sort('at'),
+    PanelScore.find({ application_id: app._id }, 'round total_score panelist_name red_flags submitted_at').sort('submitted_at'),
+    PanelAssignment.find({ application_id: app._id }).populate('interviewer_user_id', 'name'),
+  ]);
+  const rounds = await roundsForGrade(app.grade);
+
+  const items = [
+    {
+      type: 'applied',
+      summary: 'Application received',
+      detail: [app.source ? `via ${app.source}` : null, `for ${app.designation}`].filter(Boolean).join(' · '),
+      actor_name: app.candidate_name,
+      at: app.applied_on,
+    },
+    ...events.map((e) => ({
+      type: e.type,
+      summary: e.summary,
+      detail: e.detail,
+      from: e.from,
+      to: e.to,
+      actor_name: e.actor_name,
+      actor_role: e.actor_role,
+      at: e.at,
+    })),
+    ...scores.map((sc) => ({
+      type: 'score',
+      summary: `Round ${sc.round} scored — ${sc.total_score}/100`,
+      detail: [
+        sc.panelist_name,
+        (sc.red_flags || []).length ? `red flag: ${sc.red_flags.join(', ')}` : null,
+      ].filter(Boolean).join(' · '),
+      actor_name: sc.panelist_name,
+      actor_role: 'interviewer',
+      at: sc.submitted_at,
+    })),
+  ].filter((i) => i.at);
+
+  items.sort((a, b) => new Date(a.at) - new Date(b.at));
+
+  res.json({
+    timeline: items,
+    // What the timeline is heading towards, so the client can show the open end.
+    current: {
+      stage: app.stage,
+      rounds,
+      rounds_scored: scores.length,
+      panel_appointed: assignments.length,
+      awaiting: app.stage === 'Interview Scheduled' && scores.length < rounds
+        ? `Round ${scores.length + 1} of ${rounds}`
+        : null,
+    },
+  });
 });
 
 /* ===== Shared read: panel comparison (HR + assigned interviewers) ===== */

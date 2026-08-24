@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
-import { inr, band } from '../lib/format';
+import { inr, band, fmtDate } from '../lib/format';
 import { ErrorBox, Empty, TableSkeleton, TileSkeleton } from '../components/LoadState';
 import { FlagPill, BandPill } from '../components/Badges';
 import PageHeader from '../components/PageHeader';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { Search, X, UserCheck, Users, CheckCircle, AlertTriangle, Inbox } from '../components/Icons';
+import OccupantDrawer, { JoiningPill } from '../components/OccupantDrawer';
+import { Search, X, UserCheck, Users, CheckCircle, AlertTriangle, Inbox, Clock } from '../components/Icons';
 import { useToast } from '../context/ToastContext';
 
 function Stat({ n, label, tone, icon: IconCmp, to }) {
-  const color = tone === 'red' ? 'text-brand-red' : 'text-ink';
+  const color = tone === 'red' ? 'text-brand-red' : tone === 'amber' ? 'text-brand-amber' : 'text-ink';
   const inner = (
     <>
       <div className="flex items-start justify-between gap-2">
@@ -41,6 +42,8 @@ export default function OccupantsPage() {
   const [dupesOnly, setDupesOnly] = useState(false);
 
   // null = closed, seat object = confirming; seat carries occupantName for the copy
+  // The occupant whose full record is open, or null.
+  const [openGroup, setOpenGroup] = useState(null);
   const [toRelease, setToRelease] = useState(null);
   const [releaseBusy, setReleaseBusy] = useState(false);
 
@@ -98,7 +101,7 @@ export default function OccupantsPage() {
     return (
       <div>
         {header}
-        <TileSkeleton count={4} />
+        <TileSkeleton count={6} />
         <TableSkeleton rows={8} />
       </div>
     );
@@ -108,16 +111,28 @@ export default function OccupantsPage() {
     <div>
       {header}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 mb-4">
         <Stat n={totals.filled_seats ?? 0} label="Filled Seats" icon={CheckCircle} to="/register?status=Filled" />
         <Stat n={totals.occupants ?? 0} label="Occupants" icon={Users} />
+        <Stat n={totals.joined ?? 0} label="Joined" icon={UserCheck} />
+        <Stat
+          n={totals.awaiting_joining ?? 0}
+          label="Awaiting Joining"
+          icon={Clock}
+          tone={totals.awaiting_joining > 0 ? 'amber' : undefined}
+        />
+        <Stat
+          n={totals.over_band ?? 0}
+          label="Hired Over Band"
+          icon={AlertTriangle}
+          tone={totals.over_band > 0 ? 'red' : undefined}
+        />
         <Stat
           n={totals.multi_seat_occupants ?? 0}
           label="Holding >1 Seat"
           icon={AlertTriangle}
           tone={totals.multi_seat_occupants > 0 ? 'red' : undefined}
         />
-        <Stat n={totals.unlinked_seats ?? 0} label="Seats w/o Application" icon={UserCheck} />
       </div>
 
       <div className="card">
@@ -223,9 +238,13 @@ export default function OccupantsPage() {
                     </td>
                     <td>
                       {s.application ? (
-                        <span className="inline-block px-2 py-0.5 rounded-sm text-[11px] font-semibold uppercase tracking-[1px] bg-brand-green/10 text-brand-green whitespace-nowrap">
-                          Selected · {s.application.reference_id}
-                        </span>
+                        <>
+                          <JoiningPill status={s.application.joining_status} />
+                          <div className="mini font-mono mt-1">{s.application.reference_id}</div>
+                          {s.application.date_of_joining && (
+                            <div className="mini">DOJ {fmtDate(s.application.date_of_joining)}</div>
+                          )}
+                        </>
                       ) : (
                         <span className="inline-block px-2 py-0.5 rounded-sm text-[11px] font-semibold uppercase tracking-[1px] bg-muted/12 text-muted whitespace-nowrap">
                           No application linked
@@ -233,16 +252,26 @@ export default function OccupantsPage() {
                       )}
                     </td>
                     <td>
-                      {!s.application && (
+                      <span className="flex gap-1.5 flex-wrap">
                         <button
                           type="button"
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setToRelease({ ...s, occupantName: g.name })}
-                          title="Return this seat to Under Recruitment and clear the occupant"
+                          className="btn btn-sm"
+                          onClick={() => setOpenGroup(g)}
+                          title="Open the full record for this person"
                         >
-                          Hand back
+                          View
                         </button>
-                      )}
+                        {!s.application && (
+                          <button
+                            type="button"
+                            className="btn btn-ghost btn-sm"
+                            onClick={() => setToRelease({ ...s, occupantName: g.name })}
+                            title="Return this seat to Under Recruitment and clear the occupant"
+                          >
+                            Hand back
+                          </button>
+                        )}
+                      </span>
                     </td>
                   </tr>
                 )))
@@ -251,6 +280,10 @@ export default function OccupantsPage() {
           </table>
         </div>
       </div>
+
+      {openGroup && (
+        <OccupantDrawer group={openGroup} onClose={() => setOpenGroup(null)} />
+      )}
 
       {toRelease && (
         <ConfirmDialog

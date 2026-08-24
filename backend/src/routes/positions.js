@@ -7,6 +7,19 @@ import { nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached, bandStanding }
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
 
+/* A selected candidate is committed to the seat from the day they are selected,
+   but only occupies it from the day they join. No joining date on file yet reads
+   as 'Joining date not set' rather than silently claiming either. */
+function joiningStatus(dateOfJoining) {
+  if (!dateOfJoining) return 'Joining date not set';
+  const doj = new Date(dateOfJoining);
+  if (Number.isNaN(doj.getTime())) return 'Joining date not set';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  doj.setHours(0, 0, 0, 0);
+  return doj > today ? 'Awaiting joining' : 'Joined';
+}
+
 function decorate(p) {
   const o = p.toObject({ versionKey: false });
   o.id = o._id;
@@ -37,9 +50,14 @@ router.get('/', async (req, res) => {
 // latter is why the register can show the same occupant on several rows.
 router.get('/occupants', async (req, res) => {
   const filled = await Position.find({ status: 'Filled' }).sort('pcn');
+  /* Everything the occupant view shows about the person in the seat. The seat
+     knows only a name; the application behind it carries who they actually are,
+     what they were hired at, and the approval that put them there. */
   const selected = await Application.find(
     { stage: 'Selected', position_id: { $ne: null } },
-    'candidate_name reference_id position_id date_of_joining offered_salary applied_on'
+    'candidate_name reference_id position_id date_of_joining offered_salary applied_on '
+    + 'email mobile qualification total_experience_years relevant_hotel_experience_years '
+    + 'current_employer source approval offer_sent_at documents notice_period'
   );
   const bySeat = new Map(selected.map((a) => [String(a.position_id), a]));
 
@@ -69,6 +87,24 @@ router.get('/occupants', async (req, res) => {
         applied_on: a.applied_on,
         // How the hired salary sits against this seat's sanctioned band.
         band_standing: bandStanding(a.offered_salary, p.salary_min, p.salary_max),
+        email: a.email,
+        mobile: a.mobile,
+        qualification: a.qualification,
+        total_experience_years: a.total_experience_years,
+        relevant_hotel_experience_years: a.relevant_hotel_experience_years,
+        current_employer: a.current_employer,
+        source: a.source,
+        notice_period: a.notice_period,
+        documents: (a.documents || []).length,
+        offer_sent_at: a.offer_sent_at,
+        employee_code: a.approval?.employee_code || '',
+        recommended_by: a.approval?.recommended_by || '',
+        salary_approved_by: a.approval?.salary_approved_by || '',
+        approval_date: a.approval?.approval_date || '',
+        offer_issued_date: a.approval?.offer_issued_date || '',
+        /* Selected is not the same as on the payroll. Until the joining date
+           arrives the seat is committed, not occupied — the register should say so. */
+        joining_status: joiningStatus(a.date_of_joining),
       },
     });
   }
@@ -84,6 +120,8 @@ router.get('/occupants', async (req, res) => {
       || (a.name ? 0 : 1) - (b.name ? 0 : 1) // unnamed seeded seats after named people
       || a.name.localeCompare(b.name));
 
+  const allSeats = occupants.flatMap((g) => g.seats);
+  const withApp = allSeats.filter((s) => s.application);
   res.json({
     occupants,
     totals: {
@@ -91,6 +129,11 @@ router.get('/occupants', async (req, res) => {
       occupants: occupants.length,
       multi_seat_occupants: occupants.filter((g) => g.seat_count > 1).length,
       unlinked_seats: occupants.reduce((n, g) => n + g.unlinked_count, 0),
+      // Hired through this system, split by whether they have actually started.
+      selected_total: withApp.length,
+      awaiting_joining: withApp.filter((s) => s.application.joining_status === 'Awaiting joining').length,
+      joined: withApp.filter((s) => s.application.joining_status === 'Joined').length,
+      over_band: withApp.filter((s) => s.application.band_standing === 'Over band').length,
     },
   });
 });
