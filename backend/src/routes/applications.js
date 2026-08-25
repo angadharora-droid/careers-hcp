@@ -461,22 +461,10 @@ router.patch('/:id/approval', requireRole('hr_admin'), async (req, res) => {
     return res.status(400).json({ error: err.message });
   }
 
-  /* No offer letter before position AND salary approval. The seat
-     is already proven by stage Selected (it claimed a PCN); the salary approval is
-     what this record adds, so an offer issue date cannot predate it. */
-  if (next.offer_issued_date) {
-    if (!next.salary_approved_by || !next.approval_date) {
-      return res.status(400).json({
-        error: 'Record the salary approving authority and approval date before entering an offer issued date.',
-      });
-    }
-    if (app.offered_salary == null) {
-      return res.status(400).json({ error: 'Set the offered salary before entering an offer issued date.' });
-    }
-    if (next.offer_issued_date < next.approval_date) {
-      return res.status(400).json({ error: 'The offer cannot be issued before the approval date.' });
-    }
-  }
+  /* The offer issued date is freely recordable — registers are often backfilled
+     after the fact, so a missing approval record or offered salary must not block
+     it. The panel surfaces an advisory instead when the approval chain is
+     incomplete. */
   // The employee code closes the loop from application to hire,
   // so it only exists once an offer has actually gone out.
   if (next.employee_code && !next.offer_issued_date) {

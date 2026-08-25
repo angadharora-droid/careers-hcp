@@ -580,10 +580,10 @@ function SelectionRecord({ record, onSaved }) {
     }
   }
 
-  // Flagged before the save is attempted, rather than only on rejection.
+  // The offer issued date saves regardless — this only flags an incomplete chain.
   const salaryMissing = record.recommended_salary == null;
   const approvalMissing = !form.salary_approved_by || !form.approval_date;
-  const offerBlocked = salaryMissing || approvalMissing;
+  const approvalIncomplete = salaryMissing || approvalMissing;
 
   return (
     <div className="border border-line rounded-sm overflow-hidden mb-4 last:mb-0">
@@ -645,10 +645,10 @@ function SelectionRecord({ record, onSaved }) {
                   aria-label={f.label}
                   onChange={(e) => setForm((s) => ({ ...s, [f.key]: e.target.value }))}
                 />
-                {f.key === 'offer_issued_date' && offerBlocked && (
+                {f.key === 'offer_issued_date' && approvalIncomplete && (
                   <div className="mini text-brand-amber mt-1 flex items-start gap-1.5">
                     <AlertTriangle size={12} className="mt-px" />
-                    {salaryMissing ? 'The offered salary' : 'The salary approving authority and approval date'} must be recorded before an offer is issued.
+                    {salaryMissing ? 'The offered salary is' : 'The salary approving authority and approval date are'} still missing — record them to complete the approval chain.
                   </div>
                 )}
                 {f.key === 'employee_code' && !form.offer_issued_date && (
@@ -724,6 +724,7 @@ export default function ApplicationRegisterPage() {
   const [rowQ, setRowQ] = useState('');
   // null key = register order, the order the applications arrived in.
   const [sort, setSort] = useState({ key: null, dir: 1 });
+  const [xlsxBusy, setXlsxBusy] = useState(false);
 
   const loadPosts = useCallback(async () => {
     setPostsErr(null);
@@ -801,8 +802,6 @@ export default function ApplicationRegisterPage() {
       </div>
     );
   }
-
-  const [xlsxBusy, setXlsxBusy] = useState(false);
 
   const header = reg?.header;
   const rows = reg?.rows || [];

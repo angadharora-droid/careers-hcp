@@ -273,8 +273,9 @@ the six authority fields are stored and written through the endpoint below.
 - `PATCH /applications/:id/approval` → `{ application }`
   Body: `{ recommended_by?, salary_approved_by?, approval_date?, offer_issued_date?, employee_code?, closed_by? }`.
   Dates are ISO `YYYY-MM-DD`. Only valid while the candidate is `Selected`. Server-enforced:
-  - `offer_issued_date` requires `salary_approved_by`, `approval_date` and a set `offered_salary`, and cannot predate `approval_date`.
   - `employee_code` requires `offer_issued_date`.
+  `offer_issued_date` is freely recordable (registers get backfilled); the panel shows an
+  advisory when the approving authority, approval date or offered salary are still missing.
 
 ### Interview rounds
 
