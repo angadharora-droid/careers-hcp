@@ -8,6 +8,7 @@ import { StatusPill, FlagPill } from '../components/Badges';
 import PositionModal from '../components/PositionModal';
 import PageHeader from '../components/PageHeader';
 import ConfirmDialog from '../components/ConfirmDialog';
+import OccupantsView from '../components/OccupantsView';
 import { Plus, Search, X, ArrowUpDown, ChevronUp, ChevronDown, Edit, Trash, Table, Download } from '../components/Icons';
 import { useToast } from '../context/ToastContext';
 
@@ -25,7 +26,7 @@ const POS_CSV = [
   { header: 'Salary Min', value: (p) => p.salary_min ?? '' },
   { header: 'Salary Max', value: (p) => p.salary_max ?? '' },
   { header: 'Status', value: (p) => p.status },
-  { header: 'Days Vacant', value: (p) => p.days_vacant ?? '' },
+  { header: 'Days Unfilled', value: (p) => p.days_vacant ?? '' },
   { header: 'SLA Breached', value: (p) => (p.sla_breached ? 'Yes' : 'No') },
   { header: 'Occupant', value: (p) => p.occupant_name || '' },
   { header: 'Critical', value: (p) => (p.is_critical ? 'Yes' : 'No') },
@@ -37,7 +38,7 @@ const POS_CSV = [
 const SORTS = {
   designation: { label: 'Designation', get: (p) => p.designation || '', string: true },
   band: { label: 'Salary Band', get: (p) => Number(p.salary_max) || Number(p.salary_min) || 0 },
-  days: { label: 'Days Vacant', get: (p) => (p.days_vacant == null ? null : Number(p.days_vacant)) },
+  days: { label: 'Days Unfilled', get: (p) => (p.days_vacant == null ? null : Number(p.days_vacant)) },
 };
 
 function SortHeader({ id, children, sort, onSort, className = '' }) {
@@ -93,6 +94,13 @@ export default function RegisterPage() {
   // Dashboard KPI drill-downs land here: /register?status=Vacant · /register?breached=1
   const [status, setStatus] = useState(() => searchParams.get('status') || '');
   const [breachedOnly, setBreachedOnly] = useState(() => searchParams.get('breached') === '1');
+  /* The register's two faces: the seats themselves, and the people holding them.
+     Driven by the URL rather than mirrored into state, so refresh and Back keep
+     the tab, and the sidebar's plain /register link always lands on Seats. */
+  const view = searchParams.get('view') === 'occupants' ? 'occupants' : 'seats';
+  // Bumped to force a seats refetch when the filters themselves did not change —
+  // e.g. returning from the Occupants tab after a hand-back changed seat statuses.
+  const [reloadTick, setReloadTick] = useState(0);
 
   const [sort, setSort] = useState({ key: null, dir: 1 });
 
@@ -103,13 +111,23 @@ export default function RegisterPage() {
 
   const debounce = useRef(null);
 
-  // Consume the query params once so refresh/back doesn't re-pin the filter.
+  /* Consume the seat-filter params so refresh/back doesn't re-pin the filter.
+     Watched rather than run once: the Occupants tab links back into the seats
+     view (e.g. Filled Seats → /register?status=Filled), and that navigation
+     changes the params without remounting this page. Clearing the params also
+     lands the page on the Seats tab, which is what a seat filter means. The
+     `view` param is NOT consumed — it is the tab's home in the URL. */
   useEffect(() => {
-    if (searchParams.get('status') || searchParams.get('breached')) {
-      setSearchParams({}, { replace: true });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const s = searchParams.get('status');
+    const b = searchParams.get('breached') === '1';
+    if (!s && !b) return;
+    if (s) setStatus(s);
+    if (b) setBreachedOnly(true);
+    // Refetch even when the filter value is unchanged — the drill-down may be
+    // revisiting data the Occupants tab just changed (e.g. a hand-back).
+    setReloadTick((t) => t + 1);
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const loadFiltered = useCallback(async (filters) => {
     setErr(null);
@@ -147,7 +165,7 @@ export default function RegisterPage() {
     clearTimeout(debounce.current);
     debounce.current = setTimeout(() => loadFiltered({ q, dept, grade, status }), q ? 250 : 0);
     return () => clearTimeout(debounce.current);
-  }, [q, dept, grade, status, loadFiltered]);
+  }, [q, dept, grade, status, reloadTick, loadFiltered]);
 
   function afterWrite() {
     setModal(null);
@@ -195,20 +213,62 @@ export default function RegisterPage() {
 
   const anyFilter = q || dept || grade || status || breachedOnly;
 
+  const tabCls = (active) =>
+    `inline-flex items-center gap-1.5 font-button text-[11px] font-medium uppercase tracking-[1.5px] px-3.5 py-1.5 min-h-10 rounded-sm border cursor-pointer transition-colors duration-150 active:scale-[0.98] ${
+      active
+        ? 'bg-berry text-white border-berry'
+        : 'bg-card text-body border-line hover:text-berry hover:border-berry'
+    }`;
+
   return (
     <div>
       <PageHeader
         title="Position Control Register"
-        sub="Sanctioned seats · recruitment opens only against approved vacancies"
+        sub={view === 'occupants'
+          ? 'Who holds which sanctioned seat · one person, one PCN'
+          : 'Sanctioned seats · recruitment opens only against approved vacancies'}
         action={
-          <button type="button" className="btn" onClick={() => setModal('new')}>
-            <Plus size={14} />
-            Add Position
-          </button>
+          view === 'seats' ? (
+            <button type="button" className="btn" onClick={() => setModal('new')}>
+              <Plus size={14} />
+              Add Position
+            </button>
+          ) : null
         }
       />
 
-      <div className="card">
+      {/* Seats / Occupants — two faces of the one register */}
+      <div className="flex gap-1.5 flex-wrap items-center mb-4" role="tablist" aria-label="Register view">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'seats'}
+          className={tabCls(view === 'seats')}
+          onClick={() => {
+            if (view !== 'seats') {
+              // Seats may have changed while the tab was away (e.g. a hand-back).
+              setReloadTick((t) => t + 1);
+              loadMeta();
+            }
+            setSearchParams({});
+          }}
+        >
+          Seats
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === 'occupants'}
+          className={tabCls(view === 'occupants')}
+          onClick={() => setSearchParams({ view: 'occupants' })}
+        >
+          Occupants
+        </button>
+      </div>
+
+      {view === 'occupants' && <OccupantsView />}
+
+      <div className={view === 'seats' ? 'card' : 'hidden'}>
         <div className="infobar">
           <b>Positions exist independently of employees.</b> Recruitment can only open against a position that is Approved + Vacant + within its sanctioned salary band. Employees occupy PCNs; they don't create them.
         </div>
@@ -273,7 +333,7 @@ export default function RegisterPage() {
                   <th>Dept</th><th>Reports To</th>
                   <SortHeader id="band" sort={sort} onSort={toggleSort} className="num">Salary Band ₹/mo</SortHeader>
                   <th>Status</th>
-                  <SortHeader id="days" sort={sort} onSort={toggleSort} className="num">Days Vacant</SortHeader>
+                  <SortHeader id="days" sort={sort} onSort={toggleSort} className="num">Days Unfilled</SortHeader>
                   <th>Occupant</th><th>Flags</th><th><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>

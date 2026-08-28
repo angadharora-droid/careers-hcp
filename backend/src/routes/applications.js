@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
-import Application, { STAGES, REJECTION_REASONS } from '../models/Application.js';
+import Application, { STAGES, REJECTION_REASONS, TALENT_BANK_STAGES } from '../models/Application.js';
 import Position from '../models/Position.js';
 import PanelAssignment from '../models/PanelAssignment.js';
 import PanelScore from '../models/PanelScore.js';
@@ -11,7 +11,7 @@ import User from '../models/User.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
   RECRUITABLE_STATUSES, recruitable, roundsForGrade, scoreSummary, wordCount,
-  applyPanelRule, resolvePanelRule, daysToFill, bandStanding,
+  applyPanelRule, resolvePanelRule, daysToFill, bandStanding, joiningStatus,
 } from '../utils/helpers.js';
 import { buildOfferLetter } from '../utils/offerLetter.js';
 import { isEmailConfigured, sendMail } from '../utils/mailer.js';
@@ -78,14 +78,15 @@ async function withDerived(app) {
 
 /* ===== HR: list / detail ===== */
 
-// GET /api/applications?stage=&q=&department=&job_code=&grade=&red_flag=true
+// GET /api/applications?stage=&q=&department=&job_code=&grade=&red_flag=true&talent_bank=true
 router.get('/', requireRole('hr_admin'), async (req, res) => {
-  const { stage, q, red_flag, department, job_code, grade } = req.query;
+  const { stage, q, red_flag, department, job_code, grade, talent_bank } = req.query;
   const filter = {};
   if (stage) filter.stage = stage;
   if (department) filter.department = department;
   if (job_code) filter.job_code = job_code;
   if (grade) filter.grade = grade;
+  if (talent_bank === 'true') filter.in_talent_bank = true;
   if (q) filter.$or = [
     { candidate_name: { $regex: q, $options: 'i' } },
     { job_code: { $regex: q, $options: 'i' } },
@@ -100,7 +101,41 @@ router.get('/', requireRole('hr_admin'), async (req, res) => {
   res.json({ applications: await Promise.all(apps.map(withDerived)) });
 });
 
+/* GET /api/applications/joinings — the joining calendar's feed: every Selected
+   candidate with their joining date and offer state, plus the ones whose date is
+   still unset so HR can chase them. Registered before '/:id' — Express would
+   otherwise read 'joinings' as an application id. */
+router.get('/joinings', requireRole('hr_admin'), async (_req, res) => {
+  const apps = await Application.find(
+    { stage: 'Selected' },
+    'reference_id candidate_name designation department grade pcn date_of_joining '
+    + 'offered_salary mobile email offer_sent_at offer_sent_method approval.employee_code applied_on'
+  ).sort('date_of_joining');
+  res.json({
+    joinings: apps.map((a) => ({
+      id: a._id,
+      reference_id: a.reference_id,
+      candidate_name: a.candidate_name,
+      designation: a.designation,
+      department: a.department,
+      grade: a.grade,
+      pcn: a.pcn || '',
+      date_of_joining: a.date_of_joining || '',
+      offered_salary: a.offered_salary,
+      mobile: a.mobile,
+      email: a.email,
+      offer_sent_at: a.offer_sent_at,
+      offer_sent_method: a.offer_sent_method || '',
+      employee_code: a.approval?.employee_code || '',
+      joining_status: joiningStatus(a.date_of_joining),
+    })),
+  });
+});
+
 router.get('/:id', requireRole('hr_admin'), async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(404).json({ error: 'Application not found' });
+  }
   const app = await Application.findById(req.params.id);
   if (!app) return res.status(404).json({ error: 'Application not found' });
   res.json({ application: await withDerived(app) });
@@ -111,7 +146,9 @@ router.patch('/:id', requireRole('hr_admin'), async (req, res) => {
   const app = await Application.findById(req.params.id);
   if (!app) return res.status(404).json({ error: 'Application not found' });
   const b = { ...req.body };
-  ['stage', 'position_id', 'pcn', 'reference_id', '_id'].forEach((k) => delete b[k]);
+  // in_talent_bank / talent_bank are stripped too — banking has its own endpoint
+  // with a stage gate and an audit event, which a field edit must not bypass.
+  ['stage', 'position_id', 'pcn', 'reference_id', '_id', 'in_talent_bank', 'talent_bank'].forEach((k) => delete b[k]);
   if (b.intro_note !== undefined && wordCount(b.intro_note) > 50) {
     return res.status(400).json({ error: 'Brief intro must be 50 words or fewer' });
   }
@@ -212,6 +249,15 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
   // The stage the application is leaving, captured before anything overwrites it.
   const priorStage = app.stage;
 
+  /* A banked candidate re-entering the pipeline is no longer parked: any move
+     out of the not-selected stages lifts the Talent Bank flag, so the bank only
+     ever holds candidates who are actually out of the running. */
+  const leavingBank = app.in_talent_bank && !TALENT_BANK_STAGES.includes(stage);
+  if (leavingBank) {
+    app.in_talent_bank = false;
+    app.talent_bank = { added_at: null, added_by_name: '', note: '' };
+  }
+
   if (stage === 'Selected') {
     /* Already Selected and holding the same seat? Then this is an offer edit, not a
        fresh selection. Falling through would claim a SECOND seat and strand the
@@ -305,6 +351,11 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
       to: 'Selected',
       detail: `Seat ${seat.pcn} filled${app.offered_salary != null ? ` · offered ${app.offered_salary}` : ''}`,
     });
+    if (leavingBank) {
+      await recordEvent(app._id, 'talent', 'Removed from Talent Bank', {
+        actor: req.user, detail: 'Re-entered the pipeline',
+      });
+    }
     return res.json({ application: await withDerived(app), filled_pcn: seat.pcn });
   }
 
@@ -330,6 +381,50 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
         : (stage === 'Interview Scheduled' && app.interview_date ? `Interview on ${app.interview_date}` : ''),
     });
   }
+  if (leavingBank) {
+    await recordEvent(app._id, 'talent', 'Removed from Talent Bank', {
+      actor: req.user, detail: 'Re-entered the pipeline',
+    });
+  }
+  res.json({ application: await withDerived(app) });
+});
+
+/* ===== HR: Talent Bank ===== */
+
+// POST /api/applications/:id/talent-bank  { note? }
+// Parks a not-selected candidate for a future vacancy. The application keeps its
+// stage and history — the bank is a flag, not a move.
+router.post('/:id/talent-bank', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  if (!TALENT_BANK_STAGES.includes(app.stage)) {
+    return res.status(400).json({
+      error: `Only a not-selected candidate (${TALENT_BANK_STAGES.join(' / ')}) can go to the Talent Bank.`,
+    });
+  }
+  if (app.in_talent_bank) {
+    return res.status(400).json({ error: 'This candidate is already in the Talent Bank' });
+  }
+  const note = String((req.body || {}).note || '').trim();
+  if (note.length > 300) return res.status(400).json({ error: 'Note must be 300 characters or fewer' });
+  app.in_talent_bank = true;
+  app.talent_bank = { added_at: new Date(), added_by_name: req.user.name, note };
+  await app.save();
+  await recordEvent(app._id, 'talent', 'Added to Talent Bank', { actor: req.user, detail: note });
+  res.json({ application: await withDerived(app) });
+});
+
+// DELETE /api/applications/:id/talent-bank — take a candidate back out.
+router.delete('/:id/talent-bank', requireRole('hr_admin'), async (req, res) => {
+  const app = await Application.findById(req.params.id);
+  if (!app) return res.status(404).json({ error: 'Application not found' });
+  if (!app.in_talent_bank) {
+    return res.status(400).json({ error: 'This candidate is not in the Talent Bank' });
+  }
+  app.in_talent_bank = false;
+  app.talent_bank = { added_at: null, added_by_name: '', note: '' };
+  await app.save();
+  await recordEvent(app._id, 'talent', 'Removed from Talent Bank', { actor: req.user });
   res.json({ application: await withDerived(app) });
 });
 
@@ -821,7 +916,19 @@ router.post('/:id/move', requireRole('hr_admin'), async (req, res) => {
   app.stage = 'Applied';
   app.interview_date = '';
   app.rejection_reason = '';
+  // Moving a banked candidate to a fresh role IS the bank paying off — the
+  // application is live again, so it leaves the Talent Bank.
+  const wasBanked = app.in_talent_bank;
+  if (wasBanked) {
+    app.in_talent_bank = false;
+    app.talent_bank = { added_at: null, added_by_name: '', note: '' };
+  }
   await app.save();
+  if (wasBanked) {
+    await recordEvent(app._id, 'talent', 'Removed from Talent Bank', {
+      actor: req.user, detail: `Moved to ${target.designation}`,
+    });
+  }
 
   await recordEvent(app._id, 'move', `Moved to ${target.designation}`, {
     actor: req.user,

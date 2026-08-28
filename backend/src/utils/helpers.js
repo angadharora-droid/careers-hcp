@@ -22,9 +22,12 @@ export const wordCount = (t) => {
   return s ? s.split(/\s+/).length : 0;
 };
 
-// Days idle — only counts while a seat sits in status 'Vacant' (not yet under recruitment)
+/* Days unfilled — counts while a seat sits in EITHER recruitable status.
+   A seat under recruitment is still an empty seat: recruitment activity starts
+   the search, it does not stop the ageing clock. Only a fill (or a freeze/hold/
+   elimination) stops it. */
 export function daysVacant(p) {
-  if (p.status !== 'Vacant' || !p.vacant_since) return null;
+  if (!RECRUITABLE_STATUSES.includes(p.status) || !p.vacant_since) return null;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const since = new Date(p.vacant_since);
@@ -35,6 +38,23 @@ export function daysVacant(p) {
 export function slaBreached(p) {
   const dv = daysVacant(p);
   return dv != null && p.replacement_sla_days != null && dv > p.replacement_sla_days;
+}
+
+/* A selected candidate is committed to the seat from the day they are selected,
+   but only occupies it from the day they join. No joining date on file yet reads
+   as 'Joining date not set' rather than silently claiming either.
+
+   The 'YYYY-MM-DD' string is parsed by hand: new Date('YYYY-MM-DD') reads UTC
+   midnight, which lands on the previous local day west of Greenwich and would
+   report tomorrow's joiner as already Joined. */
+export function joiningStatus(dateOfJoining) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateOfJoining || '').trim());
+  if (!m) return 'Joining date not set';
+  const doj = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  if (Number.isNaN(doj.getTime())) return 'Joining date not set';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return doj > today ? 'Awaiting joining' : 'Joined';
 }
 
 /* Where an actual offer sits against the seat's sanctioned salary band.

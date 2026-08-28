@@ -125,7 +125,7 @@ export default function DashboardPage() {
         <Stat n={by.Filled || 0} label="Filled" icon={CheckCircle} to="/register?status=Filled" />
         <Stat n={by['Under Recruitment'] || 0} label="Under Recruitment" icon={Clock} to={`/register?status=${encodeURIComponent('Under Recruitment')}`} />
         <Stat n={by.Vacant || 0} label="Vacant (idle)" icon={AlertCircle} to="/register?status=Vacant" />
-        <Stat n={data.avg_days_vacant} label="Avg Days Vacant" icon={Calendar} />
+        <Stat n={data.avg_days_vacant} label="Avg Days Unfilled" icon={Calendar} hint="Across Vacant and Under Recruitment seats" />
         <Stat
           n={data.filled_measured ? data.avg_days_to_fill : '—'}
           label="Avg Days to Fill"
@@ -151,24 +151,24 @@ export default function DashboardPage() {
 
       {/* Aging vacancies */}
       <div className="card">
-        <h2 className="card-h">Aging Vacancies <span className="r">days idle vs. replacement SLA</span></h2>
+        <h2 className="card-h">Aging Vacancies <span className="r">days unfilled vs. replacement SLA</span></h2>
         <div className="infobar">
-          Counts days since a position went <b>Vacant</b> (not yet under recruitment). Rows past their replacement SLA are flagged — a critical seat idle beyond SLA is the real cost, not the count.
+          Counts days a seat has gone <b>unfilled</b> — both Vacant and Under Recruitment count, because a seat with a search running is still an empty seat. Rows past their replacement SLA are flagged — a critical seat unfilled beyond SLA is the real cost, not the count.
         </div>
         <div className="tbl-scroll">
           <table className="tbl">
             <thead>
               <tr>
-                <th>Job Code</th><th>Designation</th><th>Dept</th><th>Grade</th>
-                <th className="num">Days Vacant</th><th className="num">Repl. SLA</th><th>Status vs SLA</th>
+                <th>Job Code</th><th>Designation</th><th>Dept</th><th>Grade</th><th>Status</th>
+                <th className="num">Days Unfilled</th><th className="num">Repl. SLA</th><th>Status vs SLA</th>
               </tr>
             </thead>
             <tbody>
               {(data.aging_vacancies || []).length === 0 ? (
                 <tr>
-                  <td colSpan={7}>
+                  <td colSpan={8}>
                     <Empty icon={Inbox} title="No aging vacancies">
-                      No positions are currently sitting in Vacant status.
+                      No positions are currently sitting unfilled (Vacant or Under Recruitment).
                     </Empty>
                   </td>
                 </tr>
@@ -179,6 +179,7 @@ export default function DashboardPage() {
                     <td>{v.designation} {v.is_critical && <FlagPill tone="amber">Critical</FlagPill>}</td>
                     <td>{v.department}</td>
                     <td>{v.grade}</td>
+                    <td><StatusPill status={v.status} /></td>
                     <td className={`num font-bold ${v.sla_breached ? 'text-brand-red' : 'text-ink'}`}>{v.days_vacant} days</td>
                     <td className="num">{v.replacement_sla_days != null ? `${v.replacement_sla_days} days` : '—'}</td>
                     <td>

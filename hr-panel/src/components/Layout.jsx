@@ -3,16 +3,17 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import {
-  LayoutDashboard, Table, Users, UserCheck, Flag, BookOpen, UserPlus, Menu, X, LogOut,
-  ClipboardList,
+  LayoutDashboard, Table, Users, Flag, BookOpen, UserPlus, Menu, X, LogOut,
+  ClipboardList, Calendar, Briefcase,
 } from './Icons';
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/register', label: 'Position Register', icon: Table },
-  { to: '/occupants', label: 'Occupants', icon: UserCheck },
   { to: '/applications', label: 'Applications', icon: Users },
   { to: '/application-register', label: 'Application Register', icon: ClipboardList },
+  { to: '/joinings', label: 'Joining Calendar', icon: Calendar },
+  { to: '/talent-bank', label: 'Talent Bank', icon: Briefcase },
   { to: '/red-flags', label: 'Red Flags', icon: Flag },
   { to: '/framework', label: 'Framework', icon: BookOpen },
   { to: '/interviewers', label: 'Interviewers', icon: UserPlus },

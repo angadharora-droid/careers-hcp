@@ -1,6 +1,17 @@
 import mongoose from 'mongoose';
 
-export const STAGES = ['Applied', 'Interview Scheduled', 'Selected', 'Rejected', 'On Hold'];
+/* Two phases, one field. Screening review (Applied) resolves to Shortlisted /
+   On Hold / Not Shortlisted; the selection phase then runs Interview Scheduled →
+   Selected / Rejected. On Hold serves both phases — the register derives which
+   phase it belongs to from the panel record. */
+export const STAGES = [
+  'Applied', 'Shortlisted', 'Not Shortlisted',
+  'Interview Scheduled', 'Selected', 'Rejected', 'On Hold',
+];
+
+// Stages a candidate can be parked in the Talent Bank from — the two "not
+// selected" exits (failed screening, or rejected after interview).
+export const TALENT_BANK_STAGES = ['Not Shortlisted', 'Rejected'];
 
 // Standard rejection reasons. Rejected transitions accept one of these or a
 // free-text reason in the form "Other: <text>" (validated in routes/applications.js).
@@ -56,6 +67,15 @@ const applicationSchema = new mongoose.Schema(
 
     stage: { type: String, enum: STAGES, default: 'Applied' },
     rejection_reason: { type: String, default: '' },
+    /* Talent Bank — candidates who were not selected but are worth keeping on
+       file for a future vacancy. A flag on the application rather than a copy of
+       it, so the banked record and its history stay one and the same. */
+    in_talent_bank: { type: Boolean, default: false, index: true },
+    talent_bank: {
+      added_at: { type: Date, default: null },
+      added_by_name: { type: String, default: '' },
+      note: { type: String, default: '' },
+    },
     interview_date: { type: String, default: '' },
     // Offer terms — captured at/after selection, printed on the offer letter.
     date_of_joining: { type: String, default: '' },   // ISO 'YYYY-MM-DD'

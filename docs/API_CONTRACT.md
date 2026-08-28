@@ -111,7 +111,10 @@ measured afresh. The dashboard averages them (`avg_days_to_fill`, with `filled_m
 the number of seats the average stands on).
 
 ### Applications
-- `GET /applications?stage=&q=&red_flag=true` → `{ applications: [Application] }`
+- `GET /applications?stage=&q=&red_flag=true&talent_bank=true` → `{ applications: [Application] }`
+- `GET /applications/joinings` → `{ joinings: [Joining] }` — the Joining Calendar's feed: every
+  `Selected` candidate with `date_of_joining`, `joining_status` (`Awaiting joining` / `Joined` /
+  `Joining date not set`), seat, offer and contact fields.
 - `GET /applications/:id` → `{ application }`
 - `PATCH /applications/:id` (candidate fields only) → `{ application }`
   Also owns the Application Register's Section A annotations: `current_employer`,
@@ -125,6 +128,7 @@ Application (HR view) includes candidate fields plus:
   "id": "…", "reference_id": "CPH-ABC123", "job_code": "CPA-FO-C1", "pcn": "",
   "designation": "…", "department": "…", "grade": "C1", "stage": "Applied",
   "rejection_reason": "", "interview_date": "",
+  "in_talent_bank": false, "talent_bank": { "added_at": null, "added_by_name": "", "note": "" },
   "date_of_joining": "", "offered_salary": null, "offer_sent_at": null, "offer_sent_to": "",
   "applied_on": "…",
   "current_employer": "", "relevant_hotel_experience_years": null, "notice_period": "", "remarks": "",
@@ -142,16 +146,36 @@ Application (HR view) includes candidate fields plus:
 `panel_size` is a legacy alias of `rounds` and carries the same number.
 
 ### Pipeline list — `GET /applications`
-Query: `stage`, `q` (candidate name / job code / reference), `department`, `job_code`, `grade`, `red_flag=true`.
+Query: `stage`, `q` (candidate name / job code / reference), `department`, `job_code`, `grade`, `red_flag=true`, `talent_bank=true`.
 All compose; omitting a param leaves that dimension unfiltered. → `{ applications: [Application] }`
 
 ### Stage change — `PATCH /applications/:id/stage`
+Stages run in two phases: screening review (`Applied` → `Shortlisted` / `On Hold` /
+`Not Shortlisted`), then selection (`Interview Scheduled` → `Selected` / `Rejected`).
+`On Hold` is one stage serving both phases. Full enum:
+`Applied · Shortlisted · Not Shortlisted · Interview Scheduled · Selected · Rejected · On Hold`.
+
 Body: `{ stage, rejection_reason?, interview_date?, date_of_joining?, offered_salary?, position_id?, allow_partial_panel? }`
 Server-enforced rules (surface the returned `error` to the user):
 - `Rejected` requires `rejection_reason`, which must be one of the standard reasons: `Frequent job changes / no stability`, `Negative attitude or poor professionalism`, `Weak communication skills`, `Not suitable for hotel culture / team fit`, `Lack of required skills or knowledge`, `Over budget` — or a free-text reason in the form `Other: <text>` (non-empty text, ≤300 chars total). Any other value is a 400.
 - `Interview Scheduled`: also writes the standing interview panel onto the application (see *Interview rounds*).
 - `Selected`: requires every round scored (`rounds`) — override with `allow_partial_panel:true` only if ≥1 score — AND a seat of that role (matched on job_code **and** designation, since a job_code can be shared by two roles) in Vacant/Under Recruitment. Atomically fills the seat (status→Filled, occupant recorded). Response also has `filled_pcn`. Optional `date_of_joining` (ISO `YYYY-MM-DD`) and `offered_salary` (monthly, number) are stored as the offer terms.
 - Moving a Selected candidate to another stage releases their seat back to Under Recruitment.
+- Any move out of `Not Shortlisted` / `Rejected` lifts the Talent Bank flag (see below), so the
+  bank only ever holds candidates who are actually out of the running.
+
+### Talent Bank — `POST` / `DELETE /applications/:id/talent-bank` (HR)
+Parks a **not-selected** candidate (`Not Shortlisted` or `Rejected`) for a future vacancy.
+- `POST` — Body `{ note? }` (≤300 chars). 400 if the candidate is at any other stage, or already banked. Sets `in_talent_bank: true` and `talent_bank { added_at, added_by_name, note }`. → `{ application }`
+- `DELETE` — takes the candidate back out. 400 if not banked. → `{ application }`
+
+The bank is a flag on the application, not a copy of it. A banked candidate re-enters the
+pipeline through `POST /applications/:id/move` (which also clears the flag) or a stage change.
+Note the move route's standing rule still applies: an application with **scored rounds cannot
+be moved** (the scores belong to the old role's scorecard) — an interviewed-then-rejected
+banked candidate re-enters the same role via a stage change, or applies afresh for another
+role while the banked record keeps the history.
+List the bank with `GET /applications?talent_bank=true`.
 
 ### Offer letter (HR)
 - `PATCH /applications/:id/offer` — Body `{ date_of_joining?, offered_salary? }`. Sets/adjusts offer terms; only valid while the candidate is `Selected`. → `{ application }`
@@ -193,7 +217,7 @@ Sources are merged so nothing has to be trusted to stay in step with anything el
 | --- | --- | --- |
 | the application itself | `applied` (always present; folds in the documents submitted with it) | the candidate |
 | `PanelScore.submitted_at` | one `score` per round, as actually submitted | the panellist |
-| `ApplicationEvent` | `stage` · `panel` · `offer` · `approval` · `move` · `document` · `edit` | whoever acted |
+| `ApplicationEvent` | `stage` · `panel` · `offer` · `approval` · `move` · `document` · `edit` · `talent` | whoever acted |
 
 **Applications worked before the action log existed** are reconstructed from records that were
 always kept — `PanelAssignment.assigned_at`/`assigned_by`, `move_history`, `offer_sent_at`,
@@ -251,9 +275,9 @@ the pipeline and are not separately editable:
 
 | Field | Derivation |
 | --- | --- |
-| `screening` | `Shortlisted` once a panel is appointed or an interview date is set; `Not shortlisted` if rejected before that; else `On hold` / `Pending` |
+| `screening` | The explicit screening stages answer directly (`Shortlisted` / `Not Shortlisted`); otherwise derived — `Shortlisted` once a panel is appointed, an interview date is set, or the stage is past screening; `Not shortlisted` if rejected before that; else `On hold` / `Pending` |
 | `interview_status` | `N.A.` with no panel · `Round N scheduled` · `Did not attend` (rejected/parked with nothing scored) · `Round N cleared` · `Both/All rounds cleared` |
-| `final_decision` | `Selected` · `Rejected` · `On hold` · `Final pending` (all rounds scored, HR yet to call it) · `Pending` |
+| `final_decision` | `Selected` · `Rejected` · `Not shortlisted` · `On hold` · `Final pending` (all rounds scored, HR yet to call it) · `Pending` |
 | `register_flag` | `Talent Pool` (arrived after closure) · `Post Closed` (undecided when the last seat went) · `""` |
 
 `header.salary_band` is `{ min, max }`, the widest band across the post's seats. Each row also
@@ -322,11 +346,16 @@ scored can be neither removed nor reassigned. → `{ application }`
   "band_min_total": 980000, "band_max_total": 1234000,
   "avg_days_to_fill": 34, "filled_measured": 12,
   "avg_days_vacant": 20, "sla_breached_count": 9,
-  "aging_vacancies": [{ "pcn", "job_code", "designation", "department", "grade", "is_critical", "days_vacant", "replacement_sla_days", "sla_breached" }],
+  "aging_vacancies": [{ "pcn", "job_code", "designation", "department", "grade", "status", "is_critical", "days_vacant", "replacement_sla_days", "sla_breached" }],
   "departments": [{ "department", "total", "filled", "under_recruitment", "vacant", "frozen_or_hold", "band_min", "band_max" }],
   "applications_total": 0, "pipeline": { "Applied": 0, … }, "red_flag_queue_count": 0
 }
 ```
+
+Ageing covers every **unfilled** seat — status `Vacant` **or** `Under Recruitment` (each row
+carries which). `avg_days_vacant` and `sla_breached_count` read the same set: opening
+recruitment starts the search, it does not stop the ageing clock. `days_vacant` is measured
+from `vacant_since` and returns `null` for any other status.
 
 ### Grades (read: any authed user; write: HR)
 - `GET /grades` → `{ grades: [{ code, meaning, panel_size, present_at_cpa, order }] }`

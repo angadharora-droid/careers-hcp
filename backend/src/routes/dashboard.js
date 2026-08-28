@@ -3,7 +3,7 @@ import Position, { POSITION_STATUSES } from '../models/Position.js';
 import Application, { STAGES } from '../models/Application.js';
 import PanelScore from '../models/PanelScore.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
-import { daysVacant, slaBreached } from '../utils/helpers.js';
+import { daysVacant, slaBreached, recruitable } from '../utils/helpers.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
@@ -17,12 +17,15 @@ router.get('/summary', async (_req, res) => {
   positions.forEach((p) => { byStatus[p.status] = (byStatus[p.status] || 0) + 1; });
 
   const live = positions.filter((p) => p.status !== 'Eliminated');
-  const vacant = positions.filter((p) => p.status === 'Vacant');
-  const dvs = vacant.map(daysVacant).filter((x) => x != null);
-  const aging = vacant
+  /* Ageing covers every UNFILLED seat — Vacant and Under Recruitment alike. A
+     seat with a search running is still an empty seat, so opening recruitment
+     must not drop it off the ageing list. */
+  const unfilled = positions.filter(recruitable);
+  const dvs = unfilled.map(daysVacant).filter((x) => x != null);
+  const aging = unfilled
     .map((p) => ({
       pcn: p.pcn, job_code: p.job_code, designation: p.designation, department: p.department,
-      grade: p.grade, is_critical: p.is_critical, days_vacant: daysVacant(p),
+      grade: p.grade, status: p.status, is_critical: p.is_critical, days_vacant: daysVacant(p),
       replacement_sla_days: p.replacement_sla_days, sla_breached: slaBreached(p),
     }))
     .filter((x) => x.days_vacant != null)
@@ -64,7 +67,7 @@ router.get('/summary', async (_req, res) => {
        Lets the client say WHY the average is empty instead of just showing a dash. */
     filled_unmeasured: live.filter((p) => p.status === 'Filled' && typeof p.days_to_fill !== 'number').length,
     avg_days_vacant: dvs.length ? Math.round(dvs.reduce((a, b) => a + b, 0) / dvs.length) : 0,
-    sla_breached_count: vacant.filter(slaBreached).length,
+    sla_breached_count: unfilled.filter(slaBreached).length,
     aging_vacancies: aging,
     departments,
     applications_total: apps.length,

@@ -117,8 +117,10 @@ export default function MoveRoleDialog({ app, positions, onClose, onMoved }) {
                 <>
                   <b>{scored} interview round{scored === 1 ? '' : 's'}</b> have already been scored against{' '}
                   {app.designation}, on the scorecard for that role. A different role runs a different
-                  scorecard, so the move is refused. Reject this application and ask the candidate to apply
-                  to the other role instead.
+                  scorecard, so the move is refused.{' '}
+                  {['Rejected', 'Not Shortlisted'].includes(app.stage)
+                    ? 'Ask the candidate to apply afresh to the other role — this application keeps the history.'
+                    : 'Reject this application and ask the candidate to apply to the other role instead.'}
                 </>
               )}
             </span>

@@ -36,6 +36,7 @@ const SCREENING_STYLES = {
 const DECISION_STYLES = {
   Selected: 'bg-brand-green/10 text-brand-green',
   Rejected: 'bg-brand-red/10 text-brand-red',
+  'Not shortlisted': 'bg-brand-red/10 text-brand-red',
   'On hold': 'bg-muted/12 text-muted',
   'Final pending': 'bg-brand-amber/12 text-brand-amber',
   Pending: 'bg-brand-blue/10 text-brand-blue',
@@ -296,7 +297,8 @@ const FUNNEL = [
   { key: 'interviewed', label: 'Interviewed', tone: 'blue', match: (r) => r.rounds_scored > 0 },
   { key: 'pending', label: 'Awaiting decision', tone: 'amber', match: (r) => ['Pending', 'Final pending'].includes(r.final_decision) },
   { key: 'selected', label: 'Selected', tone: 'green', match: (r) => r.final_decision === 'Selected' },
-  { key: 'rejected', label: 'Rejected', tone: 'red', match: (r) => r.final_decision === 'Rejected' },
+  // One red tile for both exits: rejected after interview, or screened out.
+  { key: 'rejected', label: 'Not selected', tone: 'red', match: (r) => ['Rejected', 'Not shortlisted'].includes(r.final_decision) },
   { key: 'flagged', label: 'Talent pool / closed', tone: 'muted', match: (r) => Boolean(r.register_flag) },
   { key: 'bestfit', label: '★★★ Best fit', tone: 'green', match: (r) => r.fit?.stars === 3 },
 ];

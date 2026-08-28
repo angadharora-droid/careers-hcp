@@ -23,14 +23,15 @@ const MARKERS = {
   move: { icon: Shuffle, tone: 'amber', label: 'Move' },
   document: { icon: FileText, tone: 'muted', label: 'Document' },
   edit: { icon: Pencil, tone: 'muted', label: 'Edit' },
+  talent: { icon: Users, tone: 'blue', label: 'Talent Bank' },
 };
 
 // Stage rows say what they became, so the marker colour follows the outcome
 // rather than the event type — a rejection should not read the same as a hire.
 function toneFor(item) {
   if (item.type === 'stage') {
-    if (item.to === 'Selected') return 'green';
-    if (item.to === 'Rejected') return 'red';
+    if (item.to === 'Selected' || item.to === 'Shortlisted') return 'green';
+    if (item.to === 'Rejected' || item.to === 'Not Shortlisted') return 'red';
     if (item.to === 'On Hold') return 'muted';
     return 'berry';
   }

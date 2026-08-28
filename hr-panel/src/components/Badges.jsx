@@ -22,6 +22,8 @@ export function StatusPill({ status }) {
 
 const STAGE_STYLES = {
   Applied: 'bg-brand-blue/10 text-brand-blue',
+  Shortlisted: 'bg-brand-green/10 text-brand-green',
+  'Not Shortlisted': 'bg-brand-red/10 text-brand-red',
   'Interview Scheduled': 'bg-brand-amber/12 text-brand-amber',
   Selected: 'bg-brand-green/10 text-brand-green',
   Rejected: 'bg-brand-red/10 text-brand-red',
@@ -34,6 +36,12 @@ export function StageBadge({ stage }) {
       {stage}
     </span>
   );
+}
+
+// A candidate kept on file for a future vacancy — teal, matching the register's
+// Talent Pool flag so the two readings of "worth keeping" share a colour.
+export function TalentPill() {
+  return <span className={`${CHIP} bg-[#1f6b82]/10 text-[#1f6b82]`}>Talent Bank</span>;
 }
 
 const REC_STYLES = {

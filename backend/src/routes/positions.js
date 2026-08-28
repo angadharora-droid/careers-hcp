@@ -3,24 +3,12 @@ import Position, { POSITION_STATUSES } from '../models/Position.js';
 import Application from '../models/Application.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import {
-  nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached, bandStanding, RECRUITABLE_STATUSES,
+  nextPCN, deptAbbrOf, jobCodeOf, daysVacant, slaBreached, bandStanding, joiningStatus,
+  RECRUITABLE_STATUSES,
 } from '../utils/helpers.js';
 
 const router = Router();
 router.use(requireAuth, requireRole('hr_admin'));
-
-/* A selected candidate is committed to the seat from the day they are selected,
-   but only occupies it from the day they join. No joining date on file yet reads
-   as 'Joining date not set' rather than silently claiming either. */
-function joiningStatus(dateOfJoining) {
-  if (!dateOfJoining) return 'Joining date not set';
-  const doj = new Date(dateOfJoining);
-  if (Number.isNaN(doj.getTime())) return 'Joining date not set';
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  doj.setHours(0, 0, 0, 0);
-  return doj > today ? 'Awaiting joining' : 'Joined';
-}
 
 function decorate(p) {
   const o = p.toObject({ versionKey: false });

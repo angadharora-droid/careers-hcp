@@ -173,6 +173,13 @@ const attachBad = await req('POST', `/applications/${app.id}/documents`, {
 ok('HR attach rejects non-PDF', attachBad.status === 400, `got ${attachBad.status}`);
 ok('worked-at-CPH answer stored on application', app && app.worked_at_cph_before === 'No', `got ${app?.worked_at_cph_before}`);
 
+// screening review resolves to explicit stages — no reason needed either way
+const shortl = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Shortlisted' } });
+ok('stage → Shortlisted', shortl.status === 200 && shortl.json.application.stage === 'Shortlisted');
+const notShortl = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Not Shortlisted' } });
+ok('stage → Not Shortlisted (no reason required)', notShortl.status === 200 && notShortl.json.application.stage === 'Not Shortlisted');
+await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Applied' } });
+
 // rejection requires reason
 const rejNoReason = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Rejected' } });
 ok('rejection without reason blocked', rejNoReason.status === 400);
@@ -187,7 +194,19 @@ const rejOther = await req('PATCH', `/applications/${app.id}/stage`, { token: hr
 ok('"Other: <text>" rejection reason accepted', rejOther.status === 200 && rejOther.json.application.rejection_reason === 'Other: Candidate withdrew from the process');
 const rejOtherEmpty = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Rejected', rejection_reason: 'Other:   ' } });
 ok('"Other:" with no text blocked', rejOtherEmpty.status === 400);
-await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Applied' } }); // restore for the rest of the flow
+
+// Talent Bank: a not-selected candidate can be parked for a future vacancy
+const bank = await req('POST', `/applications/${app.id}/talent-bank`, { token: hr, body: { note: 'Good attitude — revisit next drive' } });
+ok('rejected candidate parked in Talent Bank', bank.status === 200 && bank.json.application.in_talent_bank === true, bank.json?.error || '');
+const bankDup = await req('POST', `/applications/${app.id}/talent-bank`, { token: hr, body: {} });
+ok('double-banking blocked', bankDup.status === 400);
+const bankList = await req('GET', '/applications?talent_bank=true', { token: hr });
+ok('talent bank list carries the candidate', bankList.status === 200 && bankList.json.applications.some((a) => a.id === app.id));
+
+const backIn = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Applied' } }); // restore for the rest of the flow
+ok('re-entering the pipeline lifts the Talent Bank flag', backIn.status === 200 && backIn.json.application.in_talent_bank === false);
+const bankEarly = await req('POST', `/applications/${app.id}/talent-bank`, { token: hr, body: {} });
+ok('banking blocked while the candidate is live', bankEarly.status === 400);
 
 // selection gate: no scores yet
 const selEarly = await req('PATCH', `/applications/${app.id}/stage`, { token: hr, body: { stage: 'Selected' } });
@@ -341,6 +360,20 @@ const offerSet = await req('PATCH', `/applications/${app.id}/offer`, { token: hr
 ok('offer terms saved', offerSet.status === 200 && offerSet.json.application.offered_salary === 16000 && offerSet.json.application.date_of_joining === '2026-08-01');
 const offerDoc = await req('GET', `/applications/${app.id}/offer-letter`, { token: hr });
 ok('offer letter generates once terms set (HTML 200)', offerDoc.status === 200);
+
+// joining calendar feed — every Selected candidate with their DOJ and status
+const joinings = await req('GET', '/applications/joinings', { token: hr });
+const joinRow = joinings.json?.joinings?.find((j) => String(j.id) === String(app.id));
+ok('joining calendar feed lists the selected candidate',
+  joinings.status === 200 && joinRow?.date_of_joining === '2026-08-01'
+    && ['Awaiting joining', 'Joined'].includes(joinRow?.joining_status),
+  JSON.stringify(joinRow));
+
+// aging vacancies now cover every unfilled seat — Under Recruitment included
+const dashAging = await req('GET', '/dashboard/summary', { token: hr });
+ok('aging vacancies include Under Recruitment seats',
+  dashAging.status === 200 && (dashAging.json.aging_vacancies || []).some((v) => v.status === 'Under Recruitment'),
+  `statuses: ${[...new Set((dashAging.json?.aging_vacancies || []).map((v) => v.status))].join(',')}`);
 const offerMail = await req('POST', `/applications/${app.id}/send-offer`, { token: hr, body: {} });
 ok('send-offer without SMTP returns email_configured:false', offerMail.status === 400 && offerMail.json.email_configured === false);
 

@@ -3,12 +3,13 @@ import { api } from '../lib/api';
 import { fmtDate } from '../lib/format';
 import { exportCSV, stamp } from '../lib/export';
 import { ErrorBox, Empty, TableSkeleton } from '../components/LoadState';
-import { StageBadge } from '../components/Badges';
+import { StageBadge, TalentPill } from '../components/Badges';
 import ApplicantDrawer from '../components/ApplicantDrawer';
 import PageHeader from '../components/PageHeader';
 import { Search, AlertTriangle, Flag, Users, Download, MessageSquare } from '../components/Icons';
 
-const STAGES = ['Applied', 'Interview Scheduled', 'Selected', 'Rejected', 'On Hold'];
+// Screening first (Applied → Shortlisted / Not Shortlisted), then selection.
+const STAGES = ['Applied', 'Shortlisted', 'Interview Scheduled', 'Selected', 'On Hold', 'Not Shortlisted', 'Rejected'];
 
 // CSV columns for the applications export (mirrors the filtered table on screen).
 const APP_CSV = [
@@ -28,6 +29,7 @@ const APP_CSV = [
   { header: 'Applied On', value: (a) => fmtDate(a.applied_on) },
   { header: 'Source', value: (a) => a.source || '' },
   { header: 'Rejection Reason', value: (a) => a.rejection_reason || '' },
+  { header: 'Talent Bank', value: (a) => (a.in_talent_bank ? 'Yes' : '') },
   { header: 'Interview Date', value: (a) => a.interview_date || '' },
   { header: 'Date of Joining', value: (a) => a.date_of_joining || '' },
   { header: 'Offered Salary', value: (a) => a.offered_salary ?? '' },
@@ -278,7 +280,10 @@ export default function ApplicationsPage() {
                     </td>
                     <td className="num">{a.total_experience_years ?? '—'}y</td>
                     <td>
-                      <StageBadge stage={a.stage} />
+                      <span className="inline-flex items-center gap-1.5 flex-wrap">
+                        <StageBadge stage={a.stage} />
+                        {a.in_talent_bank && <TalentPill />}
+                      </span>
                       {a.stage === 'Rejected' && a.rejection_reason && <div className="mini">{a.rejection_reason}</div>}
                       {a.stage === 'Interview Scheduled' && a.interview_date && <div className="mini">{a.interview_date}</div>}
                       {a.stage === 'Selected' && a.pcn && <div className="mini font-mono">{a.pcn}</div>}

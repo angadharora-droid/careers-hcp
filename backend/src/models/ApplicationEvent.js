@@ -18,6 +18,7 @@ export const EVENT_TYPES = [
   'move',       // pushed to a different role
   'document',   // documents attached by HR
   'edit',       // candidate / register fields changed by hand
+  'talent',     // added to / removed from the Talent Bank
 ];
 
 const applicationEventSchema = new mongoose.Schema(

@@ -100,8 +100,9 @@ shadows, no rounded-pill UI — quiet, upscale, editorial.
 - Status pills (position): Filled=green tint, Vacant=red tint, Under Recruitment=amber tint,
   Frozen=indigo tint, On Hold=warm gray, Contract=teal tint, Outsourced=tan, Eliminated=dark.
   Keep tints soft/warm; small radius, uppercase 10px letterspaced.
-- Stage badges (application): Applied=blue tint, Interview Scheduled=amber, Selected=green,
-  Rejected=red, On Hold=warm gray. Same shape language.
+- Stage badges (application): Applied=blue tint, Shortlisted=green, Not Shortlisted=red,
+  Interview Scheduled=amber, Selected=green, Rejected=red, On Hold=warm gray. Same shape
+  language. Talent Bank pill = teal tint (matches the register's Talent Pool flag).
 - Recommendation chips: Strongly Recommend / Recommend = green tints, Hold = amber,
   Do Not Recommend = red.
 - PCN / job codes: monospace, berry, bold.

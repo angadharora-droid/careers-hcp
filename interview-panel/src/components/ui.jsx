@@ -50,6 +50,8 @@ const badgeBase =
 
 const STAGE_STYLES = {
   Applied: 'bg-[#e7eff7] text-brand-blue',
+  Shortlisted: 'bg-[#e8f4ec] text-brand-green',
+  'Not Shortlisted': 'bg-[#fbe9e7] text-brand-red',
   'Interview Scheduled': 'bg-[#f6e8cf] text-brand-amber',
   Selected: 'bg-[#e8f4ec] text-brand-green',
   Rejected: 'bg-[#fbe9e7] text-brand-red',

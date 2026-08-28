@@ -6,7 +6,7 @@ import { ErrorBox, Skeleton, Loading } from './LoadState';
 import CommentThread from './CommentThread';
 import Timeline from './Timeline';
 import MoveRoleDialog from './MoveRoleDialog';
-import { AssignmentChip, RecChip, StageBadge, BandPill } from './Badges';
+import { AssignmentChip, RecChip, StageBadge, BandPill, TalentPill } from './Badges';
 import { api, downloadDocument, previewDocument, uploadDocuments } from '../lib/api';
 import { inr, fmtDate, band, bandStanding } from '../lib/format';
 import { useToast } from '../context/ToastContext';
@@ -31,13 +31,23 @@ const REJECTION_REASONS = [
 const OTHER_REASON = 'Other';
 const OTHER_PREFIX = /^Other:\s*/;
 
-const STAGE_BUTTONS = [
-  { stage: 'Applied', label: 'Applied' },
+/* Two phases, mirroring the recruitment flow: screening review resolves the
+   application status; the interview then resolves the selection status. On Hold
+   is one stage serving both phases. */
+const SCREENING_BUTTONS = [
+  { stage: 'Applied', label: 'Screening' },
+  { stage: 'Shortlisted', label: 'Shortlisted' },
+  { stage: 'On Hold', label: 'On Hold' },
+  { stage: 'Not Shortlisted', label: 'Not Shortlisted' },
+];
+const SELECTION_BUTTONS = [
   { stage: 'Interview Scheduled', label: 'Interview' },
   { stage: 'Selected', label: 'Select' },
   { stage: 'Rejected', label: 'Reject' },
-  { stage: 'On Hold', label: 'Hold' },
 ];
+
+// The "not selected" exits — the stages a candidate can be banked from.
+const TALENT_BANK_STAGES = ['Not Shortlisted', 'Rejected'];
 
 // Panels run in order: Panel 1 interviews first, and Panel N stays locked for its
 // interviewer until Panel N-1 is scored.
@@ -169,6 +179,8 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [attachBusy, setAttachBusy] = useState(false);
+  const [talentBusy, setTalentBusy] = useState(false);
+  const [talentNote, setTalentNote] = useState(''); // optional note captured when banking
   const [moveOpen, setMoveOpen] = useState(false);
   // Bumped after any write, to refetch the timeline without reloading the drawer.
   const [timelineKey, setTimelineKey] = useState(0);
@@ -310,6 +322,25 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
     }
   }
 
+  // Park a not-selected candidate for a future vacancy, or take them back out.
+  async function toggleTalentBank() {
+    const banked = app.in_talent_bank;
+    setTalentBusy(true);
+    try {
+      const d = banked
+        ? await api.del(`/applications/${app.id}/talent-bank`)
+        : await api.post(`/applications/${app.id}/talent-bank`, { note: talentNote.trim() });
+      applyApp(d.application);
+      if (!banked) setTalentNote('');
+      toast(banked ? 'Removed from the Talent Bank' : `${app.candidate_name} added to the Talent Bank`);
+      onChanged();
+    } catch (e) {
+      toast(e.message, 'error');
+    } finally {
+      setTalentBusy(false);
+    }
+  }
+
   async function deleteApplication() {
     setDeleteBusy(true);
     try {
@@ -408,6 +439,7 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
         </h3>
         <div className="flex items-center gap-2 flex-wrap mt-1.5">
           <StageBadge stage={app.stage} />
+          {app.in_talent_bank && <TalentPill />}
           <span className="pcn">{app.job_code}</span>
           <span className="mini">
             {app.designation} · Grade {app.grade} · {app.department}
@@ -773,23 +805,35 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
 
       {/* ===== Sticky footer — stage control ===== */}
       <div className="border-t border-line bg-card px-5 md:px-6 py-3.5 shrink-0">
-        <div
-          className="flex border border-line rounded-sm overflow-hidden w-fit flex-wrap bg-card"
-          role="group"
-          aria-label="Application stage"
-        >
-          {STAGE_BUTTONS.map((b) => (
-            <button
-              key={b.stage}
-              type="button"
-              aria-pressed={selStage === b.stage}
-              className={`font-button px-3.5 py-2 min-h-10 text-[11px] font-medium uppercase tracking-[1.5px] cursor-pointer transition-colors duration-150 ${
-                selStage === b.stage ? 'bg-berry text-white' : 'bg-card text-muted hover:text-berry'
-              }`}
-              onClick={() => setSelStage(b.stage)}
-            >
-              {b.label}
-            </button>
+        <div className="flex gap-x-5 gap-y-2 flex-wrap items-end">
+          {[
+            { label: '01 · Application status', buttons: SCREENING_BUTTONS },
+            { label: '02 · Selection status', buttons: SELECTION_BUTTONS },
+          ].map((group) => (
+            <div key={group.label}>
+              <div className="font-button text-[10px] font-medium text-muted uppercase tracking-[1.2px] mb-1">
+                {group.label}
+              </div>
+              <div
+                className="flex border border-line rounded-sm overflow-hidden w-fit flex-wrap bg-card"
+                role="group"
+                aria-label={group.label}
+              >
+                {group.buttons.map((b) => (
+                  <button
+                    key={b.stage}
+                    type="button"
+                    aria-pressed={selStage === b.stage}
+                    className={`font-button px-3.5 py-2 min-h-10 text-[11px] font-medium uppercase tracking-[1.5px] cursor-pointer transition-colors duration-150 ${
+                      selStage === b.stage ? 'bg-berry text-white' : 'bg-card text-muted hover:text-berry'
+                    }`}
+                    onClick={() => setSelStage(b.stage)}
+                  >
+                    {b.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
 
@@ -858,6 +902,33 @@ export default function ApplicantDrawer({ applicationId, onClose, onChanged }) {
             <Trash size={13} />
             Delete
           </button>
+          {(app.in_talent_bank || TALENT_BANK_STAGES.includes(app.stage)) && (
+            <>
+              {!app.in_talent_bank && (
+                <input
+                  className="inp w-auto min-w-[180px] flex-1 max-w-[280px]"
+                  maxLength={300}
+                  value={talentNote}
+                  onChange={(e) => setTalentNote(e.target.value)}
+                  placeholder="Why keep on file? (optional)"
+                  aria-label="Talent Bank note"
+                />
+              )}
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={toggleTalentBank}
+                disabled={talentBusy}
+                title={app.in_talent_bank
+                  ? 'Take this candidate back out of the Talent Bank'
+                  : 'Keep this not-selected candidate on file for a future vacancy'}
+              >
+                {talentBusy
+                  ? 'Saving…'
+                  : app.in_talent_bank ? 'Remove from Talent Bank' : 'Send to Talent Bank'}
+              </button>
+            </>
+          )}
           <button
             type="button"
             className="btn ml-auto"

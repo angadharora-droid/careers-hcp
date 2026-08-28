@@ -24,9 +24,13 @@ router.use(requireAuth, requireRole('hr_admin'));
    register asks, and the pipeline's single `stage` answers none of them alone —
    they are read off stage TOGETHER with the panel record. */
 
-// Did this application get past the paper sift?
+// Did this application get past the paper sift? The explicit screening stages
+// answer directly; older applications still derive it from the panel record.
 function screeningOf(app, assignments) {
+  if (app.stage === 'Not Shortlisted') return 'Not shortlisted';
+  if (app.stage === 'Shortlisted') return 'Shortlisted';
   if (assignments.length > 0 || app.interview_date) return 'Shortlisted';
+  if (['Interview Scheduled', 'Selected'].includes(app.stage)) return 'Shortlisted';
   if (app.stage === 'Rejected') return 'Not shortlisted';
   if (app.stage === 'On Hold') return 'On hold';
   return 'Pending';
@@ -39,7 +43,7 @@ function interviewStatusOf(app, assignments, scores, rounds) {
   if (done === 0) {
     // Panel appointed but nothing scored. If the candidate has already been
     // rejected or parked, the rounds did not happen rather than being pending.
-    if (app.stage === 'Rejected' || app.stage === 'On Hold') return 'Did not attend';
+    if (['Rejected', 'Not Shortlisted', 'On Hold'].includes(app.stage)) return 'Did not attend';
     const next = Math.min(...assignments.map((a) => a.round));
     return `Round ${next} scheduled`;
   }
@@ -52,6 +56,7 @@ function interviewStatusOf(app, assignments, scores, rounds) {
 function finalDecisionOf(app, scores, rounds) {
   if (app.stage === 'Selected') return 'Selected';
   if (app.stage === 'Rejected') return 'Rejected';
+  if (app.stage === 'Not Shortlisted') return 'Not shortlisted';
   if (app.stage === 'On Hold') return 'On hold';
   // Panel is finished but HR has not called it yet — the sample format's
   // "Final pending" row.
@@ -66,7 +71,7 @@ function finalDecisionOf(app, scores, rounds) {
 function registerFlagOf(app, dateClosed) {
   if (!dateClosed) return '';
   if (new Date(app.applied_on) > new Date(dateClosed)) return 'Talent Pool';
-  if (['Applied', 'Interview Scheduled', 'On Hold'].includes(app.stage)) return 'Post Closed';
+  if (['Applied', 'Shortlisted', 'Interview Scheduled', 'On Hold'].includes(app.stage)) return 'Post Closed';
   return '';
 }
 
@@ -154,7 +159,7 @@ router.get('/posts', async (_req, res) => {
       },
       applications: g.apps.length,
       selected: selected.length,
-      pending: g.apps.filter((a) => ['Applied', 'Interview Scheduled', 'On Hold'].includes(a.stage)).length,
+      pending: g.apps.filter((a) => ['Applied', 'Shortlisted', 'Interview Scheduled', 'On Hold'].includes(a.stage)).length,
       is_closed: open === 0 && g.seats.length > 0,
       date_opened: iso(date_opened),
       date_closed: iso(date_closed),
