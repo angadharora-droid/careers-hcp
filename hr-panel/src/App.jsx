@@ -14,7 +14,10 @@ import FrameworkPage from './pages/FrameworkPage';
 import InterviewersPage from './pages/InterviewersPage';
 
 function AppRoutes() {
-  const { token } = useAuth();
+  const { token, ssoChecking } = useAuth();
+  // Portal cookie check in flight (central sign-on): hold the screen so the
+  // login page does not flash for someone who is about to be signed in.
+  if (ssoChecking) return <div className="min-h-screen bg-cream" />;
   if (!token) return <LoginPage />;
   return (
     <Routes>

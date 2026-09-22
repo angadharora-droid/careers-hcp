@@ -30,8 +30,8 @@ async function request(path, { method = 'GET', body } = {}) {
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // Any 401 outside the login call itself drops the session back to the login screen.
-  if (res.status === 401 && !path.startsWith('/auth/login')) {
+  // Any 401 outside the login calls themselves drops the session back to the login screen.
+  if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/sso')) {
     clearSession();
     if (unauthorizedHandler) unauthorizedHandler();
     throw new Error('Session expired — please sign in again');

@@ -10,6 +10,7 @@ import { requireAuth } from './middleware/auth.js';
 import CandidateDocument from './models/CandidateDocument.js';
 
 import authRoutes from './routes/auth.js';
+import ssoRoutes from './routes/sso.js';
 import publicRoutes from './routes/public.js';
 import positionRoutes from './routes/positions.js';
 import applicationRoutes from './routes/applications.js';
@@ -27,6 +28,7 @@ app.use(express.json({ limit: '1mb' }));
 app.get('/api/health', (_req, res) => res.json({ ok: true, service: 'cph-backend' }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/sso', ssoRoutes);                // central sign-on directory (shared-secret guarded)
 app.use('/api/public', publicRoutes);          // Career Panel — no auth
 app.use('/api/positions', positionRoutes);     // HR
 app.use('/api/applications', applicationRoutes); // HR (+ shared scores read)

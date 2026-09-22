@@ -1,10 +1,41 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, clearSession, getStoredUser, getToken, setSession } from '../lib/api';
+import { SSO_APP_KEY, resolveSsoToken, ssoEnabled, ssoLogout } from '../lib/sso';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => (getToken() ? getStoredUser() : null));
+  // True while we ask the portal whether this visitor is already signed in —
+  // only when there is no stored token and central sign-on is configured.
+  const [ssoChecking, setSsoChecking] = useState(() => !getToken() && ssoEnabled());
+
+  // Central sign-on: with no stored token, the portal cookie may still identify
+  // this visitor. The hand-off token is exchanged for the same { token, user } a
+  // password login returns and stored the same way; the interviewer membership
+  // check applies exactly as in login(). Anything else falls through to /login.
+  useEffect(() => {
+    if (!ssoChecking) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const ssoToken = await resolveSsoToken();
+        if (!ssoToken || cancelled) return;
+        const data = await api('/auth/sso', { method: 'POST', body: { token: ssoToken, app: SSO_APP_KEY } });
+        if (cancelled || !data || !data.user || !(data.user.roles || [data.user.role]).includes('interviewer')) return;
+        setSession(data.token, data.user);
+        setUser(data.user);
+      } catch {
+        /* portal unreachable or no account linked: show the login page as usual */
+      } finally {
+        if (!cancelled) setSsoChecking(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Any 401 anywhere clears the session and drops back to the login screen.
   useEffect(() => {
@@ -40,12 +71,13 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    ssoLogout(); // end the portal session too, or the next load signs back in
     clearSession();
     setUser(null);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>
+    <AuthContext.Provider value={{ user, login, logout, ssoChecking }}>{children}</AuthContext.Provider>
   );
 }
 

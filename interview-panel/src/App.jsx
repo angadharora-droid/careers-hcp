@@ -9,7 +9,10 @@ import PanelComparison from './pages/PanelComparison';
 import Framework from './pages/Framework';
 
 function Shell() {
-  const { user } = useAuth();
+  const { user, ssoChecking } = useAuth();
+  // Portal cookie check in flight (central sign-on): hold the screen so the
+  // login page does not flash for someone who is about to be signed in.
+  if (ssoChecking) return <div className="min-h-screen bg-cream" />;
   if (!user) return <Navigate to="/login" replace />;
   return (
     <div className="min-h-screen flex flex-col">
