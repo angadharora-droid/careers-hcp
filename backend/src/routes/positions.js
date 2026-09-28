@@ -168,6 +168,23 @@ router.patch('/:id', async (req, res) => {
        the edit dialog is the normal way a seat reopens, and only handling
        'Vacant' left vacant_since null — which silently cost the seat both its
        days-vacant count and its time-to-fill on the next hire. */
+    /* A seat a live selection holds cannot be edited out of Filled. Reopening it
+       here cleared the occupant but left the application pointing at the seat, so
+       the next selection claimed it too — two Selected candidates on one PCN. Same
+       rule as hand-back: release the seat by moving the application instead. */
+    if (b.status && b.status !== p.status && p.status === 'Filled') {
+      const holder = await Application.findOne(
+        { stage: 'Selected', position_id: p._id },
+        'candidate_name reference_id'
+      );
+      if (holder) {
+        return res.status(400).json({
+          error: `Seat is held by a live selection (${holder.candidate_name}, ${holder.reference_id}). ` +
+            'Move that application out of Selected instead — that releases the seat.',
+        });
+      }
+    }
+
     const wasRecruitable = RECRUITABLE_STATUSES.includes(p.status);
     Object.assign(p, b);
     const isRecruitable = RECRUITABLE_STATUSES.includes(p.status);

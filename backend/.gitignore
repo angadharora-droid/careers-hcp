@@ -4,3 +4,4 @@ uploads/
 # Database dumps: candidate PII, password hashes and CV bytes. Never commit.
 backups/
 filled-seats-backup-*.json
+seat-move-backup-*.json

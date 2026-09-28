@@ -294,9 +294,13 @@ router.patch('/:id/stage', requireRole('hr_admin'), async (req, res) => {
     // now (selection time), not at apply time — candidate applied to the role.
     // designation is matched too: if two designations ever share a job_code,
     // a candidate can still only fill a seat of the role they applied for.
-    const seatFilter = position_id
-      ? { _id: position_id, job_code: app.job_code, designation: app.designation, status: { $in: RECRUITABLE_STATUSES } }
-      : { job_code: app.job_code, designation: app.designation, status: { $in: RECRUITABLE_STATUSES } };
+    // A seat another Selected application still points at is taken, whatever its
+    // status says — a seat reopened by hand must not be claimed a second time.
+    const held = await Application.distinct('position_id', { stage: 'Selected', position_id: { $ne: null } });
+    const seatFilter = {
+      _id: position_id ? { $eq: position_id, $nin: held } : { $nin: held },
+      job_code: app.job_code, designation: app.designation, status: { $in: RECRUITABLE_STATUSES },
+    };
     /* Atomic claim of the seat: filter includes the recruitable check, so a
        concurrent selection cannot double-fill the same PCN. `new: false` returns
        the PRE-claim document, which is the only place vacant_since still holds a
